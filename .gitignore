@@ -27,11 +27,11 @@ Unknown_Character_*.json
 Thumbs.db
 desktop.ini
 
-# Copyright-protected content (disabled for development branch - local use only)
-# Note: Spell files restored for development but should remain ignored for public commits
-# obsidian/spells/
-# spells/
-# **/spells/**
+# Copyright-protected content - excluded from main branch
+# These files are allowed in development branch for testing but not in public main branch
+obsidian/spells/*.md
+spells/*.md
+**/spells/**/*.md
 
 # MCP (Model Context Protocol) servers
 mcp/
