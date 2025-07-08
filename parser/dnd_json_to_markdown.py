@@ -1769,21 +1769,99 @@ return <SpellQuery characterName="{self.character_name}" />;
         
         section += ">**Bonus Action:**\n"
         
-        # Filter out spells that only provide conditional bonus actions
-        conditional_bonus_spells = ['unseen servant', 'find familiar', 'spiritual weapon', 'healing word']
+        # Dynamically detect conditional bonus action spells
+        def is_conditional_bonus_spell(spell_name, description, casting_time):
+            """
+            Dynamically detect if a spell provides conditional bonus actions.
+            
+            Returns tuple: (is_conditional, bonus_action_description)
+            """
+            import re
+            
+            name_lower = spell_name.lower()
+            desc_lower = description.lower()
+            cast_lower = casting_time.lower()
+            
+            # Skip if cast as bonus action AND doesn't have ongoing effects
+            if 'bonus action' in cast_lower:
+                # Check for hybrid spells (cast as bonus action AND provide ongoing)
+                ongoing_patterns = [
+                    r'later turns?', r'subsequent turns?', r'until the spell ends',
+                    r'while the spell', r'on your turn.*you can', r'on your\s+later\s+turns'
+                ]
+                if any(re.search(pattern, desc_lower) for pattern in ongoing_patterns):
+                    if 'expeditious retreat' in name_lower:
+                        return True, "Expeditious Retreat - Dash"
+                    elif 'spiritual weapon' in name_lower:
+                        return True, "Spiritual Weapon - Attack"
+                    return True, f"{spell_name} - Ongoing"
+                return False, None
+            
+            # Check for conditional bonus action patterns
+            conditional_patterns = [
+                (r'as a\s+bonus action.*you can', 'Move/Command'),
+                (r'as a\s+[Bb]onus\s+[Aa]ction.*can', 'Action'),
+                (r'on your\s+(?:later\s+)?turns?.*bonus action', 'Repeat'),
+                (r'bonus action.*on your\s+(?:later\s+)?turns?', 'Repeat'),
+                (r'until the spell ends.*bonus action', 'Duration'),
+                (r'while.*spell.*bonus action', 'Active'),
+                (r'command.*bonus action', 'Command'),
+                (r'move.*bonus action', 'Move'),
+                (r'bonus action.*move', 'Move'),
+                (r'control.*bonus action', 'Control')
+            ]
+            
+            for pattern, action_type in conditional_patterns:
+                if re.search(pattern, desc_lower):
+                    # Specific spell handling
+                    if 'familiar' in name_lower:
+                        return True, "Find Familiar - Command"
+                    elif 'servant' in name_lower:
+                        return True, "Unseen Servant - Command"
+                    elif 'weapon' in name_lower:
+                        return True, "Spiritual Weapon - Attack"
+                    elif 'arcane eye' in name_lower:
+                        return True, "Arcane Eye - Move"
+                    elif 'healing word' in name_lower:
+                        return True, "Healing Word"
+                    else:
+                        return True, f"{spell_name} - {action_type}"
+            
+            return False, None
         
-        # Handle regular bonus actions (excluding conditional-only spells)
+        # Separate regular bonus actions from conditional ones
         regular_bonus_actions = []
+        conditional_bonus_actions = []
+        
         for ba in bonus_action_list:
-            if ba.lower() not in conditional_bonus_spells:
+            # Get spell details for dynamic analysis
+            spell_desc = ""
+            spell_cast_time = ""
+            
+            # Find spell in character data
+            spells_data = self.character_data.get('spells', {})
+            for spell_source in spells_data.values():
+                if isinstance(spell_source, list):
+                    for spell in spell_source:
+                        if isinstance(spell, dict) and spell.get('name', '').lower() == ba.lower():
+                            spell_desc = spell.get('description', '')
+                            spell_cast_time = spell.get('casting_time', '')
+                            break
+            
+            # Check if it's conditional
+            is_conditional, conditional_desc = is_conditional_bonus_spell(ba, spell_desc, spell_cast_time)
+            
+            if is_conditional:
+                conditional_bonus_actions.append(conditional_desc)
+            else:
                 regular_bonus_actions.append(ba)
         
         if regular_bonus_actions:
             for ba in sorted(regular_bonus_actions):
                 section += f">- {ba}\n"
         
-        # Add conditional bonus actions based on spells (check both actions and spell list)
-        spell_bonus_actions = []
+        # Check for additional conditional spells from the full spell list (not just bonus actions)
+        additional_conditional_spells = []
         all_available_spells = set()
         
         # Collect spells from action list
@@ -1801,28 +1879,41 @@ return <SpellQuery characterName="{self.character_name}" />;
                         if spell_name:
                             all_available_spells.add(spell_name.lower())
         
-        # Check for spells that provide ongoing bonus actions
+        # Check all available spells for conditional bonus actions
         for spell_name in all_available_spells:
-            if spell_name in conditional_bonus_spells:
-                if spell_name == 'find familiar':
-                    spell_bonus_actions.append("Find Familiar - Command")
-                elif spell_name == 'unseen servant':
-                    spell_bonus_actions.append("Unseen Servant - Command")
-                elif spell_name == 'spiritual weapon':
-                    spell_bonus_actions.append("Spiritual Weapon - Attack")
-                elif spell_name == 'healing word':
-                    spell_bonus_actions.append("Healing Word")
+            # Skip if already processed in bonus_action_list
+            if spell_name in [ba.lower() for ba in bonus_action_list]:
+                continue
+                
+            # Find spell details
+            spell_desc = ""
+            spell_cast_time = ""
+            for spell_source in spells_data.values():
+                if isinstance(spell_source, list):
+                    for spell in spell_source:
+                        if isinstance(spell, dict) and spell.get('name', '').lower() == spell_name:
+                            spell_desc = spell.get('description', '')
+                            spell_cast_time = spell.get('casting_time', '')
+                            break
+            
+            # Check if it provides conditional bonus actions
+            is_conditional, conditional_desc = is_conditional_bonus_spell(spell_name, spell_desc, spell_cast_time)
+            if is_conditional:
+                additional_conditional_spells.append(conditional_desc)
+        
+        # Combine all conditional bonus actions
+        all_conditional_spells = conditional_bonus_actions + additional_conditional_spells
         
         # Add conditional bonus actions with "If cast:" prefix
-        if spell_bonus_actions:
+        if all_conditional_spells:
             if regular_bonus_actions:
                 section += ">\n"  # Add spacing if we had regular bonus actions
             section += ">If cast:\n"
-            for bonus_spell in sorted(spell_bonus_actions):
+            for bonus_spell in sorted(all_conditional_spells):
                 section += f">- {bonus_spell}\n"
         
         # Add fallback if no bonus actions at all
-        if not regular_bonus_actions and not spell_bonus_actions:
+        if not regular_bonus_actions and not all_conditional_spells:
             section += ">\n"
         
         section += ">\n"
