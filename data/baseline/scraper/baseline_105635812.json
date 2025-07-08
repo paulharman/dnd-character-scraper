@@ -1,0 +1,789 @@
+{
+  "basic_info": {
+    "name": "Faerah Duskrane",
+    "level": 10,
+    "experience": 34000,
+    "avatarUrl": "https://www.dndbeyond.com/avatars/36048/643/1581111423-105635812.jpeg?width=150&height=150&fit=crop&quality=95&auto=webp",
+    "inspiration": false,
+    "lifestyleId": 4,
+    "armor_class": {
+      "total": 17,
+      "base": 12,
+      "modifiers": [
+        {
+          "source": "Dexterity",
+          "value": 5,
+          "type": "ability"
+        }
+      ],
+      "calculation": "Studded Leather (12 + Dex)"
+    },
+    "initiative": {
+      "total": 7,
+      "sources": [
+        {
+          "source": "Dexterity",
+          "value": 5
+        },
+        {
+          "source": "Rakish Audacity",
+          "value": 2
+        }
+      ]
+    },
+    "speed": {
+      "walking": {
+        "total": 30,
+        "sources": [
+          {
+            "source": "Base",
+            "value": 30
+          }
+        ]
+      }
+    },
+    "hit_points": {
+      "current": 70,
+      "maximum": 73,
+      "temporary": 0,
+      "base": 53,
+      "bonus": 0,
+      "constitution_bonus": 0,
+      "override": null,
+      "removed": 3,
+      "hit_point_type": 1,
+      "hit_point_method": "Fixed"
+    },
+    "classes": [
+      {
+        "name": "Rogue",
+        "level": 10,
+        "hit_die": 8,
+        "subclass": "Swashbuckler",
+        "spellcasting_ability": "",
+        "is_2024": false
+      }
+    ]
+  },
+  "appearance": {
+    "gender": "Female",
+    "age": 88,
+    "hair": "Silver",
+    "eyes": "Lavender",
+    "skin": "Grey-blue",
+    "height": "5'4",
+    "weight": null,
+    "traits": null,
+    "size": 4,
+    "size_name": "Medium"
+  },
+  "ability_scores": {
+    "strength": {
+      "score": 8,
+      "modifier": -1,
+      "save_bonus": -1,
+      "source_breakdown": {
+        "base": 8
+      }
+    },
+    "dexterity": {
+      "score": 20,
+      "modifier": 5,
+      "save_bonus": 9,
+      "source_breakdown": {
+        "base": 15,
+        "race": 2,
+        "class": 3
+      }
+    },
+    "constitution": {
+      "score": 14,
+      "modifier": 2,
+      "save_bonus": 2,
+      "source_breakdown": {
+        "base": 14
+      }
+    },
+    "intelligence": {
+      "score": 10,
+      "modifier": 0,
+      "save_bonus": 4,
+      "source_breakdown": {
+        "base": 10
+      }
+    },
+    "wisdom": {
+      "score": 12,
+      "modifier": 1,
+      "save_bonus": 1,
+      "source_breakdown": {
+        "base": 12
+      }
+    },
+    "charisma": {
+      "score": 14,
+      "modifier": 2,
+      "save_bonus": 2,
+      "source_breakdown": {
+        "base": 13,
+        "race": 1
+      }
+    }
+  },
+  "skills": {
+    "athletics": 3,
+    "acrobatics": 13,
+    "sleight-of-hand": 13,
+    "stealth": 13,
+    "arcana": 0,
+    "history": 0,
+    "investigation": 0,
+    "nature": 0,
+    "religion": 0,
+    "animal-handling": 1,
+    "insight": 1,
+    "medicine": 1,
+    "perception": 5,
+    "survival": 5,
+    "deception": 2,
+    "intimidation": 2,
+    "performance": 2,
+    "persuasion": 6
+  },
+  "saving_throws": {
+    "strength_save": -1,
+    "dexterity_save": 9,
+    "constitution_save": 2,
+    "intelligence_save": 4,
+    "wisdom_save": 1,
+    "charisma_save": 2
+  },
+  "proficiencies": {
+    "armor": [
+      "Light Armor"
+    ],
+    "weapons": [
+      "Crossbow, Hand",
+      "Longsword",
+      "Rapier",
+      "Shortsword",
+      "Simple Weapons"
+    ],
+    "tools": [
+      "Thieves' Tools"
+    ],
+    "languages": [
+      "Common",
+      "Elvish",
+      "Thieves’ Cant",
+      "Undercommon"
+    ],
+    "skills": [
+      "Acrobatics",
+      "Athletics",
+      "Perception",
+      "Persuasion",
+      "Sleight of Hand",
+      "Stealth",
+      "Survival"
+    ]
+  },
+  "proficiency_sources": {
+    "Perception": "Species: Dark Elf (Drow)",
+    "Acrobatics": "Class: Rogue",
+    "Persuasion": "Class: Rogue",
+    "Stealth": "Class: Rogue",
+    "Sleight Of Hand": "Class: Rogue",
+    "Athletics": "Background: Outlander",
+    "Survival": "Background: Outlander"
+  },
+  "background": {
+    "name": "Outlander",
+    "description": "You grew up in the wilds, far from the comforts of town and technology. You’ve witnessed the migration of herds larger than forests, survived weather more extreme than any city-dweller could comprehend, and enjoyed the solitude of being the only thinking creature for miles in any direction. The wilds are in your blood, whether you were a nomad, an explorer, a recluse, a hunter-gatherer, or even a marauder. Even in places where you don’t know the specific features of the terrain, you know the ways of the wild. **Skill Proficiencies:** Athletics, Survival **Tool Proficiencies:** One type of musical instrument **Languages:** One of your choice **Equipment:** A staff, a hunting trap, a trophy from an animal you killed, a set of traveler’s clothes, and a pouch containing 10 gp Origin You’ve been to strange places and seen things that others cannot begin to fathom. Consider some of the distant lands you have visited, and how they impacted you. You can roll on the following table to determine your occupation during your time in the wild, or choose one that best fits your character. d10 Origin 1 Forester 2 Trapper 3 Homesteader 4 Guide 5 Exile or outcast 6 Bounty hunter 7 Pilgrim 8 Tribal nomad 9 Hunter-gatherer 10 Tribal marauder Feature: Wanderer You have an excellent memory for maps and geography, and you can always recall the general layout of terrain, settlements, and other features around you. In addition, you can find food and fresh water for yourself and up to five other people each day, provided that the land offers berries, small game, water, and so forth.",
+    "source_id": null,
+    "is_2024": false,
+    "personal_possessions": "Abyssal Violet Cloak",
+    "other_holdings": null,
+    "organizations": null,
+    "enemies": null,
+    "ideals": "",
+    "bonds": "",
+    "flaws": "",
+    "personality_traits": ""
+  },
+  "species": {
+    "name": "Dark Elf (Drow)",
+    "description": "",
+    "size": 4,
+    "source_id": null,
+    "is_2024": false,
+    "traits": [
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Perception",
+        "proficiency_type": "perception"
+      },
+      {
+        "name": "Advantage",
+        "type": "advantage",
+        "description": "You have advantage on Saving Throws checks"
+      },
+      {
+        "name": "Immunity",
+        "type": "immunity",
+        "description": "You have immunity to Magical Sleep",
+        "immunity_type": "magical-sleep"
+      },
+      {
+        "name": "Bonus",
+        "type": "bonus",
+        "description": "Bonus: Dexterity Score"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Common",
+        "language": "Common"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Elvish",
+        "language": "Elvish"
+      },
+      {
+        "name": "Set Base",
+        "type": "set-base",
+        "description": "Set Base: Darkvision"
+      },
+      {
+        "name": "Disadvantage",
+        "type": "disadvantage",
+        "description": "Disadvantage: Perception"
+      },
+      {
+        "name": "Disadvantage",
+        "type": "disadvantage",
+        "description": "Disadvantage: Melee Attacks"
+      },
+      {
+        "name": "Disadvantage",
+        "type": "disadvantage",
+        "description": "Disadvantage: Ranged Attacks"
+      },
+      {
+        "name": "Disadvantage",
+        "type": "disadvantage",
+        "description": "Disadvantage: Spell Attacks"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Rapier",
+        "proficiency_type": "rapier"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Crossbow, Hand",
+        "proficiency_type": "crossbow-hand"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Shortsword",
+        "proficiency_type": "shortsword"
+      },
+      {
+        "name": "Bonus",
+        "type": "bonus",
+        "description": "Bonus: Charisma Score"
+      },
+      {
+        "name": "Racial Spells",
+        "type": "spellcasting",
+        "description": "Spells granted by racial heritage: Dancing Lights, Faerie Fire, Darkness"
+      }
+    ]
+  },
+  "feats": [],
+  "spells": {
+    "Racial": [
+      {
+        "name": "Dancing Lights",
+        "level": 0,
+        "school": "Evocation",
+        "description": "You create up to four torch-sized lights within range, making them appear as torches, lanterns, or glowing orbs that hover in the air for the duration. You can also combine the four lights into one glowing vaguely humanoid form of Medium size. Whichever form you choose, each light sheds dim light in a 10-foot radius. As a bonus action on your turn, you can move the lights up to 60 feet to a new spot within range. A light must be within 20 feet of another light created by this spell, and a light winks out if it exceeds the spell's range.",
+        "save_dc": 14,
+        "attack_bonus": 6,
+        "spellcasting_ability": "charisma",
+        "always_prepared": true,
+        "usage_type": "at-will",
+        "source_info": {
+          "class": "Racial",
+          "feature": "Racial Trait",
+          "granted_by": "Species heritage"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "120 feet",
+        "ritual": false,
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V, S, M (a bit of phosphorus or wychwood, or a glowworm)",
+        "sources": [
+          "Racial"
+        ]
+      },
+      {
+        "name": "Faerie Fire",
+        "level": 1,
+        "school": "Evocation",
+        "description": "Each object in a 20-foot cube within range is outlined in blue, green, or violet light (your choice). Any creature in the area when the spell is cast is also outlined in light if it fails a Dexterity saving throw. For the duration, objects and affected creatures shed dim light in a 10-foot radius. Any attack roll against an affected creature or object has advantage if the attacker can see it, and the affected creature or object can't benefit from being invisible.",
+        "save_dc": 14,
+        "attack_bonus": 6,
+        "spellcasting_ability": "charisma",
+        "always_prepared": true,
+        "usage_type": "per-rest",
+        "source_info": {
+          "class": "Racial",
+          "feature": "Racial Trait",
+          "granted_by": "Species heritage"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "60 feet",
+        "ritual": false,
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V",
+        "sources": [
+          "Racial"
+        ]
+      },
+      {
+        "name": "Darkness",
+        "level": 2,
+        "school": "Evocation",
+        "description": "Magical darkness spreads from a point you choose within range to fill a 15-foot-radius sphere for the duration. The darkness spreads around corners. A creature with darkvision can't see through this darkness, and nonmagical light can't illuminate it. If the point you choose is on an object you are holding or one that isn't being worn or carried, the darkness emanates from the object and moves with it. Completely covering the source of the darkness with an opaque object, such as a bowl or a helm, blocks the darkness. If any of this spell's area overlaps with an area of light created by a spell of 2nd level or lower, the spell that created the light is dispelled.",
+        "save_dc": 14,
+        "attack_bonus": 6,
+        "spellcasting_ability": "charisma",
+        "always_prepared": true,
+        "usage_type": "per-rest",
+        "source_info": {
+          "class": "Racial",
+          "feature": "Racial Trait",
+          "granted_by": "Species heritage"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "60 feet",
+        "ritual": false,
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V, M (bat fur and a drop of pitch or piece of coal)",
+        "sources": [
+          "Racial"
+        ]
+      }
+    ]
+  },
+  "spell_slots": {
+    "regular_slots": {},
+    "pact_slots": {},
+    "caster_level": 0
+  },
+  "actions": [
+    {
+      "name": "Sneak Attack",
+      "description": "Beginning at 1st level, you know how to strike subtly and exploit a foe’s distraction. Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack if you have advantage on the attack roll. The attack must use a finesse or a ranged weapon. You don’t need advantage on the attack roll if another enemy of the target is within 5 feet of it, that enemy isn’t [condition]incapacitated[/condition], and you don’t have disadvantage on the attack roll. The amount of the extra damage increases as you gain levels in this class, as shown in the Sneak Attack column of the Rogue table.",
+      "type": "class",
+      "snippet": "Once per turn, you can deal an extra {{scalevalue}} damage to one creature you hit with an attack with a finesse or ranged weapon if you have advantage on the attack roll. You don’t need advantage on the attack roll if another enemy of the target is within 5 ft. of it, that enemy isn’t incapacitated, and you don’t have disadvantage on the attack roll."
+    },
+    {
+      "name": "Cunning Action",
+      "description": null,
+      "type": "class",
+      "snippet": "You can take a bonus action on each of your turns to take the Dash, Disengage, or Hide action."
+    },
+    {
+      "name": "Uncanny Dodge",
+      "description": null,
+      "type": "class",
+      "snippet": "When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack’s damage against you."
+    },
+    {
+      "name": "Panache",
+      "description": "",
+      "type": "class",
+      "snippet": "As an action, you can make a Persuasion check contested by a creature’s Insight check. \r\n\r\nOn success, a hostile creature has disadvantage on attack rolls against targets and can't make opportunity attacks against targets other than you for 1 minute, or until one of your allies engages it or it gets more than 60 ft. from you. If it isn't hostile, it is charmed by you for 1 minute."
+    },
+    {
+      "name": "Steady Aim",
+      "description": "*3rd-level rogue feature* As a bonus action, you give yourself advantage on your next attack roll on the current turn. You can use this bonus action only if you haven’t moved during this turn, and after you use the bonus action, your speed is 0 until the end of the current turn.",
+      "type": "class",
+      "snippet": "As a bonus action, you give yourself advantage on your next attack roll on the current turn. You can use this bonus action only if you haven’t moved during this turn, and after you use the bonus action, your speed is 0 until the end of the current turn."
+    }
+  ],
+  "inventory": [
+    {
+      "name": "Cloak of Elvenkind",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": true,
+      "weight": 0,
+      "type": "Wondrous item",
+      "rarity": "Uncommon"
+    },
+    {
+      "name": "Winged Boots",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": true,
+      "weight": 0,
+      "type": "Wondrous item",
+      "rarity": "Uncommon"
+    },
+    {
+      "name": "Studded Leather",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 13.0,
+      "type": "Light Armor",
+      "rarity": "Common"
+    },
+    {
+      "name": "Dagger",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Dagger",
+      "rarity": "Common"
+    },
+    {
+      "name": "Dagger",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Dagger",
+      "rarity": "Common"
+    },
+    {
+      "name": "Quarterstaff",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 4.0,
+      "type": "Quarterstaff",
+      "rarity": "Common"
+    },
+    {
+      "name": "Shortbow",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Shortbow",
+      "rarity": "Common"
+    },
+    {
+      "name": "Rapier",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Rapier",
+      "rarity": "Common"
+    },
+    {
+      "name": "Rapier",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Rapier",
+      "rarity": "Common"
+    },
+    {
+      "name": "Scimitar",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 3.0,
+      "type": "Scimitar",
+      "rarity": "Common"
+    },
+    {
+      "name": "Scimitar",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 3.0,
+      "type": "Scimitar",
+      "rarity": "Common"
+    },
+    {
+      "name": "Longbow",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Longbow",
+      "rarity": "Common"
+    },
+    {
+      "name": "Arrows",
+      "quantity": 30,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Backpack",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Clothes, Traveler's",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 4.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Pouch",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Thieves' Tools",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Hunting Trap",
+      "quantity": 3,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 25.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Ball Bearings (bag of 1,000)",
+      "quantity": 1000,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Bell",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Candle",
+      "quantity": 5,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Crowbar",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Hammer",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 3.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Lantern, Hooded",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Oil (flask)",
+      "quantity": 2,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Piton",
+      "quantity": 10,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.25,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Rations (1 day)",
+      "quantity": 5,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Rope, Hempen (50 feet)",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 10.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Tinderbox",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Waterskin",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "String",
+      "quantity": 10,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.0,
+      "type": "Gear",
+      "rarity": "Common"
+    }
+  ],
+  "notes": {
+    "character_notes": "",
+    "allies": null,
+    "backstory": "I was never meant for the underdark, but then Drow really arent' welcome anywhere else. The Lolth-sworn of my kind are weak minded, following mommy dearest like lambs to slaughter. As a child I was always a free thinker and a free spirit. I'd rather explore and make friends than fight to prove my worth. I asked \"why\" too much, I could never blindly obey. It would have gotten me killed if I didn't find out just how dangerous I was to Lolth's agenda. \nWhile others of my kind would kill each other for station and ambition, I dreamt of a life beyond the confines of darkness; a life full of love, acceptance, and kindness. Of course I wouldn't have known what any of that was if my sister hadn't shown me. In secret, we made a little pact of our own. She confided in me that Drow have left the underdark before, so we decided that we would flee together after I had trained. It took years for us to find a way out and plan our escape. We lived a double life of appeasing Lolth while also gaining access to our historic records and the best trainers so I could learn and prepare. Enduring that was a special kind of hell.\nDuring that time I honed my skills in stealth, deception, and sleight of hand. My sister breathed compassion into me for the lambs who got in so deep that they lost any sense of self. \"Their free will was twisted and carved into weapons for Lolth,\" my sister would say to me. \nWe were mere weeks away from enacting our escape plan before my sister was discovered. She was murdered and made an example of. She gave me an amulet just the day before which displayed a crescent moon within a circle. She told me this stone is the color of the sky beyond the underdark. \"Look to the sky and you'll find your way,\" were her last words to me. \nI had no idea how she got the stone or what it meant at the time, but in hindsight, she knew that the plan we made together was a journey I would be walking alone. Since then I have never taken it off. My purpose is clear: release as many people as possible from the clutches of tyranny and oppression.",
+    "personal_traits": "",
+    "ideals": "",
+    "bonds": "",
+    "flaws": ""
+  },
+  "meta": {
+    "character_id": "105635812",
+    "is_2024_rules": false,
+    "processed_timestamp": 1751226931.3757672,
+    "scraper_version": "5.2.0",
+    "proficiency_bonus": 4,
+    "primary_spellcasting_ability": "intelligence",
+    "passive_senses": {
+      "perception": 15,
+      "investigation": 10,
+      "insight": 11
+    },
+    "total_wealth_gp": 7,
+    "carrying_capacity": 120,
+    "total_caster_level": 0,
+    "individual_currencies": {
+      "copper": 106,
+      "silver": 0,
+      "electrum": 0,
+      "gold": 6,
+      "platinum": 0
+    },
+    "diagnostics": {
+      "errors": [],
+      "warnings": [
+        "classSpells entry 0 has empty spells array",
+        "No feats found in any source"
+      ],
+      "missing_data": [],
+      "info": [
+        "Found 1 classSpells entries with 0 total spells"
+      ],
+      "data_analysis": [
+        "Proficiency sources: race:4, class:13, background:3"
+      ],
+      "expected_vs_actual": []
+    }
+  }
+}

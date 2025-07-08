@@ -1,0 +1,55 @@
+# Discord Configuration
+# Discord webhook settings, notification preferences, and formatting options
+
+# Core Discord Settings
+enabled: true                     # Enable parser → Discord monitor integration
+webhook_url: "https://discord.com/api/webhooks/1389887641419517992/lfyZwuRctAzpuD1UYSBYqWMEiN8KXPnN_jLlHJBewJyupTIFAIXhvMXrphKCW1V7vEEZ"
+username: "D&D Beyond Scraper"    # Discord bot username
+avatar_url: null                  # Discord bot avatar URL
+
+# Integration Settings
+create_snapshots: true            # Always create Discord-compatible snapshots
+notify_on_save: true              # Send notifications when characters are saved
+config_file: "discord/discord_config.yml"  # Legacy Discord monitor config file
+
+# Notification Settings
+format_type: "detailed"           # Notification format: compact, detailed, json
+min_priority: "LOW"               # Minimum change priority: LOW, MEDIUM, HIGH, CRITICAL
+
+# Rate Limiting
+rate_limit:
+  requests_per_minute: 3
+  burst: 1
+  delay_between_messages: 2.0
+
+# Message Settings
+messages:
+  max_changes_per_notification: 200
+  send_summary_for_multiple: false
+  timezone: "UTC"
+
+# Change Type Filtering
+# Remove types you don't want to monitor
+change_types:
+  - "level"
+  - "experience"
+  - "hit_points"
+  - "armor_class"
+  - "ability_scores"
+  - "spells_known"
+  - "spell_slots"
+  - "inventory_items"
+  - "equipment"
+  - "currency"
+  - "skills"
+  - "proficiencies"
+  - "feats"
+  - "class_features"
+  - "appearance"
+  - "background"
+
+# Legacy Support
+# These settings ensure compatibility with existing discord_config.yml
+legacy:
+  support_old_config: true
+  config_file_override: null

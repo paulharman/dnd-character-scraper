@@ -1,0 +1,47 @@
+# Production Environment Configuration
+# Settings optimized for production use
+
+# API settings for production
+api:
+  timeout: 30
+  max_retries: 3
+  retry_delay: 2.0
+  
+  # Rate limiting for production
+  rate_limit:
+    requests_per_minute: 3  # Respectful rate limiting
+    delay_between_requests: 30  # 30 seconds between requests
+    
+# Output settings for production
+output:
+  verbose: false
+  include_raw_data: false
+  format: "json"
+  
+# Production logging
+logging:
+  level: "INFO"
+  include_timestamps: true
+  log_to_file: true
+  log_file_path: "logs/scraper.log"
+  
+# Error handling
+error_handling:
+  graceful_degradation: true
+  retry_on_failure: true
+  continue_on_error: true
+  
+# Weekly batch processing settings
+batch_processing:
+  default_character_ids: [
+    145081718, 29682199, 147061783, 66356596, 144986992, 
+    145079040, 141875964, 68622804
+  ]
+  output_directory: "output/"
+  backup_directory: "backup/"
+  
+# Performance settings
+performance:
+  enable_caching: false  # Disabled per user requirements
+  memory_optimization: true
+  cleanup_temp_files: true

@@ -1,0 +1,73 @@
+{
+  "character_id": 105635812,
+  "name": "Faerah Duskrane",
+  "level": 10,
+  "classes": [
+    {
+      "name": "Rogue",
+      "level": 10,
+      "subclass": "Swashbuckler"
+    }
+  ],
+  "species": "Dark Elf (Drow)",
+  "background": "Outlander",
+  "is_2024_rules": false,
+  "ability_scores": {
+    "strength": 8,
+    "dexterity": 20,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 12,
+    "charisma": 14
+  },
+  "ability_modifiers": {
+    "strength": -1,
+    "dexterity": 5,
+    "constitution": 2,
+    "intelligence": 0,
+    "wisdom": 1,
+    "charisma": 2
+  },
+  "proficiency_bonus": 4,
+  "armor_class": 17,
+  "max_hp": 73,
+  "hit_point_type": "",
+  "initiative": 7,
+  "speed": 30,
+  "spellcasting": {
+    "is_spellcaster": true,
+    "spell_save_dc": 0,
+    "spell_attack_bonus": 0,
+    "spellcasting_ability": "",
+    "total_spells": 3,
+    "cantrips": 1,
+    "spell_slots_level_1": 0,
+    "spell_slots_level_2": 0,
+    "spell_slots_level_3": 0,
+    "spell_slots_level_4": 0,
+    "spell_slots_level_5": 0
+  },
+  "saving_throws": [
+    "dex, int"
+  ],
+  "features": [
+    {
+      "name": "Drow Magic",
+      "source": "Species"
+    },
+    {
+      "name": "Sneak Attack",
+      "source": "Class"
+    },
+    {
+      "name": "Thieves' Cant",
+      "source": "Class"
+    }
+  ],
+  "key_spells": [
+    "Dancing Lights",
+    "Faerie Fire",
+    "Darkness"
+  ],
+  "notes": "spells come from Drow Magic"
+}

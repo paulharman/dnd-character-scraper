@@ -1,0 +1,101 @@
+# D&D 2024 Rules Configuration  
+# PHB 2024 specific rules and progressions
+
+# Spell Slot Progressions (same as 2014 for most classes)
+spell_progressions:
+  # Full Caster Progression (unchanged in 2024)
+  full_caster:
+    1: [2, 0, 0, 0, 0, 0, 0, 0, 0]
+    2: [3, 0, 0, 0, 0, 0, 0, 0, 0]
+    3: [4, 2, 0, 0, 0, 0, 0, 0, 0]
+    4: [4, 3, 0, 0, 0, 0, 0, 0, 0]
+    5: [4, 3, 2, 0, 0, 0, 0, 0, 0]
+    6: [4, 3, 3, 0, 0, 0, 0, 0, 0]
+    7: [4, 3, 3, 1, 0, 0, 0, 0, 0]
+    8: [4, 3, 3, 2, 0, 0, 0, 0, 0]
+    9: [4, 3, 3, 3, 1, 0, 0, 0, 0]
+    10: [4, 3, 3, 3, 2, 0, 0, 0, 0]
+    11: [4, 3, 3, 3, 2, 1, 0, 0, 0]
+    12: [4, 3, 3, 3, 2, 1, 0, 0, 0]
+    13: [4, 3, 3, 3, 2, 1, 1, 0, 0]
+    14: [4, 3, 3, 3, 2, 1, 1, 0, 0]
+    15: [4, 3, 3, 3, 2, 1, 1, 1, 0]
+    16: [4, 3, 3, 3, 2, 1, 1, 1, 0]
+    17: [4, 3, 3, 3, 2, 1, 1, 1, 1]
+    18: [4, 3, 3, 3, 3, 1, 1, 1, 1]
+    19: [4, 3, 3, 3, 3, 2, 1, 1, 1]
+    20: [4, 3, 3, 3, 3, 2, 2, 1, 1]
+
+  # Half Caster Progression (unchanged)
+  half_caster:
+    1: [0, 0, 0, 0, 0]
+    2: [2, 0, 0, 0, 0]
+    3: [3, 0, 0, 0, 0]
+    4: [3, 0, 0, 0, 0]
+    5: [4, 2, 0, 0, 0]
+    6: [4, 2, 0, 0, 0]
+    7: [4, 3, 0, 0, 0]
+    8: [4, 3, 0, 0, 0]
+    9: [4, 3, 2, 0, 0]
+    10: [4, 3, 2, 0, 0]
+    11: [4, 3, 3, 0, 0]
+    12: [4, 3, 3, 0, 0]
+    13: [4, 3, 3, 1, 0]
+    14: [4, 3, 3, 1, 0]
+    15: [4, 3, 3, 2, 0]
+    16: [4, 3, 3, 2, 0]
+    17: [4, 3, 3, 3, 1]
+    18: [4, 3, 3, 3, 1]
+    19: [4, 3, 3, 3, 2]
+    20: [4, 3, 3, 3, 2]
+
+  # Artificer 2024 Progression (updated for 2024)
+  artificer_2024:
+    1: [0, 0, 0, 0, 0]
+    2: [2, 0, 0, 0, 0]
+    3: [3, 0, 0, 0, 0]
+    4: [3, 0, 0, 0, 0]
+    5: [4, 2, 0, 0, 0]
+    6: [4, 2, 0, 0, 0]
+    7: [4, 3, 0, 0, 0]
+    8: [4, 3, 0, 0, 0]
+    9: [4, 3, 2, 0, 0]
+    10: [4, 3, 2, 0, 0]
+    11: [4, 3, 3, 0, 0]
+    12: [4, 3, 3, 0, 0]
+    13: [4, 3, 3, 1, 0]
+    14: [4, 3, 3, 1, 0]
+    15: [4, 3, 3, 2, 0]
+    16: [4, 3, 3, 2, 0]
+    17: [4, 3, 3, 3, 1]
+    18: [4, 3, 3, 3, 1]
+    19: [4, 3, 3, 3, 2]
+    20: [4, 3, 3, 3, 2]
+
+# 2024-specific features
+features:
+  species_terminology: "species"  # 2024 uses "species" instead of "race"
+  
+  # Feat System Changes
+  feat_categories:
+    - "Origin"       # Character creation feats
+    - "General"      # Standard feats available at ASI levels
+    - "Fighting Style"  # Combat-focused feats
+    - "Epic Boon"    # High-level capstone feats
+  
+  # Ability Score Improvements
+  ability_score_improvements:
+    method: "flexible"  # More flexible ASI system in 2024
+  
+  # Background changes  
+  backgrounds:
+    provide_ability_scores: true  # 2024 backgrounds give ability score bonuses
+    
+  # Species changes
+  species:
+    ability_score_method: "species_plus_one"  # Most species get +2/+1 or +1/+1/+1
+
+# Class-specific 2024 changes
+class_updates:
+  # Any class-specific rule changes for 2024
+  # This section can be expanded as needed

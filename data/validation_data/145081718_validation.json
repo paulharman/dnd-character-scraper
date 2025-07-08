@@ -1,0 +1,73 @@
+{
+  "character_id": 145081718,
+  "name": "Ilarion Veles (Paul)",
+  "level": 2,
+  "classes": [
+    {
+      "name": "Wizard",
+      "level": 2,
+      "subclass": ""
+    }
+  ],
+  "species": "Elf",
+  "background": "Sage",
+  "is_2024_rules": true,
+  "ability_scores": {
+    "strength": 9,
+    "dexterity": 13,
+    "constitution": 16,
+    "intelligence": 16,
+    "wisdom": 12,
+    "charisma": 10
+  },
+  "ability_modifiers": {
+    "strength": -1,
+    "dexterity": 1,
+    "constitution": 3,
+    "intelligence": 3,
+    "wisdom": 1,
+    "charisma": 0
+  },
+  "proficiency_bonus": 2,
+  "armor_class": 11,
+  "max_hp": 16,
+  "hit_point_type": "",
+  "initiative": 1,
+  "speed": 30,
+  "spellcasting": {
+    "is_spellcaster": true,
+    "spell_save_dc": 13,
+    "spell_attack_bonus": 5,
+    "spellcasting_ability": "int",
+    "total_spells": 11,
+    "cantrips": 6,
+    "spell_slots_level_1": 3,
+    "spell_slots_level_2": 0,
+    "spell_slots_level_3": 0,
+    "spell_slots_level_4": 0,
+    "spell_slots_level_5": 0
+  },
+  "saving_throws": [
+    "int, wis"
+  ],
+  "features": [
+    {
+      "name": "Magic Initiate (Wizard)",
+      "source": "Feat"
+    },
+    {
+      "name": "Elven Lineage",
+      "source": "Species"
+    },
+    {
+      "name": "Arcane Recovery",
+      "source": "Class"
+    }
+  ],
+  "key_spells": [
+    "Minor Illusion",
+    "Detect Magic",
+    "Sleep"
+  ],
+  "notes": "High elf character. 4 ritual spells. We need to make sure we have a way to show free spells across all character types. E.g for Ilarion, Detect Magic can be cast once without a spell slot - recharges after LR"
+}

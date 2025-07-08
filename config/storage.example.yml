@@ -1,0 +1,312 @@
+# D&D Character Scraper - Storage Configuration Examples
+# 
+# This file provides example configurations for different deployment scenarios.
+# Copy this file to storage.yml and modify as needed for your environment.
+
+# =============================================================================
+# DEVELOPMENT CONFIGURATION
+# =============================================================================
+development:
+  storage:
+    backend: file_json
+    config:
+      storage_root: "./data/dev/characters"
+      compression: gzip
+      enable_delta_storage: true
+      delta_threshold_kb: 100
+  
+  cache:
+    backend: memory
+    config:
+      max_size: 100
+      default_ttl_seconds: 1800  # 30 minutes
+      cleanup_interval_seconds: 300
+      max_memory_mb: 50
+  
+  retention:
+    keep_all_for_days: 7
+    keep_daily_for_days: 30
+    keep_weekly_for_days: 90
+    max_versions_per_character: 50
+    auto_delete_after_days: 365
+
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+testing:
+  storage:
+    backend: memory
+    config: {}
+  
+  cache:
+    backend: memory
+    config:
+      max_size: 50
+      default_ttl_seconds: 60
+      max_memory_mb: 10
+  
+  retention:
+    keep_all_for_days: 1
+    max_versions_per_character: 10
+
+# =============================================================================
+# SINGLE-USER FILE-BASED CONFIGURATION
+# =============================================================================
+single_user:
+  storage:
+    backend: file_sqlite
+    config:
+      db_path: "./data/characters.db"
+      compression: gzip
+      enable_wal: true
+      cache_size_mb: 100
+  
+  cache:
+    backend: memory
+    config:
+      max_size: 500
+      default_ttl_seconds: 3600  # 1 hour
+      max_memory_mb: 100
+  
+  retention:
+    keep_all_for_days: 30
+    keep_daily_for_days: 90
+    keep_weekly_for_days: 365
+    keep_monthly_forever: true
+    max_versions_per_character: 100
+
+# =============================================================================
+# PRODUCTION POSTGRES CONFIGURATION
+# =============================================================================
+production:
+  storage:
+    backend: database_postgres
+    config:
+      # Connection via DSN (recommended for production)
+      dsn: "${DATABASE_URL}"
+      
+      # Or individual connection parameters
+      # host: "postgres.example.com"
+      # port: 5432
+      # database: "dnd_characters"
+      # user: "dnd_app"
+      # password: "${DB_PASSWORD}"
+      
+      pool_size: 20
+      max_pool_size: 50
+      compression: zstd
+      enable_partitioning: true
+      partition_by: month
+  
+  cache:
+    backend: tiered
+    config:
+      tiers:
+        # Level 1: Fast memory cache for hot data
+        - backend: memory
+          max_size: 1000
+          default_ttl_seconds: 900  # 15 minutes
+          max_memory_mb: 200
+        
+        # Level 2: Redis for shared cache across instances
+        - backend: redis
+          redis_url: "${REDIS_URL}"
+          key_prefix: "dnd_scraper:prod:"
+          default_ttl_seconds: 3600  # 1 hour
+          max_connections: 20
+  
+  retention:
+    keep_all_for_days: 30
+    keep_daily_for_days: 90
+    keep_weekly_for_days: 365
+    keep_monthly_forever: true
+    max_total_size_mb: 10240  # 10GB
+    archive_after_days: 180
+    archive_compression: zstd
+  
+  # Performance monitoring
+  monitoring:
+    log_slow_queries: true
+    slow_query_threshold_ms: 1000
+    track_statistics: true
+    statistics_retention_days: 30
+
+# =============================================================================
+# HIGH-PERFORMANCE CONFIGURATION
+# =============================================================================
+high_performance:
+  storage:
+    backend: database_postgres
+    config:
+      dsn: "${DATABASE_URL}"
+      pool_size: 50
+      max_pool_size: 100
+      compression: zstd
+      enable_partitioning: true
+      partition_by: month
+  
+  cache:
+    backend: tiered
+    config:
+      tiers:
+        # Level 1: Large memory cache
+        - backend: memory
+          max_size: 5000
+          default_ttl_seconds: 300  # 5 minutes
+          max_memory_mb: 1024  # 1GB
+        
+        # Level 2: Redis cluster
+        - backend: redis
+          redis_url: "${REDIS_CLUSTER_URL}"
+          key_prefix: "dnd_scraper:hp:"
+          default_ttl_seconds: 1800  # 30 minutes
+          max_connections: 50
+  
+  retention:
+    keep_all_for_days: 30
+    keep_daily_for_days: 180
+    keep_weekly_for_days: 365
+    keep_monthly_forever: true
+    max_total_size_mb: 51200  # 50GB
+    archive_after_days: 90
+    archive_compression: zstd
+
+# =============================================================================
+# CLOUD STORAGE CONFIGURATION (Future)
+# =============================================================================
+cloud_s3:
+  storage:
+    backend: cloud_s3
+    config:
+      bucket: "dnd-character-data"
+      region: "us-west-2"
+      access_key_id: "${AWS_ACCESS_KEY_ID}"
+      secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+      compression: zstd
+      
+      # Storage classes for different data tiers
+      hot_storage_class: "STANDARD"
+      warm_storage_class: "STANDARD_IA" 
+      cold_storage_class: "GLACIER"
+      
+      # Lifecycle policies
+      move_to_warm_after_days: 30
+      move_to_cold_after_days: 90
+  
+  cache:
+    backend: redis
+    config:
+      redis_url: "${ELASTICACHE_URL}"
+      default_ttl_seconds: 7200  # 2 hours (longer for cloud)
+  
+  retention:
+    keep_all_for_days: 30
+    archive_after_days: 365
+    auto_delete_after_days: 2555  # 7 years for compliance
+
+# =============================================================================
+# GDPR COMPLIANCE CONFIGURATION
+# =============================================================================
+gdpr_compliant:
+  storage:
+    backend: database_postgres
+    config:
+      dsn: "${DATABASE_URL}"
+      pool_size: 20
+      max_pool_size: 40
+      compression: zstd
+      # Enable audit logging
+      enable_audit_log: true
+  
+  cache:
+    backend: memory  # No persistent cache for privacy
+    config:
+      max_size: 100
+      default_ttl_seconds: 300  # 5 minutes only
+      max_memory_mb: 50
+  
+  retention:
+    # Conservative retention for privacy
+    keep_all_for_days: 30
+    keep_daily_for_days: 90
+    max_versions_per_character: 25
+    
+    # Automatic deletion for compliance
+    auto_delete_after_days: 1095  # 3 years
+    anonymize_instead_of_delete: true
+    
+    # Data subject rights
+    enable_right_to_be_forgotten: true
+    enable_data_portability: true
+  
+  privacy:
+    # Encrypt sensitive data at rest
+    encrypt_character_names: true
+    encrypt_user_data: true
+    encryption_key: "${ENCRYPTION_KEY}"
+    
+    # Audit requirements
+    log_all_access: true
+    log_retention_days: 2555  # 7 years
+    
+    # Data minimization
+    auto_remove_unused_data: true
+    anonymize_old_data: true
+
+# =============================================================================
+# MIGRATION CONFIGURATION
+# =============================================================================
+migration:
+  # Source storage to migrate from
+  source:
+    backend: file_json
+    config:
+      storage_root: "./data/old/characters"
+  
+  # Target storage to migrate to  
+  target:
+    backend: database_postgres
+    config:
+      dsn: "${DATABASE_URL}"
+      compression: zstd
+  
+  # Migration settings
+  batch_size: 100
+  parallel_workers: 4
+  verify_data_integrity: true
+  create_backup: true
+  backup_path: "./backups/migration_backup.tar.gz"
+
+# =============================================================================
+# DISASTER RECOVERY CONFIGURATION
+# =============================================================================
+disaster_recovery:
+  # Primary storage
+  primary:
+    backend: database_postgres
+    config:
+      dsn: "${PRIMARY_DATABASE_URL}"
+      pool_size: 20
+  
+  # Backup storage
+  backup:
+    backend: cloud_s3
+    config:
+      bucket: "dnd-character-backup"
+      region: "us-east-1"
+      access_key_id: "${BACKUP_ACCESS_KEY}"
+      secret_access_key: "${BACKUP_SECRET_KEY}"
+  
+  # Replication settings
+  replication:
+    enabled: true
+    backup_interval_hours: 6
+    verify_backups: true
+    retention_days: 365
+    cross_region_replication: true
+    
+  # Recovery settings
+  recovery:
+    automatic_failover: false  # Manual approval required
+    recovery_point_objective_hours: 1
+    recovery_time_objective_hours: 4

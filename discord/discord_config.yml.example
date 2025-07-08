@@ -1,0 +1,116 @@
+# Discord Notifier Configuration Example
+# Copy this file to discord_config.yml and edit your settings
+
+# Required: Discord webhook URL from your server
+webhook_url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+
+# Required: Character ID to monitor
+character_id: "145081718"
+
+# How often to check for changes (in seconds)
+check_interval: 600  # 10 minutes
+
+# Output format for Discord messages
+format_type: "detailed"  # Options: compact, detailed, json
+
+# Optional: Session cookie for private characters
+# session_cookie: "your_session_cookie_here"
+
+# Directory to store character data snapshots
+storage_dir: "../character_data"
+
+# Note: Scraper path is no longer needed - using v6.0.0 modular architecture
+# scraper_path: "scraper/enhanced_dnd_scraper.py"  # Deprecated in v6.0.0
+
+# Logging level
+log_level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+
+# Data filtering configuration
+filtering:
+  # Simple change types list - remove types you don't want to monitor
+  change_types:
+    - "level"
+    - "experience"
+    - "hit_points"
+    - "armor_class"
+    - "ability_scores"
+    - "spells_known"
+    - "spell_slots"
+    - "inventory_items"
+    - "equipment"
+    - "currency"
+    - "skills"
+    - "proficiencies"
+    - "feats"
+    - "class_features"
+    - "appearance"
+    - "background"
+    # - "meta"  # Uncomment to include scraper metadata changes
+  
+  # OR use a preset filter configuration (legacy format)
+  # preset: "level_up"  # Options: combat_only, level_up, roleplay_session, shopping_trip, minimal, debug
+  
+  # OR specify custom include/exclude groups (advanced/legacy format)
+  # include_groups:
+  #   - "basic"
+  #   - "combat"
+  #   - "spells.slots"
+  
+  # exclude_groups:
+  #   - "meta"
+  #   - "appearance"
+
+# Multiple character monitoring (future feature)
+# characters:
+#   - character_id: "145081718"
+#     nickname: "Elara the Wizard"
+#     filtering:
+#       preset: "level_up"
+#   
+#   - character_id: "147061783"
+#     nickname: "Thorin Fighter"
+#     filtering:
+#       include_groups: ["combat", "inventory.equipment"]
+#       exclude_groups: ["meta"]
+
+# Notification customization
+notifications:
+  # Username shown in Discord
+  username: "D&D Beyond Monitor"
+  
+  # Icon URL for the bot (optional)
+  # avatar_url: "https://example.com/bot_icon.png"
+  
+  # Mention roles or users for high priority changes
+  # mentions:
+  #   high_priority: "@DM"
+  #   level_up: "@everyone"
+  
+  # Time zones for timestamp formatting
+  timezone: "UTC"
+
+# Advanced settings
+advanced:
+  # Maximum changes to show in one notification
+  max_changes_per_notification: 20
+  
+  # Rate limiting settings
+  rate_limit:
+    requests_per_minute: 3
+    burst_limit: 1
+  
+  # Retry settings for failed requests
+  retry:
+    max_attempts: 3
+    backoff_factor: 2
+    max_delay: 60
+
+# Custom group definitions (advanced users)
+# custom_groups:
+#   my_combat_group:
+#     description: "Custom combat tracking"
+#     fields:
+#       - "basic_info.hit_points.*"
+#       - "basic_info.armor_class.*"
+#       - "spell_slots.level_1"
+#     priority: "HIGH"

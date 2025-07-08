@@ -1,0 +1,73 @@
+{
+  "character_id": 103873194,
+  "name": "Marin",
+  "level": 10,
+  "classes": [
+    {
+      "name": "Warlock",
+      "level": 10,
+      "subclass": "The Hexblade"
+    }
+  ],
+  "species": "Half-Elf",
+  "background": "Acolyte",
+  "is_2024_rules": false,
+  "ability_scores": {
+    "strength": 8,
+    "dexterity": 17,
+    "constitution": 16,
+    "intelligence": 11,
+    "wisdom": 13,
+    "charisma": 20
+  },
+  "ability_modifiers": {
+    "strength": -1,
+    "dexterity": 3,
+    "constitution": 3,
+    "intelligence": 0,
+    "wisdom": 1,
+    "charisma": 5
+  },
+  "proficiency_bonus": 4,
+  "armor_class": 18,
+  "max_hp": 83,
+  "hit_point_type": "",
+  "initiative": 3,
+  "speed": 30,
+  "spellcasting": {
+    "is_spellcaster": true,
+    "spell_save_dc": 17,
+    "spell_attack_bonus": 9,
+    "spellcasting_ability": "cha",
+    "total_spells": 13,
+    "cantrips": 3,
+    "spell_slots_level_1": 0,
+    "spell_slots_level_2": 0,
+    "spell_slots_level_3": 0,
+    "spell_slots_level_4": 0,
+    "spell_slots_level_5": 2
+  },
+  "saving_throws": [
+    "wis, cha"
+  ],
+  "features": [
+    {
+      "name": "Hexblade's Curse",
+      "source": "Class"
+    },
+    {
+      "name": "Magic Initiate (Warlock)",
+      "source": "Feat"
+    },
+    {
+      "name": "Fey Ancestry",
+      "source": "Race"
+    }
+  ],
+  "key_spells": [
+    "Frostbite",
+    "Disguise Self",
+    "Dispel Magic"
+  ],
+  "notes": ""
+}

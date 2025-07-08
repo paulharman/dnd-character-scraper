@@ -1,0 +1,10 @@
+# Discord Character Monitor - Minimal Requirements
+
+# Core async HTTP client for Discord webhooks
+aiohttp>=3.8.0
+
+# YAML configuration file parsing
+PyYAML>=6.0
+
+# Note: All other dependencies are Python standard library
+# The Discord system uses dataclasses instead of pydantic for simplicity

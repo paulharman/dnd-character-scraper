@@ -1,0 +1,364 @@
+{
+  "character_id": 29682199,
+  "timestamp": "2025-06-30 21:18:43 UTC",
+  "source": "dndbeyond_api",
+  "data": {
+    "character_id": 29682199,
+    "name": "Redgrave",
+    "level": 10,
+    "rule_version": "RuleVersion.RULES_2014",
+    "classes": [
+      {
+        "name": "Cleric",
+        "level": 10,
+        "subclass": "Forge Domain"
+      }
+    ],
+    "species": {
+      "name": "Unknown",
+      "subrace": null
+    },
+    "background": {
+      "name": "Guild Artisan / Guild Merchant"
+    },
+    "alignment": "Neutral Good",
+    "experience_points": 34000,
+    "ability_scores": {
+      "strength": 15,
+      "dexterity": 8,
+      "constitution": 13,
+      "intelligence": 10,
+      "wisdom": 15,
+      "charisma": 10
+    },
+    "ability_modifiers": {
+      "strength": 2,
+      "dexterity": -1,
+      "constitution": 1,
+      "intelligence": 0,
+      "wisdom": 2,
+      "charisma": 0
+    },
+    "ability_score_breakdown": {
+      "strength": {
+        "total": 15,
+        "base": 15,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 15,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "dexterity": {
+        "total": 8,
+        "base": 8,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 8,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "constitution": {
+        "total": 13,
+        "base": 13,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 13,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "intelligence": {
+        "total": 10,
+        "base": 10,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": []
+      },
+      "wisdom": {
+        "total": 15,
+        "base": 15,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 15,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "charisma": {
+        "total": 10,
+        "base": 10,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": []
+      }
+    },
+    "calculation_method": "armored",
+    "max_hp": 63,
+    "current_hp": null,
+    "temporary_hp": 0,
+    "hp_breakdown": {
+      "total": 63,
+      "base_hit_points": 53,
+      "constitution_bonus": 10,
+      "feat_bonus": 0,
+      "item_bonus": 0,
+      "other_bonus": 0,
+      "method": "calculated",
+      "class_breakdown": {
+        "Cleric": {
+          "level": 10,
+          "hit_die": "d8",
+          "estimated_hp": 53,
+          "first_level_hp": 8,
+          "remaining_levels_hp": 45
+        }
+      }
+    },
+    "hit_dice": {
+      "by_class": {
+        "cleric": {
+          "die_size": 8,
+          "total": 10,
+          "used": 0,
+          "available": 10
+        }
+      },
+      "total_hit_dice": 10,
+      "used_hit_dice": 0,
+      "available_hit_dice": 10
+    },
+    "armor_class": 37,
+    "ac_breakdown": {
+      "total": 37,
+      "base": 10,
+      "armor_bonus": 18,
+      "shield_bonus": 2,
+      "dexterity_bonus": -1,
+      "natural_armor": 0,
+      "deflection_bonus": 0,
+      "misc_bonus": 8,
+      "calculation_method": "armored",
+      "armor_worn": {
+        "name": "Heavy Plating",
+        "type": null,
+        "ac_bonus": 16,
+        "max_dex": null
+      },
+      "shield_used": {
+        "name": "Shield",
+        "ac_bonus": 2
+      },
+      "max_dex_bonus": null
+    },
+    "is_spellcaster": true,
+    "spellcasting_ability": "wisdom",
+    "spell_save_dc": 14,
+    "spell_attack_bonus": 6,
+    "spell_slots": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "pact_slots": 0,
+    "pact_slot_level": 0,
+    "caster_level": 0,
+    "spell_slot_breakdown": {},
+    "spell_counts": {
+      "total_spells": 18,
+      "cantrips": 4,
+      "leveled_spells": 14
+    },
+    "proficiency_bonus": 4,
+    "skill_proficiencies": [
+      {
+        "name": "Athletics",
+        "source": "Background",
+        "source_type": "background",
+        "proficient": true,
+        "expertise": false,
+        "ability": "strength",
+        "ability_modifier": 2,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 4
+      },
+      {
+        "name": "Insight",
+        "source": "Class",
+        "source_type": "class",
+        "proficient": true,
+        "expertise": false,
+        "ability": "wisdom",
+        "ability_modifier": 2,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 4
+      },
+      {
+        "name": "Perception",
+        "source": "Species/Race",
+        "source_type": "race",
+        "proficient": true,
+        "expertise": false,
+        "ability": "wisdom",
+        "ability_modifier": 2,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 4
+      },
+      {
+        "name": "Persuasion",
+        "source": "Background",
+        "source_type": "background",
+        "proficient": true,
+        "expertise": false,
+        "ability": "charisma",
+        "ability_modifier": 0,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 2
+      },
+      {
+        "name": "Religion",
+        "source": "Class",
+        "source_type": "class",
+        "proficient": true,
+        "expertise": false,
+        "ability": "intelligence",
+        "ability_modifier": 0,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 2
+      }
+    ],
+    "saving_throw_proficiencies": [
+      "charisma",
+      "wisdom"
+    ],
+    "skills_by_ability": {
+      "strength": [
+        {
+          "name": "Athletics",
+          "source": "Background",
+          "source_type": "background",
+          "proficient": true,
+          "expertise": false,
+          "ability": "strength",
+          "ability_modifier": 2,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 4
+        }
+      ],
+      "wisdom": [
+        {
+          "name": "Insight",
+          "source": "Class",
+          "source_type": "class",
+          "proficient": true,
+          "expertise": false,
+          "ability": "wisdom",
+          "ability_modifier": 2,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 4
+        },
+        {
+          "name": "Perception",
+          "source": "Species/Race",
+          "source_type": "race",
+          "proficient": true,
+          "expertise": false,
+          "ability": "wisdom",
+          "ability_modifier": 2,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 4
+        }
+      ],
+      "charisma": [
+        {
+          "name": "Persuasion",
+          "source": "Background",
+          "source_type": "background",
+          "proficient": true,
+          "expertise": false,
+          "ability": "charisma",
+          "ability_modifier": 0,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 2
+        }
+      ],
+      "intelligence": [
+        {
+          "name": "Religion",
+          "source": "Class",
+          "source_type": "class",
+          "proficient": true,
+          "expertise": false,
+          "ability": "intelligence",
+          "ability_modifier": 0,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 2
+        }
+      ]
+    },
+    "initiative_bonus": -1,
+    "speed": 30,
+    "calculation_metadata": {
+      "calculator_version": "6.0.0",
+      "calculation_timestamp": null,
+      "source": "enhanced_calculator",
+      "rule_version": "RuleVersion.RULES_2014"
+    }
+  }
+}

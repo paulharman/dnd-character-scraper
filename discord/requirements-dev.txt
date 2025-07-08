@@ -1,0 +1,12 @@
+# Discord Character Monitor - Development Requirements
+
+# Include runtime requirements
+-r requirements.txt
+
+# Testing frameworks
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# Development tools (optional)
+black>=23.0.0  # Code formatting
+mypy>=1.0.0    # Type checking

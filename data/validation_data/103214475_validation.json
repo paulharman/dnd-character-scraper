@@ -1,0 +1,70 @@
+{
+  "character_id": 103214475,
+  "name": "Seluvis Felo'melorn",
+  "level": 9,
+  "classes": [
+    {
+      "name": "Artificer",
+      "level": 9,
+      "subclass": "Armorer"
+    }
+  ],
+  "species": "High Elf",
+  "background": "Guild Artisan / Guild Merchant",
+  "is_2024_rules": false,
+  "ability_scores": {
+    "strength": 8,
+    "dexterity": 16,
+    "constitution": 19,
+    "intelligence": 20,
+    "wisdom": 12,
+    "charisma": 10
+  },
+  "ability_modifiers": {
+    "strength": -1,
+    "dexterity": 3,
+    "constitution": 4,
+    "intelligence": 5,
+    "wisdom": 1,
+    "charisma": 0
+  },
+  "proficiency_bonus": 4,
+  "armor_class": 22,
+  "max_hp": 84,
+  "hit_point_type": "",
+  "initiative": 3,
+  "speed": 35,
+  "spellcasting": {
+    "is_spellcaster": true,
+    "spell_save_dc": 17,
+    "spell_attack_bonus": 9,
+    "spellcasting_ability": "intellect",
+    "total_spells": 28,
+    "cantrips": 3,
+    "spell_slots_level_1": 4,
+    "spell_slots_level_2": 3,
+    "spell_slots_level_3": 2,
+    "spell_slots_level_4": 0,
+    "spell_slots_level_5": 0
+  },
+  "saving_throws": [
+    "intellect",
+	"constitution"
+  ],
+  "features": [
+    {
+      "name": "Infuse Item",
+      "source": "Class",
+	  "name": "Keen Senses",
+      "source": "Species",
+	  "name": "The Right Tool for the Job",
+      "source": "Class"
+    }
+  ],
+  "key_spells": [
+    "Absorb Elements",
+	"Blur",
+	"Cure Wounds"
+  ],
+  "notes": ""
+}

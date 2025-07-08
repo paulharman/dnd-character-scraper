@@ -1,0 +1,137 @@
+# D&D Game Constants
+# Core game mechanics and data structures
+
+# Rule Version Detection
+rule_versions:
+  source_2024_ids: [145, 146, 147, 148, 149, 150]
+
+# Ability Scores
+abilities:
+  names: ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
+  
+  # Ability Score ID Mappings
+  id_mappings:
+    1: "strength"
+    2: "dexterity" 
+    3: "constitution"
+    4: "intelligence"
+    5: "wisdom"
+    6: "charisma"
+  
+  # Ability Choice Mappings (D&D Beyond choice IDs to abilities)
+  choice_mappings:
+    1: "strength"
+    2: "dexterity"
+    3: "constitution"
+    4: "intelligence" 
+    5: "wisdom"
+    6: "charisma"
+    7: "strength"
+    8: "dexterity"
+    9: "constitution"
+    10: "intelligence"
+    11: "wisdom"
+    12: "charisma"
+    13: "strength"
+    14: "dexterity"
+    15: "constitution"
+    16: "intelligence"
+    17: "wisdom"
+    18: "charisma"
+
+# Spellcasting
+spellcasting:
+  abilities:
+    1: "strength"
+    2: "dexterity"
+    3: "constitution"
+    4: "intelligence"
+    5: "wisdom"
+    6: "charisma"
+
+# Character Classes
+classes:
+  # Hit Dice by Class
+  hit_dice:
+    "artificer": 8
+    "barbarian": 12
+    "bard": 8
+    "cleric": 8
+    "druid": 8
+    "fighter": 10
+    "monk": 8
+    "paladin": 10
+    "ranger": 10
+    "rogue": 8
+    "sorcerer": 6
+    "warlock": 8
+    "wizard": 6
+
+  # Spellcasting Classifications
+  full_casters: ["wizard", "sorcerer", "cleric", "druid", "bard", "warlock"]
+  half_casters: ["paladin", "ranger", "artificer"]
+  third_casters: []
+
+# Proficiency Bonus by Level
+proficiency_bonus:
+  1: 2
+  2: 2
+  3: 2
+  4: 2
+  5: 3
+  6: 3
+  7: 3
+  8: 3
+  9: 4
+  10: 4
+  11: 4
+  12: 4
+  13: 5
+  14: 5
+  15: 5
+  16: 5
+  17: 6
+  18: 6
+  19: 6
+  20: 6
+
+# Skills to Ability Mappings
+skills:
+  ability_mappings:
+    "Acrobatics": "dexterity"
+    "Animal Handling": "wisdom"
+    "Arcana": "intelligence"
+    "Athletics": "strength"
+    "Deception": "charisma"
+    "History": "intelligence"
+    "Insight": "wisdom"
+    "Intimidation": "charisma"
+    "Investigation": "intelligence"
+    "Medicine": "wisdom"
+    "Nature": "intelligence"
+    "Perception": "wisdom"
+    "Performance": "charisma"
+    "Persuasion": "charisma"
+    "Religion": "intelligence"
+    "Sleight of Hand": "dexterity"
+    "Stealth": "dexterity"
+    "Survival": "wisdom"
+
+# Alignments
+alignments:
+  1: "Lawful Good"
+  2: "Neutral Good"
+  3: "Chaotic Good"
+  4: "Lawful Neutral"
+  5: "True Neutral"
+  6: "Chaotic Neutral"
+  7: "Lawful Evil"
+  8: "Neutral Evil"
+  9: "Chaotic Evil"
+
+# Field Name Constants
+field_names:
+  name: "name"
+  level: "level"
+  definition: "definition"
+  source_id: "sourceId"

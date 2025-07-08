@@ -1,0 +1,26 @@
+# Development Environment Configuration
+# Settings optimized for development and testing
+
+# Override API settings for development
+api:
+  timeout: 60  # Longer timeout for debugging
+  max_retries: 1  # Fewer retries for faster feedback
+  retry_delay: 1.0  # Shorter delay for development
+  
+# Enhanced output for development  
+output:
+  verbose: true
+  include_raw_data: true
+  format: "json"
+  
+# Development-specific logging
+logging:
+  level: "DEBUG"
+  include_timestamps: true
+  include_traceback: true
+  
+# Testing configurations
+testing:
+  mock_api_responses: false
+  use_cached_responses: false
+  test_character_ids: [144986992, 145081718, 29682199]  # Subset for dev testing

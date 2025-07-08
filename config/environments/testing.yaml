@@ -1,0 +1,42 @@
+# Testing Environment Configuration
+# Settings optimized for automated testing and CI/CD
+
+# API settings for testing
+api:
+  timeout: 30
+  max_retries: 2
+  retry_delay: 0.5  # Faster retries for testing
+  
+  # Mock API responses for consistent testing
+  mock_responses: true
+  mock_data_path: "tests/fixtures/api_responses/"
+  
+# Output settings for testing
+output:
+  verbose: false
+  include_raw_data: false
+  format: "json"
+  
+# Testing configurations
+testing:
+  use_mock_clients: true
+  enable_coverage: true
+  strict_validation: true
+  
+  # All test character IDs for comprehensive testing
+  test_character_ids: [
+    145081718, 29682199, 147061783, 66356596, 144986992, 
+    145079040, 141875964, 68622804, 105635812, 103873194, 
+    103214475, 103814449
+  ]
+  
+  # Expected test results
+  expected_results:
+    total_characters: 12
+    success_rate: 1.0  # 100% success expected
+    
+# Logging for testing
+logging:
+  level: "INFO"
+  include_timestamps: false
+  capture_for_analysis: true

@@ -1,0 +1,1153 @@
+{
+  "basic_info": {
+    "name": "Seluvis Felo'melorn",
+    "level": 9,
+    "experience": 0,
+    "avatarUrl": "https://www.dndbeyond.com/avatars/35471/817/1581111423-103214475.jpeg?width=150&height=150&fit=crop&quality=95&auto=webp",
+    "inspiration": false,
+    "lifestyleId": null,
+    "armor_class": {
+      "total": 22,
+      "base": 19,
+      "modifiers": [
+        {
+          "source": "Shield",
+          "value": 3,
+          "type": "shield"
+        }
+      ],
+      "calculation": "Plate (19 + Dex (max 0)) + Shield (+3)"
+    },
+    "initiative": {
+      "total": 3,
+      "sources": [
+        {
+          "source": "Dexterity",
+          "value": 3
+        }
+      ]
+    },
+    "speed": {
+      "walking": {
+        "total": 35,
+        "sources": [
+          {
+            "source": "Base",
+            "value": 30
+          },
+          {
+            "source": "class",
+            "value": 5
+          }
+        ]
+      }
+    },
+    "hit_points": {
+      "current": 79,
+      "maximum": 84,
+      "temporary": 0,
+      "base": 48,
+      "bonus": 0,
+      "constitution_bonus": 0,
+      "override": null,
+      "removed": 5,
+      "hit_point_type": 1,
+      "hit_point_method": "Fixed"
+    },
+    "classes": [
+      {
+        "name": "Artificer",
+        "level": 9,
+        "hit_die": 8,
+        "subclass": "Armorer",
+        "spellcasting_ability": "",
+        "is_2024": false
+      }
+    ]
+  },
+  "appearance": {
+    "gender": null,
+    "age": null,
+    "hair": null,
+    "eyes": null,
+    "skin": null,
+    "height": null,
+    "weight": null,
+    "traits": null,
+    "size": 4,
+    "size_name": "Medium"
+  },
+  "ability_scores": {
+    "strength": {
+      "score": 8,
+      "modifier": -1,
+      "save_bonus": -1,
+      "source_breakdown": {
+        "base": 8
+      }
+    },
+    "dexterity": {
+      "score": 16,
+      "modifier": 3,
+      "save_bonus": 3,
+      "source_breakdown": {
+        "base": 14,
+        "race": 2
+      }
+    },
+    "constitution": {
+      "score": 19,
+      "modifier": 4,
+      "save_bonus": 8,
+      "source_breakdown": {
+        "set": 19,
+        "source": "item"
+      }
+    },
+    "intelligence": {
+      "score": 20,
+      "modifier": 5,
+      "save_bonus": 9,
+      "source_breakdown": {
+        "base": 15,
+        "race": 1,
+        "class": 4
+      }
+    },
+    "wisdom": {
+      "score": 12,
+      "modifier": 1,
+      "save_bonus": 1,
+      "source_breakdown": {
+        "base": 12
+      }
+    },
+    "charisma": {
+      "score": 10,
+      "modifier": 0,
+      "save_bonus": 0,
+      "source_breakdown": {
+        "base": 10
+      }
+    }
+  },
+  "skills": {
+    "athletics": -1,
+    "acrobatics": 3,
+    "sleight-of-hand": 3,
+    "stealth": 3,
+    "arcana": 5,
+    "history": 5,
+    "investigation": 9,
+    "nature": 9,
+    "religion": 5,
+    "animal-handling": 1,
+    "insight": 5,
+    "medicine": 1,
+    "perception": 5,
+    "survival": 1,
+    "deception": 0,
+    "intimidation": 0,
+    "performance": 0,
+    "persuasion": 4
+  },
+  "saving_throws": {
+    "strength_save": -1,
+    "dexterity_save": 3,
+    "constitution_save": 8,
+    "intelligence_save": 9,
+    "wisdom_save": 1,
+    "charisma_save": 0
+  },
+  "proficiencies": {
+    "armor": [
+      "Heavy Armor",
+      "Light Armor",
+      "Medium Armor",
+      "Shields"
+    ],
+    "weapons": [
+      "Longbow",
+      "Longsword",
+      "Shortbow",
+      "Shortsword",
+      "Simple Weapons"
+    ],
+    "tools": [
+      "Alchemist's Supplies",
+      "Cartographer's Tools",
+      "Smith's Tools",
+      "Thieves' Tools",
+      "Tinker's Tools"
+    ],
+    "languages": [
+      "Common",
+      "Dwarvish",
+      "Elvish",
+      "Halfling"
+    ],
+    "skills": [
+      "Insight",
+      "Investigation",
+      "Nature",
+      "Perception",
+      "Persuasion"
+    ]
+  },
+  "proficiency_sources": {
+    "Perception": "Species: High Elf",
+    "Nature": "Class: Artificer",
+    "Investigation": "Class: Artificer",
+    "Insight": "Background: Guild Artisan / Guild Merchant",
+    "Persuasion": "Background: Guild Artisan / Guild Merchant"
+  },
+  "background": {
+    "name": "Guild Artisan / Guild Merchant",
+    "description": "You are a member of an artisan’s guild, skilled in a particular field and closely associated with other artisans. You are a well-established part of the mercantile world, freed by talent and wealth from the constraints of a feudal social order. You learned your skills as an apprentice to a master artisan, under the sponsorship of your guild, until you became a master in your own right. **Skill Proficiencies:** Insight, Persuasion **Tool Proficiencies:** One type of artisan’s tools **Languages:** One of your choice **Equipment:** A set of artisan’s tools (one of your choice), a letter of introduction from your guild, a set of traveler’s clothes, and a pouch containing 15 gp Guild Business Guilds are generally found in cities large enough to support several artisans practicing the same trade. However, your guild might instead be a loose network of artisans who each work in a different village within a larger realm. Work with your DM to determine the nature of your guild. You can select your guild business from the Guild Business table or roll randomly. d20 Guild Business 1 Alchemists and apothecaries 2 Armorers, locksmiths, and finesmiths 3 Brewers, distillers, and vintners 4 Calligraphers, scribes, and scriveners 5 Carpenters, roofers, and plasterers 6 Cartographers, surveyors, and chart-makers 7 Cobblers and shoemakers 8 Cooks and bakers 9 Glassblowers and glaziers 10 Jewelers and gemcutters 11 Leatherworkers, skinners, and tanners 12 Masons and stonecutters 13 Painters, limners, and sign-makers 14 Potters and tile-makers 15 Shipwrights and sailmakers 16 Smiths and metal-forgers 17 Tinkers, pewterers, and casters 18 Wagon-makers and wheelwrights 19 Weavers and dyers 20 Woodcarvers, coopers, and bowyers As a member of your guild, you know the skills needed to create finished items from raw materials (reflected in your proficiency with a certain kind of artisan’s tools), as well as the principles of trade and good business practices. The question now is whether you abandon your trade for adventure, or take on the extra effort to weave adventuring and trade together. Feature: Guild Membership As an established and respected member of a guild, you can rely on certain benefits that membership provides. Your fellow guild members will provide you with lodging and food if necessary, and pay for your funeral if needed. In some cities and towns, a guildhall offers a central place to meet other members of your profession, which can be a good place to meet potential patrons, allies, or hirelings. Guilds often wield tremendous political power. If you are accused of a crime, your guild will support you if a good case can be made for your innocence or the crime is justifiable. You can also gain access to powerful political figures through the guild, if you are a member in good standing. Such connections might require the donation of money or magic items to the guild’s coffers. You must pay dues of 5 gp per month to the guild. If you miss payments, you must make up back dues to remain in the guild’s good graces. Variant Guild Artisan: Guild Merchant Instead of an artisans’ guild, you might belong to a guild of traders, caravan masters, or shopkeepers. You don’t craft items yourself but earn a living by buying and selling the works of others (or the raw materials artisans need to practice their craft). Your guild might be a large merchant consortium (or family) with interests across the region. Perhaps you transported goods from one place to another, by ship, wagon, or caravan, or bought them from traveling traders and sold them in your own little shop. In some ways, the traveling merchant’s life lends itself to adventure far more than the life of an artisan.",
+    "source_id": null,
+    "is_2024": false,
+    "personal_possessions": "a letter of introduction from your guild Assorted metal Ingots of Iron and Copper",
+    "other_holdings": null,
+    "organizations": "I.T.E.M.S: International Traders Emporium Merchant Services - Current guild.",
+    "enemies": null,
+    "ideals": "",
+    "bonds": "",
+    "flaws": "",
+    "personality_traits": ""
+  },
+  "species": {
+    "name": "High Elf",
+    "description": "",
+    "size": 4,
+    "source_id": null,
+    "is_2024": false,
+    "traits": [
+      {
+        "name": "Set Base",
+        "type": "set-base",
+        "description": "Set Base: Darkvision"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Perception",
+        "proficiency_type": "perception"
+      },
+      {
+        "name": "Advantage",
+        "type": "advantage",
+        "description": "You have advantage on Saving Throws checks"
+      },
+      {
+        "name": "Immunity",
+        "type": "immunity",
+        "description": "You have immunity to Magical Sleep",
+        "immunity_type": "magical-sleep"
+      },
+      {
+        "name": "Bonus",
+        "type": "bonus",
+        "description": "Bonus: Dexterity Score"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Common",
+        "language": "Common"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Elvish",
+        "language": "Elvish"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Longsword",
+        "proficiency_type": "longsword"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Shortsword",
+        "proficiency_type": "shortsword"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Longbow",
+        "proficiency_type": "longbow"
+      },
+      {
+        "name": "Proficiency",
+        "type": "proficiency",
+        "description": "You have proficiency with Shortbow",
+        "proficiency_type": "shortbow"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Dwarvish",
+        "language": "Dwarvish"
+      },
+      {
+        "name": "Bonus",
+        "type": "bonus",
+        "description": "Bonus: Intelligence Score"
+      },
+      {
+        "name": "Racial Spells",
+        "type": "spellcasting",
+        "description": "Spells granted by racial heritage: Prestidigitation"
+      }
+    ]
+  },
+  "feats": [],
+  "spells": {
+    "Artificer": [
+      {
+        "name": "Guidance",
+        "level": 0,
+        "school": "Divination",
+        "description": "You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one ability check of its choice. It can roll the die before or after making the ability check. The spell then ends.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": false,
+        "effective_prepared": false,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "Special",
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V, S",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Acid Splash",
+        "level": 0,
+        "school": "Conjuration",
+        "description": "You hurl a bubble of acid. Choose one or two creatures you can see within range. If you choose two, they must be within 5 feet of each other. A target must succeed on a Dexterity saving throw or take 1d6 acid damage. This spell’s damage increases by 1d6 when you reach 5th level (2d6), 11th level (3d6), and 17th level (4d6).",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": false,
+        "effective_prepared": false,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "cantrip_scaling": {
+          "current_tier": 2,
+          "character_level": 9,
+          "scaling_levels": [
+            1,
+            5,
+            11,
+            17
+          ],
+          "damage_dice": "2d6",
+          "damage_type": "acid"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "60 feet",
+        "concentration": false,
+        "duration": "Instantaneous",
+        "components": "V, S",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Absorb Elements",
+        "level": 1,
+        "school": "Abjuration",
+        "description": "The spell captures some of the incoming energy, lessening its effect on you and storing it for your next melee attack. You have resistance to the triggering damage type until the start of your next turn. Also, the first time you hit with a melee attack on your next turn, the target takes an extra 1d6 damage of the triggering type, and the spell ends. **At Higher Levels.** When you cast this spell using a spell slot of 2nd level or higher, the extra damage increases by 1d6 for each slot level above 1st.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 1 Minute",
+        "range": "Special",
+        "concentration": false,
+        "duration": "1 round",
+        "components": "S",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Invisibility",
+        "level": 2,
+        "school": "Illusion",
+        "description": "A creature you touch becomes invisible until the spell ends. Anything the target is wearing or carrying is invisible as long as it is on the target's person. The spell ends for a target that attacks or casts a spell. **At Higher Levels.** When you cast this spell using a spell slot of 3rd level or higher, you can target one additional creature for each slot level above 2nd.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "Special",
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V, S, M (an eyelash encased in gum arabic)",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Web",
+        "level": 2,
+        "school": "Conjuration",
+        "description": "You conjure a mass of thick, sticky webbing at a point of your choice within range. The webs fill a 20-foot cube from that point for the duration. The webs are difficult terrain and lightly obscure their area. If the webs aren't anchored between two solid masses (such as walls or trees) or layered across a floor, wall, or ceiling, the conjured web collapses on itself, and the spell ends at the start of your next turn. Webs layered over a flat surface have a depth of 5 feet. Each creature that starts its turn in the webs or that enters them during its turn must make a Dexterity saving throw. On a failed save, the creature is restrained as long as it remains in the webs or until it breaks free. A creature restrained by the webs can use its action to make a Strength check against your spell save DC. If it succeeds, it is no longer restrained. The webs are flammable. Any 5-foot cube of webs exposed to fire burns away in 1 round, dealing 2d4 fire damage to any creature that starts its turn in the fire.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "60 feet",
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V, S, M (a bit of spiderweb)",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Blur",
+        "level": 2,
+        "school": "Illusion",
+        "description": "Your body becomes blurred, shifting and wavering to all who can see you. For the duration, any creature has disadvantage on attack rolls against you. An attacker is immune to this effect if it doesn't rely on sight, as with blindsight, or can see through illusions, as with truesight.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "Special",
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Haste",
+        "level": 3,
+        "school": "Transmutation",
+        "description": "Choose a willing creature that you can see within range. Until the spell ends, the target’s speed is doubled, it gains a +2 bonus to AC, it has advantage on Dexterity saving throws, and it gains an additional action on each of its turns. That action can be used only to take the Attack (one weapon attack only), Dash, Disengage, Hide, or Use an Object action. When the spell ends, the target can’t move or take actions until after its next turn, as a wave of lethargy sweeps over it.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "30 feet",
+        "concentration": true,
+        "duration": "Concentration",
+        "components": "V, S, M (a shaving of licorice root)",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Dispel Magic",
+        "level": 3,
+        "school": "Abjuration",
+        "description": "Choose one creature, object, or magical effect within range. Any spell of 3rd level or lower on the target ends. For each spell of 4th level or higher on the target, make an ability check using your spellcasting ability. The DC equals 10 + the spell's level. On a successful check, the spell ends. ***At Higher Levels.*** When you cast this spell using a spell slot of 4th level or higher, you automatically end the effects of a spell on the target if the spell's level is equal to or less than the level of the spell slot you used.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "120 feet",
+        "concentration": false,
+        "duration": "Instantaneous",
+        "components": "V, S",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Disguise Self",
+        "level": 1,
+        "school": "Illusion",
+        "description": "You make yourself--including your clothing, armor, weapons, and other belongings on your person--look different until the spell ends or until you use your action to dismiss it. You can seem 1 foot shorter or taller and can appear thin, fat, or in between. You can't change your body type, so you must adopt a form that has the same basic arrangement of limbs. Otherwise, the extent of the illusion is up to you. The changes wrought by this spell fail to hold up to physical inspection. For example, if you use this spell to add a hat to your outfit, objects pass through the hat, and anyone who touches it would feel nothing or would feel your head and hair. If you use this spell to appear thinner than you are, the hand of someone who reaches out to touch you would bump into you while it was seemingly still in midair. To discern that you are disguised, a creature can use its action to inspect your appearance and must succeed on an Intelligence (Investigation) check against your spell save DC.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "Special",
+        "concentration": false,
+        "duration": "1 hour",
+        "components": "V, S",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Cure Wounds",
+        "level": 1,
+        "school": "Abjuration",
+        "description": "A creature you touch regains a number of Hit Points equal to 2d8 plus your spellcasting ability modifier. **Using a Higher-Level Spell Slot.** The healing increases by 2d8 for each spell slot level above 1.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "Special",
+        "concentration": false,
+        "duration": "Instantaneous",
+        "components": "V, S",
+        "sources": [
+          "Artificer"
+        ]
+      },
+      {
+        "name": "Glyph of Warding",
+        "level": 3,
+        "school": "Abjuration",
+        "description": "When you cast this spell, you inscribe a glyph that later unleashes a magical effect. You inscribe it either on a surface (such as a table or a section of floor or wall) or within an object that can be closed (such as a book, a scroll, or a treasure chest) to conceal the glyph. The glyph can cover an area no larger than 10 feet in diameter. If the surface or object is moved more than 10 feet from where you cast this spell, the glyph is broken, and the spell ends without being triggered. The glyph is nearly invisible and requires a successful Intelligence (Investigation) check against your spell save DC to be found. You decide what triggers the glyph when you cast the spell. For glyphs inscribed on a surface, the most typical triggers include touching or standing on the glyph, removing another object covering the glyph, approaching within a certain distance of the glyph, or manipulating the object on which the glyph is inscribed. For glyphs inscribed within an object, the most common triggers include opening that object, approaching within a certain distance of the object, or seeing or reading the glyph. Once a glyph is triggered, this spell ends. You can further refine the trigger so the spell activates only under certain circumstances or according to physical characteristics (such as height or weight), creature kind (for example, the ward could be set to affect aberrations or drow), or alignment. You can also set conditions for creatures that don’t trigger the glyph, such as those who say a certain password. When you inscribe the glyph, choose *explosive runes* or a *spell glyph*. ***Explosive Runes.*** When triggered, the glyph erupts with magical energy in a 20-foot-radius sphere centered on the glyph. The sphere spreads around corners. Each creature in the area must make a Dexterity saving throw. A creature takes 5d8 acid, cold, fire, lightning, or thunder damage on a failed saving throw (your choice when you create the glyph), or half as much damage on a successful one. ***Spell Glyph.*** You can store a prepared spell of 3rd level or lower in the glyph by casting it as part of creating the glyph. The spell must target a single creature or an area. The spell being stored has no immediate effect when cast in this way. When the glyph is triggered, the stored spell is cast. If the spell has a target, it targets the creature that triggered the glyph. If the spell affects an area, the area is centered on that creature. If the spell summons hostile creatures or creates harmful objects or traps, they appear as close as possible to the intruder and attack it. If the spell requires concentration, it lasts until the end of its full duration. **At Higher Levels.** When you cast this spell using a spell slot of 4th level or higher, the damage of an *explosive runes* glyph increases by 1d8 for each slot level above 3rd. If you create a *spell glyph*, you can store any spell of up to the same level as the slot you use for the glyph of warding.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": false,
+        "is_prepared": true,
+        "effective_prepared": true,
+        "ritual": false,
+        "preparation_type": "prepared_from_list",
+        "usage_type": "slot",
+        "source_info": {
+          "class": "Artificer",
+          "feature": "Class Spell",
+          "granted_by": "Artificer spell list"
+        },
+        "data_source": "A",
+        "casting_time": "1 8 Hours",
+        "range": "Special",
+        "concentration": false,
+        "components": "V, S, M (incense and powdered diamond worth at least 200 gp, which the spell consumes)",
+        "sources": [
+          "Artificer"
+        ]
+      }
+    ],
+    "Racial": [
+      {
+        "name": "Prestidigitation",
+        "level": 0,
+        "school": "Transmutation",
+        "description": "This spell is a minor magical trick that novice spellcasters use for practice. You create one of the following magical effects within range: • You create an instantaneous, harmless sensory effect, such as a shower of sparks, a puff of wind, faint musical notes, or an odd odor. • You instantaneously light or snuff out a candle, a torch, or a small campfire. • You instantaneously clean or soil an object no larger than 1 cubic foot. • You chill, warm, or flavor up to 1 cubic foot of nonliving material for 1 hour. • You make a color, a small mark, or a symbol appear on an object or a surface for 1 hour. • You create a nonmagical trinket or an illusory image that can fit in your hand and that lasts until the end of your next turn. If you cast this spell multiple times, you can have up to three of its non-instantaneous effects active at a time, and you can dismiss such an effect as an action.",
+        "save_dc": 12,
+        "attack_bonus": 4,
+        "spellcasting_ability": "charisma",
+        "always_prepared": true,
+        "usage_type": "at-will",
+        "source_info": {
+          "class": "Racial",
+          "feature": "Racial Trait",
+          "granted_by": "Species heritage"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "10 feet",
+        "ritual": false,
+        "concentration": false,
+        "duration": "1 hour",
+        "components": "V, S",
+        "sources": [
+          "Racial"
+        ]
+      }
+    ],
+    "Magic Item": [
+      {
+        "name": "Daylight",
+        "level": 3,
+        "school": "Evocation",
+        "description": "A 60-foot-radius sphere of light spreads out from a point you choose within range. The sphere is bright light and sheds dim light for an additional 60 feet. If you chose a point on an object you are holding or one that isn't being worn or carried, the light shines from the object and moves with it. Completely covering the affected object with an opaque object, such as a bowl or a helm, blocks the light. If any of this spell's area overlaps with an area of darkness created by a spell of 3rd level or lower, the spell that created the darkness is dispelled.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": true,
+        "usage_type": "per-rest",
+        "source_info": {
+          "class": "Magic Item",
+          "feature": "Magic Item",
+          "granted_by": "Equipped magic item"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "60 feet",
+        "ritual": false,
+        "concentration": false,
+        "duration": "1 hour",
+        "components": "V, S",
+        "sources": [
+          "Magic Item"
+        ]
+      },
+      {
+        "name": "Light",
+        "level": 0,
+        "school": "Evocation",
+        "description": "You touch one object that is no larger than 10 feet in any dimension. Until the spell ends, the object sheds bright light in a 20-foot radius and dim light for an additional 20 feet. The light can be colored as you like. Completely covering the object with something opaque blocks the light. The spell ends if you cast it again or dismiss it as an action. If you target an object held or worn by a hostile creature, that creature must succeed on a Dexterity saving throw to avoid the spell.",
+        "save_dc": 17,
+        "attack_bonus": 9,
+        "spellcasting_ability": "intelligence",
+        "always_prepared": true,
+        "usage_type": "at-will",
+        "source_info": {
+          "class": "Magic Item",
+          "feature": "Magic Item",
+          "granted_by": "Equipped magic item"
+        },
+        "data_source": "A",
+        "casting_time": "1 Action",
+        "range": "Special",
+        "ritual": false,
+        "concentration": false,
+        "duration": "1 hour",
+        "components": "V, M (a firefly or phosphorescent moss)",
+        "sources": [
+          "Magic Item"
+        ]
+      }
+    ]
+  },
+  "spell_slots": {
+    "regular_slots": {
+      "level_1": 4,
+      "level_2": 3,
+      "level_3": 2
+    },
+    "pact_slots": {},
+    "caster_level": 4,
+    "level_1": 4,
+    "level_2": 3,
+    "level_3": 2
+  },
+  "actions": [
+    {
+      "name": "Magical Tinkering",
+      "description": "At 1st level, you learn how to invest a spark of magic into mundane objects. To use this ability, you must have thieves’ tools or artisan’s tools in hand. You then touch a Tiny nonmagical object as an action and give it one of the following magical properties of your choice: • The object sheds bright light in a 5-foot radius and dim light for an additional 5 feet. • Whenever tapped by a creature, the object emits a recorded message that can be heard up to 10 feet away. You utter the message when you bestow this property on the object, and the recording can be no more than 6 seconds long. • The object continuously emits your choice of an odor or a nonverbal sound (wind, waves, chirping, or the like). The chosen phenomenon is perceivable up to 10 feet away. • A static visual effect appears on one of the object’s surfaces. This effect can be a picture, up to 25 words of text, lines and shapes, or a mixture of these elements, as you like. The chosen property lasts indefinitely. As an action, you can touch the object and end the property early. You can bestow magic on multiple objects, touching one object each time you use this feature, though a single object can only bear one property at a time. The maximum number of objects you can affect with this feature at one time is equal to your Intelligence modifier (minimum of one object). If you try to exceed your maximum, the oldest property immediately ends, and then the new property applies.",
+      "type": "class",
+      "snippet": "Imbue a Tiny nonmagical object with a magical property of your choice: 5ft. radius light, up to 6 second long recorded message, emits odor or nonverbal sound, static visual effect including up to 25 words of text. You can affect a maximum of {{modifier:int@min:1#unsigned}} objects at a time."
+    },
+    {
+      "name": "Infuse Item",
+      "description": "At 2nd level, you gain the ability to imbue mundane items with certain magical infusions. The magic items you create with this feature are effectively prototypes of permanent items. Infusions Known When you gain this feature, pick four artificer infusions to learn, choosing from the “Artificer Infusions” section at the end of the class’s description. You learn additional infusions of your choice when you reach certain levels in this class, as shown in the Infusions Known column of the Artificer table. Whenever you gain a level in this class, you can replace one of the artificer infusions you learned with a new one. Infusing an Item Whenever you finish a long rest, you can touch a non-magical object and imbue it with one of your artificer infusions, turning it into a magic item. An infusion works on only certain kinds of objects, as specified in the infusion’s description. If the item requires attunement, you can attune yourself to it the instant you infuse the item. If you decide to attune to the item later, you must do so using the normal process for attunement (see “Attunement” in chapter 7 of the *Dungeon Master’s Guide*). Your infusion remains in an item indefinitely, but when you die, the infusion vanishes after a number of days have passed equal to your Intelligence modifier (minimum of 1 day). The infusion also vanishes if you give up your knowledge of the infusion for another one. You can infuse more than one nonmagical object at the end of a long rest; the maximum number of objects appears in the Infused Items column of the Artificer table. You must touch each of the objects, and each of your infusions can be in only one object at a time. Moreover, no object can bear more than one of your infusions at a time. If you try to exceed your maximum number of infusions, the oldest infusion immediately ends, and then the new infusion applies. If an infusion ends on an item that contains other things, like a bag of holding, its contents harmlessly appear in and around its space.",
+      "type": "class",
+      "snippet": "Whenever you finish a long rest, you can touch up to {{scalevalue}} nonmagical objects, imbuing each of them with one of your artificer infusions, turning it into a magic item. You can attune yourself to the item the instant you infuse it, or you can forgo attunement so that someone else can attune to the item.  \r\n\r\nYour infusion remains in an item indefinitely, but when you die, the infusion vanishes after {{modifier:int@min:1#unsigned}} days. The infusion also vanishes if you give up your knowledge of the infusion or you exceed your maximum number of infusions."
+    },
+    {
+      "name": "The Right Tool for the Job",
+      "description": "At 3rd level, you learn how to produce exactly the tool you need: with thieves’ tools or artisan’s tools in hand, you can magically create one set of artisan’s tools in an unoccupied space within 5 feet of you. This creation requires 1 hour of uninterrupted work, which can coincide with a short or long rest. Though the product of magic, the tools are nonmagical, and they vanish when you use this feature again.",
+      "type": "class",
+      "snippet": "With thieves’ tools or artisan’s tools in hand, you can magically create one set of nonmagical artisan’s tools. They vanish when you use this feature again."
+    },
+    {
+      "name": "Tool Expertise",
+      "description": "Starting at 6th level, your proficiency bonus is doubled for any ability check you make that uses your proficiency with a tool.",
+      "type": "class",
+      "snippet": "Your proficiency bonus is doubled for any ability check you make that uses your proficiency with a tool."
+    },
+    {
+      "name": "Flash of Genius",
+      "description": "Starting at 7th level, you gain the ability to come up with solutions under pressure. When you or another creature you can see within 30 feet of you makes an ability check or a saving throw, you can use your reaction to add your Intelligence modifier to the roll. You can use this feature a number of times equal to your Intelligence modifier (minimum of once). You regain all expended uses when you finish a long rest.",
+      "type": "class",
+      "snippet": "When you or another creature you can see within 30 feet of you makes an ability check or a saving throw, you can use your reaction to add {{modifier:int#signed}} to the roll."
+    },
+    {
+      "name": "Arcane Armor - Create Armor",
+      "description": "Your metallurgical pursuits have led to you making armor a conduit for your magic. As an action, you can turn a suit of armor you are wearing into Arcane Armor, provided you have smith’s tools in hand.",
+      "type": "class",
+      "snippet": "As an action, you can turn a suit of armor you are wearing into Arcane Armor, provided you have smith’s tools in hand."
+    },
+    {
+      "name": "Infiltrator Armor: Lightning Launcher",
+      "description": "A gemlike node appears on one of your armored fists or on the chest (your choice). It counts as a simple ranged weapon, with a normal range of 90 feet and a long range of 300 feet, and it deals 1d6 lightning damage on a hit. Once on each of your turns when you hit a creature with it, you can deal an extra 1d6 lightning damage to that target.",
+      "type": "class",
+      "snippet": "A gemlike node appears on one of your armored fists or on the chest (your choice). It counts as a simple ranged weapon, with a normal range of 90 feet and a long range of 300 feet, and it deals <strong>1d6</strong> lightning damage on a hit. Once on each of your turns when you hit a creature with it, you can deal an extra <strong>1d6</strong> lightning damage to that target."
+    },
+    {
+      "name": "Infiltrator Armor: Lightning Launcher (DEX)",
+      "description": "A gemlike node appears on one of your armored fists or on the chest (your choice). It counts as a simple ranged weapon, with a normal range of 90 feet and a long range of 300 feet, and it deals 1d6 lightning damage on a hit. Once on each of your turns when you hit a creature with it, you can deal an extra 1d6 lightning damage to that target.",
+      "type": "class",
+      "snippet": "A gemlike node appears on one of your armored fists or on the chest (your choice). It counts as a simple ranged weapon, with a normal range of 90 feet and a long range of 300 feet, and it deals <strong>1d6</strong> lightning damage on a hit. Once on each of your turns when you hit a creature with it, you can deal an extra <strong>1d6</strong> lightning damage to that target."
+    }
+  ],
+  "inventory": [
+    {
+      "name": "Amulet of Health",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": true,
+      "requires_attunement": true,
+      "weight": 0,
+      "type": "Wondrous item",
+      "rarity": "Rare"
+    },
+    {
+      "name": "Bag of Holding",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 15.0,
+      "type": "Wondrous item",
+      "rarity": "Uncommon"
+    },
+    {
+      "name": "Bag of Holding",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 15.0,
+      "type": "Wondrous item",
+      "rarity": "Uncommon"
+    },
+    {
+      "name": "Eyes of Minute Seeing",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0,
+      "type": "Wondrous item",
+      "rarity": "Uncommon"
+    },
+    {
+      "name": "Shield",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": true,
+      "requires_attunement": false,
+      "weight": 6.0,
+      "type": "Shield",
+      "rarity": "Common"
+    },
+    {
+      "name": "Plate",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 65.0,
+      "type": "",
+      "rarity": "Common"
+    },
+    {
+      "name": "Crossbow, Light",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Crossbow, Light",
+      "rarity": "Common"
+    },
+    {
+      "name": "Backpack",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Clothes, Traveler's",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 4.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Pouch",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Signet Ring",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": true,
+      "requires_attunement": false,
+      "weight": 0.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Cartographer's Tools",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 6.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Thieves' Tools",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Herbalism Kit",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 3.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Tinker's Tools",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 10.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Potion of Healing (Greater)",
+      "quantity": 4,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.5,
+      "type": "Potion",
+      "rarity": "Uncommon"
+    },
+    {
+      "name": "Driftglobe",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Wondrous item",
+      "rarity": "Uncommon"
+    },
+    {
+      "name": "Potion of Invulnerability",
+      "quantity": 4,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0,
+      "type": "Potion",
+      "rarity": "Rare"
+    },
+    {
+      "name": "Studded Leather",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 13.0,
+      "type": "",
+      "rarity": "Common"
+    },
+    {
+      "name": "Chain Mail",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 55.0,
+      "type": "",
+      "rarity": "Common"
+    },
+    {
+      "name": "Plate",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 65.0,
+      "type": "",
+      "rarity": "Common"
+    },
+    {
+      "name": "Handaxe",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Handaxe",
+      "rarity": "Common"
+    },
+    {
+      "name": "Crossbow Bolts",
+      "quantity": 20,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.5,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Hammer",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 3.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Hunting Trap",
+      "quantity": 6,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 25.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Potion of Healing",
+      "quantity": 10,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.5,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Rations (1 day)",
+      "quantity": 23,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Tinderbox",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Waterskin",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Cook's Utensils",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 8.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Vial",
+      "quantity": 55,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Holy Water",
+      "quantity": 15,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    }
+  ],
+  "notes": {
+    "character_notes": "",
+    "allies": null,
+    "backstory": null,
+    "personal_traits": "",
+    "ideals": "",
+    "bonds": "",
+    "flaws": ""
+  },
+  "meta": {
+    "character_id": "103214475",
+    "is_2024_rules": false,
+    "processed_timestamp": 1751286729.5742497,
+    "scraper_version": "5.2.0",
+    "proficiency_bonus": 4,
+    "primary_spellcasting_ability": "intelligence",
+    "passive_senses": {
+      "perception": 15,
+      "investigation": 19,
+      "insight": 15
+    },
+    "total_wealth_gp": 31,
+    "carrying_capacity": 120,
+    "total_caster_level": 5,
+    "individual_currencies": {
+      "copper": 0,
+      "silver": 35,
+      "electrum": 0,
+      "gold": 28,
+      "platinum": 0
+    },
+    "diagnostics": {
+      "errors": [],
+      "warnings": [
+        "No feats found in any source"
+      ],
+      "missing_data": [],
+      "info": [
+        "Found 1 classSpells entries with 11 total spells"
+      ],
+      "data_analysis": [
+        "Proficiency sources: race:5, class:14, background:3"
+      ],
+      "expected_vs_actual": []
+    }
+  }
+}

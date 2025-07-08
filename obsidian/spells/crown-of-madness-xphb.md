@@ -1,0 +1,58 @@
+---
+obsidianUIMode: preview
+cssclasses: json5e-spell
+tags:
+- ttrpg-cli/compendium/src/5e/xphb
+- ttrpg-cli/spell/class/bard
+- ttrpg-cli/spell/class/sorcerer
+- ttrpg-cli/spell/class/warlock
+- ttrpg-cli/spell/class/wizard
+- ttrpg-cli/spell/level/2nd-level
+- ttrpg-cli/spell/school/enchantment
+- ttrpg-cli/spell/subclass/arcane-trickster
+- ttrpg-cli/spell/subclass/college-of-lore
+- ttrpg-cli/spell/subclass/eldritch-knight
+classes:
+- Bard
+- Bard (College of Lore)
+- Fighter (Eldritch Knight)
+- Rogue (Arcane Trickster)
+- Sorcerer
+- Warlock
+- Wizard
+aliases:
+- Crown of Madness
+name: Crown of Madness
+level: 2nd-level
+levelInt: 2
+school: Enchantment
+ritual: false
+concentration: true
+components: V, S
+verbal: true
+somatic: true
+material: false
+material_desc: ""
+casting_time: 1 Action
+range: 120 feet
+duration: Concentration, up to 1 minute
+source: Player's Handbook (2024) p. 259
+---
+# Crown of Madness
+*2nd-level, Enchantment*  
+
+
+- **Casting time:** 1 Action
+- **Range:** 120 feet
+- **Components:** V, S
+- **Duration:** Concentration, up to 1 minute
+
+One creature that you can see within range must succeed on a Wisdom saving throw or have the [Charmed](/z_Mechanics/CLI/conditions.md#Charmed) condition for the duration. The creature succeeds automatically if it isn't Humanoid.
+
+A spectral crown appears on the [Charmed](/z_Mechanics/CLI/conditions.md#Charmed) target's head, and it must use its action before moving on each of its turns to make a melee attack against a creature other than itself that you mentally choose. The target can act normally on its turn if you choose no creature or if no creature is within its reach. The target repeats the save at the end of each of its turns, ending the spell on itself on a success.
+
+On your later turns, you must take the [Magic](/z_Mechanics/CLI/actions.md#Magic) action to maintain control of the target, or the spell ends.
+
+**Classes**: [Rogue (Arcane Trickster)](/z_Mechanics/CLI/lists/list-spells-classes-rogue-xphb-arcane-trickster-xphb.md "subclass=XPHB;class=XPHB"); [Wizard](/z_Mechanics/CLI/lists/list-spells-classes-wizard.md); [Bard (College of Lore)](/z_Mechanics/CLI/lists/list-spells-classes-bard-xphb-college-of-lore-xphb.md "subclass=XPHB;class=XPHB"); [Bard](/z_Mechanics/CLI/lists/list-spells-classes-bard.md); [Sorcerer](/z_Mechanics/CLI/lists/list-spells-classes-sorcerer.md); [Fighter (Eldritch Knight)](/z_Mechanics/CLI/lists/list-spells-classes-fighter-xphb-eldritch-knight-xphb.md "subclass=XPHB;class=XPHB"); [Warlock](/z_Mechanics/CLI/lists/list-spells-classes-warlock.md)
+
+*Source: Player's Handbook (2024) p. 259*

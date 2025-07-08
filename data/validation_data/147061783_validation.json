@@ -1,0 +1,77 @@
+{
+  "character_id": 147061783,
+  "name": "ZuB Public Demo",
+  "level": 15,
+  "classes": [
+    {
+      "name": "Wizard",
+      "level": 15,
+      "subclass": "School of Conjuration"
+    }
+  ],
+  "species": "Variant Human",
+  "background": "Cloistered Scholar",
+  "is_2024_rules": false,
+  "ability_scores": {
+    "strength": 9,
+    "dexterity": 11,
+    "constitution": 14,
+    "intelligence": 19,
+    "wisdom": 13,
+    "charisma": 11
+  },
+  "ability_modifiers": {
+    "strength": -1,
+    "dexterity": 0,
+    "constitution": 2,
+    "intelligence": 4,
+    "wisdom": 1,
+    "charisma": 0
+  },
+  "proficiency_bonus": 5,
+  "armor_class": 10,
+  "max_hp": 92,
+  "hit_point_type": "",
+  "initiative": 0,
+  "speed": 30,
+  "spellcasting": {
+    "is_spellcaster": true,
+    "spell_save_dc": 17,
+    "spell_attack_bonus": 9,
+    "spellcasting_ability": "int",
+    "total_spells": "UNCLEAR - could be 30 total in spellbook vs 12 prepared/accessible",
+    "cantrips": 4,
+    "spell_slots_level_1": 4,
+    "spell_slots_level_2": 3,
+    "spell_slots_level_3": 3,
+    "spell_slots_level_4": 3,
+    "spell_slots_level_5": 2,
+    "spell_slots_level_6": 1,
+    "spell_slots_level_7": 1,
+    "spell_slots_level_8": 1,
+    "spell_slots_level_9": 0
+  },
+  "saving_throws": [
+    "int, wis"
+  ],
+  "features": [
+    {
+      "name": "Lucky",
+      "source": "Feat"
+    },
+    {
+      "name": "Telekinetic",
+      "source": "Feat"
+    },
+    {
+      "name": "Arcane Recovery",
+      "source": "Class"
+    }
+  ],
+  "key_spells": [
+    "Confusion",
+    "Charm Person", 
+    "Feign Death"
+  ],
+  "notes": ""
+}

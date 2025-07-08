@@ -1,0 +1,66 @@
+{
+  "character_id": 29682199,
+  "name": "Redgrave",
+  "level": 10,
+  "classes": [
+    {
+      "name": "Cleric",
+      "level": 10,
+      "subclass": "Forge Domain"
+    }
+  ],
+  "species": "Warforged Envoy",
+  "background": "Guild Artisan / Guild Merchant",
+  "is_2024_rules": false,
+  "ability_scores": {
+    "strength": 16,
+    "dexterity": 8,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 20,
+    "charisma": 10
+  },
+  "ability_modifiers": {
+    "strength": 3,
+    "dexterity": -1,
+    "constitution": 2,
+    "intelligence": 0,
+    "wisdom": 5,
+    "charisma": 0
+  },
+  "proficiency_bonus": 4,
+  "armor_class": 25,
+  "max_hp": 73,
+  "hit_point_type": "",
+  "initiative": -1,
+  "speed": 30,
+  "spellcasting": {
+    "is_spellcaster": true,
+    "spell_save_dc": 17,
+    "spell_attack_bonus": 9,
+    "spellcasting_ability": "Wisdom",
+    "total_spells": 29,
+    "cantrips": 4,
+    "spell_slots_level_1": 4,
+    "spell_slots_level_2": 3,
+    "spell_slots_level_3": 3,
+    "spell_slots_level_4": 3,
+    "spell_slots_level_5": 2
+  },
+  "saving_throws": [
+    "Wisdom",
+	"Charisma"
+  ],
+  "features": [
+    {
+      "name": "Channel Divinity: Artisan's Blessing",
+      "source": "Class"
+    }
+  ],
+  "key_spells": [
+    "Command",
+	"Elemental Weapon",
+	"Revivify"
+  ],
+  "notes": ""
+}

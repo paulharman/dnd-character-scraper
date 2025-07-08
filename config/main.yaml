@@ -1,0 +1,56 @@
+# Main Project Configuration
+# Project-wide settings, paths, and environment configuration
+
+project:
+  name: "DnD Beyond Character Scraper"
+  version: "6.0.0"
+  description: "Enhanced D&D Beyond character scraper with 2024 rules support"
+
+# Environment Configuration
+environment: "production"
+debug: false
+
+# Global Paths (relative to project root)
+paths:
+  character_data: "character_data"
+  data_folder: "data"
+  baseline: "data/baseline"
+  spells_folder: "obsidian/spells"
+  config_dir: "config"
+
+# Global Logging Configuration
+logging:
+  level: "INFO"
+  include_timestamps: true
+  include_traceback: false
+  log_to_file: false
+  log_file_path: null
+
+# Global Feature Flags
+features:
+  html_cleaning: true
+  rule_detection: true
+  enhanced_spells: true
+  caching: false
+
+# Performance Settings
+performance:
+  memory_optimization: true
+  cleanup_temp_files: true
+  enable_caching: false
+
+# Environment-specific overrides
+environments:
+  development:
+    debug: true
+    logging:
+      level: "DEBUG"
+  testing:
+    features:
+      caching: false
+    logging:
+      level: "WARNING"
+  production:
+    debug: false
+    logging:
+      level: "INFO"

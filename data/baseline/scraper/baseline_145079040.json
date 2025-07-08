@@ -1,0 +1,504 @@
+{
+  "basic_info": {
+    "name": "(Luke) Thuldus Blackblade",
+    "level": 2,
+    "experience": 0,
+    "avatarUrl": "https://www.dndbeyond.com/avatars/17/971/636378927902947937.png?width=150&height=150&fit=crop&quality=95&auto=webp",
+    "inspiration": false,
+    "lifestyleId": 5,
+    "armor_class": {
+      "total": 10,
+      "base": 10,
+      "modifiers": [],
+      "calculation": "Error in calculation"
+    },
+    "initiative": {
+      "total": 0,
+      "sources": [
+        {
+          "source": "Dexterity",
+          "value": 0
+        }
+      ]
+    },
+    "speed": {
+      "walking": {
+        "total": 30,
+        "sources": [
+          {
+            "source": "Base",
+            "value": 30
+          }
+        ]
+      }
+    },
+    "hit_points": {
+      "current": 21,
+      "maximum": 21,
+      "temporary": 0,
+      "base": 12,
+      "bonus": 0,
+      "constitution_bonus": 0,
+      "override": null,
+      "removed": 0,
+      "hit_point_type": 1,
+      "hit_point_method": "Fixed"
+    },
+    "classes": [
+      {
+        "name": "Barbarian",
+        "level": 2,
+        "hit_die": 12,
+        "subclass": "",
+        "spellcasting_ability": "",
+        "is_2024": true
+      }
+    ]
+  },
+  "appearance": {
+    "gender": "Male",
+    "age": 42,
+    "hair": "Dirty and matted long ginger hair and beard.",
+    "eyes": "Deep brown ",
+    "skin": "Pale and malnutritioned",
+    "height": "4ft 5",
+    "weight": null,
+    "traits": null,
+    "size": 4,
+    "size_name": "Medium"
+  },
+  "ability_scores": {
+    "strength": {
+      "score": 15,
+      "modifier": 2,
+      "save_bonus": 4,
+      "source_breakdown": {
+        "base": 13,
+        "feat": 2
+      }
+    },
+    "dexterity": {
+      "score": 11,
+      "modifier": 0,
+      "save_bonus": 0,
+      "source_breakdown": {
+        "base": 11
+      }
+    },
+    "constitution": {
+      "score": 13,
+      "modifier": 1,
+      "save_bonus": 3,
+      "source_breakdown": {
+        "base": 12,
+        "feat": 1
+      }
+    },
+    "intelligence": {
+      "score": 9,
+      "modifier": -1,
+      "save_bonus": -1,
+      "source_breakdown": {
+        "base": 9
+      }
+    },
+    "wisdom": {
+      "score": 9,
+      "modifier": -1,
+      "save_bonus": -1,
+      "source_breakdown": {
+        "base": 9
+      }
+    },
+    "charisma": {
+      "score": 10,
+      "modifier": 0,
+      "save_bonus": 0,
+      "source_breakdown": {
+        "base": 10
+      }
+    }
+  },
+  "skills": {
+    "athletics": 4,
+    "acrobatics": 2,
+    "sleight-of-hand": 0,
+    "stealth": 0,
+    "arcana": -1,
+    "history": -1,
+    "investigation": -1,
+    "nature": -1,
+    "religion": -1,
+    "animal-handling": -1,
+    "insight": -1,
+    "medicine": -1,
+    "perception": -1,
+    "survival": 1,
+    "deception": 0,
+    "intimidation": 2,
+    "performance": 0,
+    "persuasion": 0
+  },
+  "saving_throws": {
+    "strength_save": 4,
+    "dexterity_save": 0,
+    "constitution_save": 3,
+    "intelligence_save": -1,
+    "wisdom_save": -1,
+    "charisma_save": 0
+  },
+  "proficiencies": {
+    "armor": [
+      "Light Armor",
+      "Medium Armor",
+      "Shields"
+    ],
+    "weapons": [
+      "Martial Weapons",
+      "Simple Weapons"
+    ],
+    "tools": [
+      "Dice Set"
+    ],
+    "languages": [
+      "Common",
+      "Elvish",
+      "Orc"
+    ],
+    "skills": [
+      "Acrobatics",
+      "Athletics",
+      "Intimidation",
+      "Survival"
+    ]
+  },
+  "proficiency_sources": {
+    "Athletics": "Class: Barbarian",
+    "Intimidation": "Class: Barbarian",
+    "Survival": "Background: Soldier",
+    "Acrobatics": "Background: Soldier"
+  },
+  "background": {
+    "name": "Soldier",
+    "description": "**Ability Scores:** Strength, Dexterity, Constitution**Feat:** Savage Attacker**Skill Proficiencies:** Athletics and Intimidation**Tool Proficiency:** *Choose one kind of Gaming Set***Equipment:** *Choose A or B:* (A) Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer's Kit, Quiver, Traveler's Clothes, 14 GP; or (B) 50 GP You began training for war as soon as you reached adulthood and carry precious few memories of life before you took up arms. Battle is in your blood. Sometimes you catch yourself reflexively performing the basic fighting exercises you learned first. Eventually, you put that training to use on the battlefield, protecting the realm by waging war.",
+    "source_id": null,
+    "is_2024": true,
+    "personal_possessions": "2 tarnished gold wedding bands on a sturdy chain",
+    "other_holdings": null,
+    "organizations": null,
+    "enemies": "Disgust for orc kind and orc simpathisers",
+    "ideals": "",
+    "bonds": "",
+    "flaws": "",
+    "personality_traits": ""
+  },
+  "species": {
+    "name": "Dwarf",
+    "description": "",
+    "size": 4,
+    "source_id": null,
+    "is_2024": true,
+    "traits": [
+      {
+        "name": "Sense",
+        "type": "sense",
+        "description": "You can see in dim light within 120 feet of you as if it were bright light, and in darkness as if it were dim light.",
+        "sense_type": "darkvision",
+        "range": 120
+      },
+      {
+        "name": "Resistance",
+        "type": "resistance",
+        "description": "Resistance: Poison"
+      },
+      {
+        "name": "Advantage",
+        "type": "advantage",
+        "description": "You have advantage on Saving Throws checks"
+      },
+      {
+        "name": "Bonus",
+        "type": "bonus",
+        "description": "Bonus: Hit Points per Level"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Common",
+        "language": "Common"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Elvish",
+        "language": "Elvish"
+      },
+      {
+        "name": "Language",
+        "type": "language",
+        "description": "You can speak, read, and write Orc",
+        "language": "Orc"
+      }
+    ]
+  },
+  "feats": [
+    {
+      "name": "Weapon Mastery",
+      "description": "Your training with weapons allows you to use the mastery properties of two kinds of Simple or Martial Melee weapons of your choice, such as Greataxes and Handaxes. Whenever you finish a Long Rest, you can practice weapon drills and change one of those weapon choices. When you reach certain Barbarian levels, you gain the ability to use the mastery properties of more kinds of weapons, as shown in the Weapon Mastery column of the Barbarian Features table.",
+      "source": "feat:1789105"
+    },
+    {
+      "name": "Savage Attacker",
+      "description": "*Origin Feat* You’ve trained to deal particularly damaging strikes. Once per turn when you hit a target with a weapon, you can roll the weapon’s damage dice twice and use either roll against the target.",
+      "source": "feat:1789183"
+    },
+    {
+      "name": "Soldier Ability Score Improvements",
+      "description": "The Soldier Background allows you to choose between Strength, Dexterity, and Constitution. Increase one of these scores by 2 and another one by 1, or increase all three by 1. None of these increases can raise a score above 20.",
+      "source": "feat:1789199"
+    },
+    {
+      "name": "Savage Attacker",
+      "description": "",
+      "source": "background_feat:16333"
+    },
+    {
+      "name": "Ability Scores",
+      "description": "",
+      "source": "background_feat:16334"
+    }
+  ],
+  "spells": {},
+  "spell_slots": {
+    "regular_slots": {},
+    "pact_slots": {},
+    "caster_level": 0
+  },
+  "actions": [
+    {
+      "name": "Stonecunning (Tremorsense)",
+      "description": "As a Bonus Action, you gain [sense]Tremorsense[/sense] with a range of 60 feet for 10 minutes. You must be on a stone surface or touching a stone surface to use this Tremorsense. The stone can be natural or worked. You can use this Bonus Action a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.",
+      "type": "race",
+      "snippet": "You gain Tremorsense with a range of 60 ft. for 10 minutes. You must be on or touching a natural or worked stone surface to use this Tremorsense."
+    },
+    {
+      "name": "Rage (Enter)",
+      "description": "You can imbue yourself with a primal power called Rage, a force that grants you extraordinary might and resilience. You can enter it as a Bonus Action if you aren’t wearing Heavy armor. You can enter your Rage the number of times shown for your Barbarian level in the Rages column of the Barbarian Features table. You regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest. While active, your Rage follows the rules below. **Damage Resistance.** You have Resistance to Bludgeoning, Piercing, and Slashing damage. **Rage Damage.** When you make an attack using Strength—with either a weapon or an Unarmed Strike—and deal damage to the target, you gain a bonus to the damage that increases as you gain levels as a Barbarian, as shown in the Rage Damage column of the Barbarian Features table. **Strength Advantage.** You have Advantage on Strength checks and Strength saving throws. **No Concentration or Spells.** You can’t maintain Concentration, and you can’t cast spells. **Duration.** The Rage lasts until the end of your next turn, and it ends early if you don Heavy armor or have the [condition]Incapacitated[/condition] condition. If your Rage is still active on your next turn, you can extend the Rage for another round by doing one of the following: • Make an attack roll against an enemy. • Force an enemy to make a saving throw. • Take a Bonus Action to extend your Rage. Each time the Rage is extended, it lasts until the end of your next turn. You can maintain a Rage for up to 10 minutes.",
+      "type": "class",
+      "snippet": "You can enter Rage if you aren’t wearing Heavy Armor. You can use Rage {{limiteduse}} times per Long Rest, and regain one expended use when you finish a Short Rest."
+    },
+    {
+      "name": "Extend Rage",
+      "description": "While active, your Rage follows the rules below. **Damage Resistance.** You have Resistance to Bludgeoning, Piercing, and Slashing damage. **Rage Damage.** When you make an attack using Strength—with either a weapon or an Unarmed Strike—and deal damage to the target, you gain a bonus to the damage that increases as you gain levels as a Barbarian, as shown in the Rage Damage column of the Barbarian Features table. **Strength Advantage.** You have Advantage on Strength checks and Strength saving throws. **No Concentration or Spells.** You can’t maintain Concentration, and you can’t cast spells. **Duration.** The Rage lasts until the end of your next turn, and it ends early if you don Heavy armor or have the [condition]Incapacitated[/condition] condition. If your Rage is still active on your next turn, you can extend the Rage for another round by doing one of the following: • Make an attack roll against an enemy. • Force an enemy to make a saving throw. • Take a Bonus Action to extend your Rage. Each time the Rage is extended, it lasts until the end of your next turn. You can maintain a Rage for up to 10 minutes.",
+      "type": "class",
+      "snippet": "As a Bonus Action, you can extend your Rage until the end of your next turn. You can maintain Rage for up to 10 minutes."
+    },
+    {
+      "name": "Rage: Primal Knowledge",
+      "description": "You gain proficiency in another skill of your choice from the skill list available to Barbarians at level 1. In addition, while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: [skill]Acrobatics[/skill], [skill]Intimidation[/skill], [skill]Perception[/skill], [skill]Stealth[/skill], or [skill]Survival[/skill]. When you use this ability, your Strength represents primal power coursing through you, honing your agility, bearing, and senses.",
+      "type": "class",
+      "snippet": "Whenever you make an Acrobatics, Intimidation, Perception, Stealth, or Survival check, you can use your Str. modifier instead of the skill’s usual ability modifier."
+    },
+    {
+      "name": "Cleave (Greataxe)",
+      "description": "Your training with weapons allows you to use the mastery property of Greataxes: **Cleave.** If you hit a creature with a melee attack roll using a Greataxe, you can make a melee attack roll with the Greataxe against a second creature within 5 feet of the first that is also within your reach. On a hit, the second creature takes the Greataxe’s damage, but don’t add your ability modifier to that damage unless that modifier is negative. You can make this extra attack only once per turn.",
+      "type": "feat",
+      "snippet": "<strong><em>Cleave.</em></strong> Once per turn, if you hit a creature with a melee attack using a Greataxe, you can make another melee attack with it against a second creature within 5 ft. of the first that’s within your reach. On a hit, the second creature takes the Greataxe’s damage, but without your ability modifier (unless the modifier is negative)."
+    },
+    {
+      "name": "Vex (Handaxe)",
+      "description": "Your training with weapons allows you to use the mastery property of Handaxes: **Vex.** If you hit a creature with a Handaxe and deal damage to the creature, you have Advantage on your next attack roll against that creature before the end of your next turn.",
+      "type": "feat",
+      "snippet": "<strong><em>Vex.</em></strong> If you hit a creature with a Handaxe and deal damage to it, you have Advantage on your next attack roll against that creature before the end of your next turn."
+    }
+  ],
+  "inventory": [
+    {
+      "name": "Handaxe",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Handaxe",
+      "rarity": "Common"
+    },
+    {
+      "name": "Handaxe",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Handaxe",
+      "rarity": "Common"
+    },
+    {
+      "name": "Handaxe",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Handaxe",
+      "rarity": "Common"
+    },
+    {
+      "name": "Handaxe",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Handaxe",
+      "rarity": "Common"
+    },
+    {
+      "name": "Greataxe",
+      "quantity": 1,
+      "equipped": true,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 7.0,
+      "type": "Greataxe",
+      "rarity": "Common"
+    },
+    {
+      "name": "Backpack",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Potion of Healing (Superior)",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 0.5,
+      "type": "Potion",
+      "rarity": "Rare"
+    },
+    {
+      "name": "Oil",
+      "quantity": 2,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Rations",
+      "quantity": 10,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 2.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Rope",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Bedroll",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 7.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Tinderbox",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Torch",
+      "quantity": 10,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 1.0,
+      "type": "Gear",
+      "rarity": "Common"
+    },
+    {
+      "name": "Waterskin",
+      "quantity": 1,
+      "equipped": false,
+      "attuned": false,
+      "requires_attunement": false,
+      "weight": 5.0,
+      "type": "Gear",
+      "rarity": "Common"
+    }
+  ],
+  "notes": {
+    "character_notes": "",
+    "allies": null,
+    "backstory": "From a young age Thuldus showed promise with an axe and keen understanding for battle. His father, a major figure in the mountains armies, trained a young Thuldus in warfare and the ways of the barbarian.\n\nIn his teen years he rose through the ranks and claimed many victory's and in many cases been key to turning the tide in pivotal battles.\n\nAs dedicated as he was to serving the mountain and it's defences Thuldus was as susceptible to love and desire as anyone else, especially when it came to a young barmaid named Ellie Halfmountain.\n\nAs young love blossomed, duty began to be neglected and resentment from his father towards Ellie arose. The day came where Thuldus and Ellie expressed desire to be wed and for Thuldus to retire from warfare only to be denied this by his father being told 'to neglect your duties for love is to betray the mountain and it's people' and 'if you carry on down this path you shall be disowned and Stripped of all titles.'\n\nWith rage and resentment in his heart Thuldus made the difficult decision to leave the safety of the mountain in search of a peaceful life and begin a family.\n\n2 years on they young couple had achieved their dream. In the shadow of a neighbouring mountain amongst a small forest the couple had built a home and had a child. A cute baby girl that looked like her mother but had her fathers fiery red hair. Finally the couple were happy and at peace. Until an Orc raiding party on its way to a dwarven village passed through the forest. \n\nBelieving his family to be safe and that no harm could befall them in the safety of the forest Thuldus had ventured out on a hunt as he would do weekly. The smell had reached him before the sight.. fire.. the forest was ablaze. He rushed back through smoke and flames to the opening In the trees where the couples log cabin once stood to find it smouldering and caved in and on the ground in front of the ruins lay a lonely figure. Thuldus roared into the sky holding the lifeless body of his beloved Ellie, his baby daughter was nowhere to be found.\n\nHe spent the next 5 years in vain searching for any sign on the orc troop that marched through the forest that day. With no leads and no witnesses desire for revenge gave way to despair and as time past Thuldus turned to drink as his only comfort.\n\n15 years on Thuldus now spends his time as a mercenary of sorts to fund his drinking habits. A quiet rage over his lost life still simmers behind his eyes but the desire for revenge is all but gone.\n\n",
+    "personal_traits": "",
+    "ideals": "",
+    "bonds": "",
+    "flaws": ""
+  },
+  "meta": {
+    "character_id": "145079040",
+    "is_2024_rules": true,
+    "processed_timestamp": 1751226297.3915992,
+    "scraper_version": "5.2.0",
+    "proficiency_bonus": 2,
+    "primary_spellcasting_ability": "intelligence",
+    "passive_senses": {
+      "perception": 9,
+      "investigation": 9,
+      "insight": 9
+    },
+    "total_wealth_gp": 50,
+    "carrying_capacity": 225,
+    "total_caster_level": 0,
+    "individual_currencies": {
+      "copper": 4,
+      "silver": 8,
+      "electrum": 0,
+      "gold": 50,
+      "platinum": 0
+    },
+    "diagnostics": {
+      "errors": [],
+      "warnings": [
+        "classSpells entry 0 has empty spells array"
+      ],
+      "missing_data": [],
+      "info": [
+        "Found 1 classSpells entries with 0 total spells",
+        "Found feats from 3 direct + 2 background sources"
+      ],
+      "data_analysis": [
+        "Proficiency sources: class:9, background:3"
+      ],
+      "expected_vs_actual": []
+    }
+  }
+}

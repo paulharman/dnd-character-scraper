@@ -1,0 +1,360 @@
+{
+  "character_id": 145081718,
+  "timestamp": "2025-06-30 21:19:36 UTC",
+  "source": "dndbeyond_api",
+  "data": {
+    "character_id": 145081718,
+    "name": "Ilarion Veles (Paul)",
+    "level": 2,
+    "rule_version": "RuleVersion.RULES_2014",
+    "classes": [
+      {
+        "name": "Wizard",
+        "level": 2,
+        "subclass": null
+      }
+    ],
+    "species": {
+      "name": "Unknown",
+      "subrace": null
+    },
+    "background": {
+      "name": "Sage"
+    },
+    "alignment": "True Neutral",
+    "experience_points": 753,
+    "ability_scores": {
+      "strength": 9,
+      "dexterity": 13,
+      "constitution": 14,
+      "intelligence": 15,
+      "wisdom": 12,
+      "charisma": 10
+    },
+    "ability_modifiers": {
+      "strength": -1,
+      "dexterity": 1,
+      "constitution": 2,
+      "intelligence": 2,
+      "wisdom": 1,
+      "charisma": 0
+    },
+    "ability_score_breakdown": {
+      "strength": {
+        "total": 9,
+        "base": 9,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 9,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "dexterity": {
+        "total": 13,
+        "base": 13,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 13,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "constitution": {
+        "total": 14,
+        "base": 14,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 14,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "intelligence": {
+        "total": 15,
+        "base": 15,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 15,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "wisdom": {
+        "total": 12,
+        "base": 12,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": [
+          {
+            "value": 12,
+            "source": "Base Score",
+            "source_type": "base",
+            "source_id": null,
+            "description": null
+          }
+        ]
+      },
+      "charisma": {
+        "total": 10,
+        "base": 10,
+        "racial": 0,
+        "feat": 0,
+        "asi": 0,
+        "item": 0,
+        "other": 0,
+        "sources": []
+      }
+    },
+    "calculation_method": "unarmored",
+    "max_hp": 14,
+    "current_hp": null,
+    "temporary_hp": 0,
+    "hp_breakdown": {
+      "total": 14,
+      "base_hit_points": 10,
+      "constitution_bonus": 4,
+      "feat_bonus": 0,
+      "item_bonus": 0,
+      "other_bonus": 0,
+      "method": "calculated",
+      "class_breakdown": {
+        "Wizard": {
+          "level": 2,
+          "hit_die": "d6",
+          "estimated_hp": 10,
+          "first_level_hp": 6,
+          "remaining_levels_hp": 4
+        }
+      }
+    },
+    "hit_dice": {
+      "by_class": {
+        "wizard": {
+          "die_size": 6,
+          "total": 2,
+          "used": 0,
+          "available": 2
+        }
+      },
+      "total_hit_dice": 2,
+      "used_hit_dice": 0,
+      "available_hit_dice": 2
+    },
+    "armor_class": 11,
+    "ac_breakdown": {
+      "total": 11,
+      "base": 10,
+      "armor_bonus": 0,
+      "shield_bonus": 0,
+      "dexterity_bonus": 1,
+      "natural_armor": 0,
+      "deflection_bonus": 0,
+      "misc_bonus": 0,
+      "calculation_method": "unarmored",
+      "armor_worn": null,
+      "shield_used": null,
+      "max_dex_bonus": null
+    },
+    "is_spellcaster": true,
+    "spellcasting_ability": "intelligence",
+    "spell_save_dc": 12,
+    "spell_attack_bonus": 4,
+    "spell_slots": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "pact_slots": 0,
+    "pact_slot_level": 0,
+    "caster_level": 0,
+    "spell_slot_breakdown": {},
+    "spell_counts": {
+      "total_spells": 15,
+      "cantrips": 6,
+      "leveled_spells": 9
+    },
+    "proficiency_bonus": 2,
+    "skill_proficiencies": [
+      {
+        "name": "Arcana",
+        "source": "Class",
+        "source_type": "class",
+        "proficient": true,
+        "expertise": false,
+        "ability": "intelligence",
+        "ability_modifier": 2,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 4
+      },
+      {
+        "name": "History",
+        "source": "Background",
+        "source_type": "background",
+        "proficient": true,
+        "expertise": false,
+        "ability": "intelligence",
+        "ability_modifier": 2,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 4
+      },
+      {
+        "name": "Insight",
+        "source": "Background",
+        "source_type": "background",
+        "proficient": true,
+        "expertise": false,
+        "ability": "wisdom",
+        "ability_modifier": 1,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 3
+      },
+      {
+        "name": "Investigation",
+        "source": "Class",
+        "source_type": "class",
+        "proficient": true,
+        "expertise": false,
+        "ability": "intelligence",
+        "ability_modifier": 2,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 4
+      },
+      {
+        "name": "Perception",
+        "source": "Species/Race",
+        "source_type": "race",
+        "proficient": true,
+        "expertise": false,
+        "ability": "wisdom",
+        "ability_modifier": 1,
+        "proficiency_bonus": 2,
+        "expertise_bonus": 0,
+        "total_bonus": 3
+      }
+    ],
+    "saving_throw_proficiencies": [
+      "intelligence",
+      "wisdom"
+    ],
+    "skills_by_ability": {
+      "intelligence": [
+        {
+          "name": "Arcana",
+          "source": "Class",
+          "source_type": "class",
+          "proficient": true,
+          "expertise": false,
+          "ability": "intelligence",
+          "ability_modifier": 2,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 4
+        },
+        {
+          "name": "History",
+          "source": "Background",
+          "source_type": "background",
+          "proficient": true,
+          "expertise": false,
+          "ability": "intelligence",
+          "ability_modifier": 2,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 4
+        },
+        {
+          "name": "Investigation",
+          "source": "Class",
+          "source_type": "class",
+          "proficient": true,
+          "expertise": false,
+          "ability": "intelligence",
+          "ability_modifier": 2,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 4
+        }
+      ],
+      "wisdom": [
+        {
+          "name": "Insight",
+          "source": "Background",
+          "source_type": "background",
+          "proficient": true,
+          "expertise": false,
+          "ability": "wisdom",
+          "ability_modifier": 1,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 3
+        },
+        {
+          "name": "Perception",
+          "source": "Species/Race",
+          "source_type": "race",
+          "proficient": true,
+          "expertise": false,
+          "ability": "wisdom",
+          "ability_modifier": 1,
+          "proficiency_bonus": 2,
+          "expertise_bonus": 0,
+          "total_bonus": 3
+        }
+      ]
+    },
+    "initiative_bonus": 1,
+    "speed": 30,
+    "calculation_metadata": {
+      "calculator_version": "6.0.0",
+      "calculation_timestamp": null,
+      "source": "enhanced_calculator",
+      "rule_version": "RuleVersion.RULES_2014"
+    }
+  }
+}

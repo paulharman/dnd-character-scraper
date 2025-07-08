@@ -1,0 +1,42 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.pytest_cache/
+coverage.xml
+*.log
+
+# Temporary files
+*.tmp
+temp_*
+debug_*
+test_output_*
+*_temp.json
+*_debug.json
+Unknown_Character_*.json
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Copyright-protected content (disabled for development branch - local use only)
+# Note: Spell files restored for development but should remain ignored for public commits
+# obsidian/spells/
+# spells/
+# **/spells/**
+
+# MCP (Model Context Protocol) servers
+mcp/
+mcp/servers/
+mcp/servers/sequentialthinking/node_modules/
+mcp/servers/sequentialthinking/dist/
+mcp/servers/sequentialthinking/package-lock.json
+mcp/servers/sequentialthinking/*.log

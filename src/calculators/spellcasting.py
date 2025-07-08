@@ -1,0 +1,508 @@
+"""
+Spellcasting Calculator
+
+Calculates spell slots, save DC, and attack bonuses from D&D Beyond data.
+Handles multiclass spellcasting, Warlock pact magic, and all spellcaster types.
+"""
+
+from typing import Dict, Any, List, Optional, Tuple
+import logging
+
+from src.interfaces.calculator import SpellcastingCalculatorInterface
+from src.models.character import Character
+from src.config.manager import get_config_manager
+from src.interfaces.rule_engine import RuleVersion
+
+logger = logging.getLogger(__name__)
+
+
+class SpellcastingCalculator(SpellcastingCalculatorInterface):
+    """
+    Calculator for spellcasting with comprehensive multiclass support.
+    
+    Handles:
+    - Full caster progression (Wizard, Sorcerer, Cleric, Druid, Bard)
+    - Half caster progression (Paladin, Ranger, Artificer)
+    - Third casters (Eldritch Knight, Arcane Trickster)
+    - Warlock pact magic (separate from regular slots)
+    - Multiclass spell slot calculation
+    - Spell save DC and attack bonus calculation
+    - Primary spellcasting ability detection
+    """
+    
+    def __init__(self, config_manager=None):
+        self.config_manager = config_manager or get_config_manager()
+        self.constants = self.config_manager.get_constants_config()
+        
+        # Spellcasting classifications
+        self.full_casters = set(self.constants.classes.full_casters)
+        self.half_casters = set(self.constants.classes.half_casters)
+        self.third_casters = set(self.constants.classes.third_casters)
+        
+        # Spellcasting ability mappings
+        self.default_spellcasting_abilities = {
+            'wizard': 'intelligence',
+            'sorcerer': 'charisma',
+            'cleric': 'wisdom',
+            'druid': 'wisdom',
+            'bard': 'charisma',
+            'warlock': 'charisma',
+            'paladin': 'charisma',
+            'ranger': 'wisdom',
+            'artificer': 'intelligence',
+            'eldritch knight': 'intelligence',
+            'arcane trickster': 'intelligence'
+        }
+        
+    def calculate(self, character: Character, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Calculate all spellcasting information.
+        
+        Returns:
+            Dictionary containing spell slots, save DC, attack bonus, and spell lists
+        """
+        logger.info(f"Calculating spellcasting for character {character.id}")
+        
+        # Determine if character is a spellcaster
+        is_spellcaster = self._is_spellcaster(raw_data)
+        
+        if not is_spellcaster:
+            return {
+                'is_spellcaster': False,
+                'spell_slots': [0] * 9,
+                'pact_slots': 0,
+                'pact_slot_level': 0,
+                'spell_save_dc': None,
+                'spell_attack_bonus': None,
+                'spellcasting_ability': None
+            }
+        
+        # Calculate spell slots
+        spell_slots = self.calculate_spell_slots(character, raw_data)
+        
+        # Calculate spell save DC and attack bonus
+        spell_save_dc = self.calculate_spell_save_dc(character, raw_data)
+        spell_attack_bonus = self.calculate_spell_attack_bonus(character, raw_data)
+        spellcasting_ability = self.detect_spellcasting_ability(character, raw_data)
+        
+        # Get spell information
+        spell_info = self._get_spell_information(raw_data)
+        
+        result = {
+            'is_spellcaster': True,
+            'spellcasting_ability': spellcasting_ability,
+            'spell_save_dc': spell_save_dc,
+            'spell_attack_bonus': spell_attack_bonus,
+            'spell_slots': spell_slots.get('regular_slots', [0] * 9),
+            'pact_slots': spell_slots.get('pact_slots', 0),
+            'pact_slot_level': spell_slots.get('pact_slot_level', 0),
+            'caster_level': spell_slots.get('caster_level', 0),
+            'spell_slot_breakdown': spell_slots.get('breakdown', {}),
+            'spell_counts': spell_info
+        }
+        
+        logger.debug(f"Spellcasting: DC {spell_save_dc}, Attack +{spell_attack_bonus}, Ability {spellcasting_ability}")
+        logger.debug(f"Spell slots: {spell_slots.get('regular_slots', [])}, Pact: {spell_slots.get('pact_slots', 0)}")
+        
+        return result
+    
+    def validate_inputs(self, character: Character, raw_data: Dict[str, Any]) -> bool:
+        """Validate that we have sufficient data for spellcasting calculation."""
+        # Spellcasting calculation is optional and can work with minimal data
+        return True
+    
+    def calculate_spell_slots(self, character: Character, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Calculate spell slots by level with multiclass support.
+        
+        Args:
+            character: Character data model
+            raw_data: Raw D&D Beyond character data
+            
+        Returns:
+            Dictionary with spell slot information
+        """
+        logger.debug("Calculating spell slots")
+        
+        # Check if spell slots are directly provided in API with meaningful values
+        spell_slots_data = raw_data.get('spellSlots', [])
+        if spell_slots_data:
+            regular_slots = self._parse_api_spell_slots(spell_slots_data)
+            # Only use API data if it has non-zero values
+            if sum(regular_slots) > 0:
+                logger.debug(f"Using API spell slots: {regular_slots}")
+                
+                # Still calculate pact magic separately
+                pact_slots, pact_level = self._calculate_pact_magic(raw_data)
+                
+                return {
+                    'regular_slots': regular_slots,
+                    'pact_slots': pact_slots,
+                    'pact_slot_level': pact_level,
+                    'source': 'api',
+                    'caster_level': sum(regular_slots)  # Rough estimate
+                }
+            else:
+                logger.debug(f"API spell slots are all zero: {regular_slots}, calculating from class levels")
+        
+        # Calculate from class levels
+        classes = raw_data.get('classes', [])
+        
+        # Separate Warlock from other casters
+        warlock_levels = 0
+        caster_levels = {}
+        
+        for class_data in classes:
+            class_def = class_data.get('definition', {})
+            class_name = class_def.get('name', '').lower()
+            class_level = class_data.get('level', 0)
+            
+            if class_name == 'warlock':
+                warlock_levels = class_level
+            elif class_name in self.full_casters:
+                caster_levels[class_name] = {'level': class_level, 'type': 'full'}
+            elif class_name in self.half_casters:
+                caster_levels[class_name] = {'level': class_level, 'type': 'half'}
+            elif self._is_third_caster(class_name, class_data):
+                caster_levels[class_name] = {'level': class_level, 'type': 'third'}
+        
+        # Calculate multiclass caster level
+        total_caster_level = 0
+        breakdown = {}
+        
+        for class_name, info in caster_levels.items():
+            level = info['level']
+            caster_type = info['type']
+            
+            if caster_type == 'full':
+                contribution = level
+            elif caster_type == 'half':
+                contribution = level // 2
+            elif caster_type == 'third':
+                contribution = level // 3
+            else:
+                contribution = 0
+            
+            total_caster_level += contribution
+            breakdown[class_name] = {
+                'class_level': level,
+                'caster_type': caster_type,
+                'contribution': contribution
+            }
+        
+        # Get spell slot progression
+        if total_caster_level > 0:
+            regular_slots = self._get_spell_slots_for_level(total_caster_level)
+        else:
+            regular_slots = [0] * 9
+        
+        # Calculate Warlock pact magic
+        pact_slots, pact_level = self._calculate_pact_magic_from_level(warlock_levels)
+        
+        logger.debug(f"Multiclass caster level: {total_caster_level}")
+        logger.debug(f"Regular slots: {regular_slots}")
+        logger.debug(f"Pact magic: {pact_slots} slots of level {pact_level}")
+        
+        return {
+            'regular_slots': regular_slots,
+            'pact_slots': pact_slots,
+            'pact_slot_level': pact_level,
+            'caster_level': total_caster_level,
+            'breakdown': breakdown,
+            'source': 'calculated'
+        }
+    
+    def calculate_spell_save_dc(self, character: Character, raw_data: Dict[str, Any]) -> Optional[int]:
+        """
+        Calculate spell save DC.
+        
+        Args:
+            character: Character data model
+            raw_data: Raw D&D Beyond character data
+            
+        Returns:
+            Spell save DC or None if not a spellcaster
+        """
+        logger.debug("Calculating spell save DC")
+        
+        # Get spellcasting ability
+        spellcasting_ability = self.detect_spellcasting_ability(character, raw_data)
+        if not spellcasting_ability:
+            return None
+        
+        # Get ability modifier
+        ability_modifier = self._get_ability_modifier(raw_data, spellcasting_ability)
+        
+        # Get proficiency bonus
+        proficiency_bonus = self._get_proficiency_bonus(raw_data)
+        
+        # Calculate save DC: 8 + proficiency + ability modifier
+        base_dc = self.config_manager.get_app_config().calculations.spell_save_dc_base
+        save_dc = base_dc + proficiency_bonus + ability_modifier
+        
+        logger.debug(f"Spell save DC: {save_dc} (base:{base_dc} + prof:{proficiency_bonus} + {spellcasting_ability}:{ability_modifier})")
+        return save_dc
+    
+    def calculate_spell_attack_bonus(self, character: Character, raw_data: Dict[str, Any]) -> Optional[int]:
+        """
+        Calculate spell attack bonus.
+        
+        Args:
+            character: Character data model
+            raw_data: Raw D&D Beyond character data
+            
+        Returns:
+            Spell attack bonus or None if not a spellcaster
+        """
+        logger.debug("Calculating spell attack bonus")
+        
+        # Get spellcasting ability
+        spellcasting_ability = self.detect_spellcasting_ability(character, raw_data)
+        if not spellcasting_ability:
+            return None
+        
+        # Get ability modifier
+        ability_modifier = self._get_ability_modifier(raw_data, spellcasting_ability)
+        
+        # Get proficiency bonus
+        proficiency_bonus = self._get_proficiency_bonus(raw_data)
+        
+        # Calculate attack bonus: proficiency + ability modifier
+        attack_bonus = proficiency_bonus + ability_modifier
+        
+        logger.debug(f"Spell attack bonus: +{attack_bonus} (prof:{proficiency_bonus} + {spellcasting_ability}:{ability_modifier})")
+        return attack_bonus
+    
+    def detect_spellcasting_ability(self, character: Character, raw_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Detect primary spellcasting ability.
+        
+        Args:
+            character: Character data model
+            raw_data: Raw D&D Beyond character data
+            
+        Returns:
+            Primary spellcasting ability name or None
+        """
+        logger.debug("Detecting spellcasting ability")
+        
+        classes = raw_data.get('classes', [])
+        
+        # For multiclass, find the highest level spellcaster
+        best_caster = None
+        best_level = 0
+        
+        for class_data in classes:
+            class_def = class_data.get('definition', {})
+            class_name = class_def.get('name', '').lower()
+            class_level = class_data.get('level', 0)
+            
+            if class_name in self.default_spellcasting_abilities:
+                # Prioritize full casters, then higher levels
+                priority = 0
+                if class_name in self.full_casters:
+                    priority = class_level * 3
+                elif class_name in self.half_casters:
+                    priority = class_level * 2
+                elif class_name == 'warlock':
+                    priority = class_level * 3  # Warlock is effectively full caster for this
+                else:
+                    priority = class_level
+                
+                if priority > best_level:
+                    best_caster = class_name
+                    best_level = priority
+        
+        if best_caster:
+            spellcasting_ability = self.default_spellcasting_abilities[best_caster]
+            logger.debug(f"Primary spellcasting ability: {spellcasting_ability} (from {best_caster})")
+            return spellcasting_ability
+        
+        return None
+    
+    def _is_spellcaster(self, raw_data: Dict[str, Any]) -> bool:
+        """Check if character has any spellcasting capabilities."""
+        classes = raw_data.get('classes', [])
+        
+        for class_data in classes:
+            class_def = class_data.get('definition', {})
+            class_name = class_def.get('name', '').lower()
+            
+            if (class_name in self.full_casters or 
+                class_name in self.half_casters or 
+                class_name == 'warlock' or
+                self._is_third_caster(class_name, class_data)):
+                return True
+        
+        # Also check for spells from other sources
+        spells = raw_data.get('spells', {})
+        class_spells = raw_data.get('classSpells', [])
+        
+        if spells or class_spells:
+            return True
+        
+        return False
+    
+    def _is_third_caster(self, class_name: str, class_data: Dict[str, Any]) -> bool:
+        """Check if character has third-caster subclass (Eldritch Knight, Arcane Trickster)."""
+        if class_name not in ['fighter', 'rogue']:
+            return False
+        
+        subclass_def = class_data.get('subclassDefinition', {})
+        if not subclass_def:
+            return False
+        
+        subclass_name = subclass_def.get('name', '').lower()
+        
+        third_caster_subclasses = ['eldritch knight', 'arcane trickster']
+        
+        return subclass_name in third_caster_subclasses
+    
+    def _parse_api_spell_slots(self, spell_slots_data: List[Dict[str, Any]]) -> List[int]:
+        """Parse spell slots from D&D Beyond API data."""
+        slots = [0] * 9
+        
+        for slot_data in spell_slots_data:
+            level = slot_data.get('level', 0)
+            available = slot_data.get('available', 0)
+            
+            if 1 <= level <= 9:
+                slots[level - 1] = available
+        
+        return slots
+    
+    def _calculate_pact_magic(self, raw_data: Dict[str, Any]) -> Tuple[int, int]:
+        """Calculate Warlock pact magic slots from API data."""
+        # Check for pact magic in spell slots
+        spell_slots_data = raw_data.get('spellSlots', [])
+        
+        for slot_data in spell_slots_data:
+            slot_type = slot_data.get('type', '').lower()
+            if 'pact' in slot_type or 'warlock' in slot_type:
+                slots = slot_data.get('available', 0)
+                level = slot_data.get('level', 1)
+                return slots, level
+        
+        # Fallback to calculating from Warlock levels
+        classes = raw_data.get('classes', [])
+        for class_data in classes:
+            class_def = class_data.get('definition', {})
+            if class_def.get('name', '').lower() == 'warlock':
+                warlock_level = class_data.get('level', 0)
+                return self._calculate_pact_magic_from_level(warlock_level)
+        
+        return 0, 0
+    
+    def _calculate_pact_magic_from_level(self, warlock_level: int) -> Tuple[int, int]:
+        """Calculate pact magic slots and level from Warlock level."""
+        if warlock_level == 0:
+            return 0, 0
+        elif warlock_level == 1:
+            return 1, 1
+        elif warlock_level <= 2:
+            return 2, 1
+        elif warlock_level <= 4:
+            return 2, 2
+        elif warlock_level <= 6:
+            return 2, 3
+        elif warlock_level <= 8:
+            return 2, 4
+        elif warlock_level <= 10:
+            return 2, 5
+        elif warlock_level <= 16:
+            return 3, 5
+        elif warlock_level <= 18:
+            return 4, 5
+        else:  # Level 19-20
+            return 4, 5
+    
+    def _get_spell_slots_for_level(self, caster_level: int) -> List[int]:
+        """Get spell slot array for given caster level."""
+        # Use 2024 rules by default, fall back to 2014
+        rules_2024 = self.config_manager.get_rules_config("2024")
+        progression = rules_2024.spell_progressions.full_caster
+        
+        if caster_level in progression:
+            return progression[caster_level]
+        elif caster_level > 20:
+            return progression[20]  # Max out at level 20
+        else:
+            return [0] * 9
+    
+    def _get_ability_modifier(self, raw_data: Dict[str, Any], ability_name: str) -> int:
+        """Get ability modifier for given ability."""
+        ability_id_map = {
+            'strength': 1,
+            'dexterity': 2,
+            'constitution': 3,
+            'intelligence': 4,
+            'wisdom': 5,
+            'charisma': 6
+        }
+        
+        ability_id = ability_id_map.get(ability_name.lower())
+        if not ability_id:
+            return 0
+        
+        stats = raw_data.get('stats', [])
+        for stat in stats:
+            if stat.get('id') == ability_id:
+                score = stat.get('value', 10)
+                return (score - 10) // 2
+        
+        return 0
+    
+    def _get_proficiency_bonus(self, raw_data: Dict[str, Any]) -> int:
+        """Get proficiency bonus based on character level."""
+        total_level = 0
+        classes = raw_data.get('classes', [])
+        
+        for class_data in classes:
+            total_level += class_data.get('level', 0)
+        
+        # Proficiency bonus progression
+        proficiency_bonus = self.constants.proficiency_bonus.get(total_level, 2)
+        
+        return proficiency_bonus
+    
+    def _get_spell_information(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Get spell count information."""
+        # Count spells from various sources
+        class_spells = raw_data.get('classSpells', [])
+        other_spells = raw_data.get('spells', {})
+        
+        total_spells = 0
+        cantrips = 0
+        leveled_spells = 0
+        
+        # Count class spells
+        for class_spell_data in class_spells:
+            spells = class_spell_data.get('spells', [])
+            for spell in spells:
+                spell_def = spell.get('definition', {})
+                level = spell_def.get('level', 0)
+                
+                total_spells += 1
+                if level == 0:
+                    cantrips += 1
+                else:
+                    leveled_spells += 1
+        
+        # Count other spells (race, feat, item)
+        for source, spells in other_spells.items():
+            if isinstance(spells, list):
+                for spell in spells:
+                    spell_def = spell.get('definition', {})
+                    level = spell_def.get('level', 0)
+                    
+                    total_spells += 1
+                    if level == 0:
+                        cantrips += 1
+                    else:
+                        leveled_spells += 1
+        
+        return {
+            'total_spells': total_spells,
+            'cantrips': cantrips,
+            'leveled_spells': leveled_spells
+        }

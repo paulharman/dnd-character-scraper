@@ -1,0 +1,85 @@
+# D&D 2014 Rules Configuration
+# PHB 2014 specific rules and progressions
+
+# Spell Slot Progressions
+spell_progressions:
+  # Full Caster Progression (Wizard, Sorcerer, Cleric, Druid, Bard)
+  full_caster:
+    1: [2, 0, 0, 0, 0, 0, 0, 0, 0]  # Level 1: 2 first-level slots
+    2: [3, 0, 0, 0, 0, 0, 0, 0, 0]  # Level 2: 3 first-level slots
+    3: [4, 2, 0, 0, 0, 0, 0, 0, 0]  # Level 3: 4 first, 2 second
+    4: [4, 3, 0, 0, 0, 0, 0, 0, 0]
+    5: [4, 3, 2, 0, 0, 0, 0, 0, 0]
+    6: [4, 3, 3, 0, 0, 0, 0, 0, 0]
+    7: [4, 3, 3, 1, 0, 0, 0, 0, 0]
+    8: [4, 3, 3, 2, 0, 0, 0, 0, 0]
+    9: [4, 3, 3, 3, 1, 0, 0, 0, 0]
+    10: [4, 3, 3, 3, 2, 0, 0, 0, 0]
+    11: [4, 3, 3, 3, 2, 1, 0, 0, 0]
+    12: [4, 3, 3, 3, 2, 1, 0, 0, 0]
+    13: [4, 3, 3, 3, 2, 1, 1, 0, 0]
+    14: [4, 3, 3, 3, 2, 1, 1, 0, 0]
+    15: [4, 3, 3, 3, 2, 1, 1, 1, 0]
+    16: [4, 3, 3, 3, 2, 1, 1, 1, 0]
+    17: [4, 3, 3, 3, 2, 1, 1, 1, 1]
+    18: [4, 3, 3, 3, 3, 1, 1, 1, 1]
+    19: [4, 3, 3, 3, 3, 2, 1, 1, 1]
+    20: [4, 3, 3, 3, 3, 2, 2, 1, 1]
+
+  # Half Caster Progression (Paladin, Ranger)
+  half_caster:
+    1: [0, 0, 0, 0, 0]  # No spells at level 1
+    2: [2, 0, 0, 0, 0]  # 2 first-level slots at level 2
+    3: [3, 0, 0, 0, 0]
+    4: [3, 0, 0, 0, 0]
+    5: [4, 2, 0, 0, 0]
+    6: [4, 2, 0, 0, 0]
+    7: [4, 3, 0, 0, 0]
+    8: [4, 3, 0, 0, 0]
+    9: [4, 3, 2, 0, 0]
+    10: [4, 3, 2, 0, 0]
+    11: [4, 3, 3, 0, 0]
+    12: [4, 3, 3, 0, 0]
+    13: [4, 3, 3, 1, 0]
+    14: [4, 3, 3, 1, 0]
+    15: [4, 3, 3, 2, 0]
+    16: [4, 3, 3, 2, 0]
+    17: [4, 3, 3, 3, 1]
+    18: [4, 3, 3, 3, 1]
+    19: [4, 3, 3, 3, 2]
+    20: [4, 3, 3, 3, 2]
+
+  # Artificer Progression (2014 rules)
+  artificer_2014:
+    1: [0, 0, 0, 0, 0]  # No spells at level 1
+    2: [2, 0, 0, 0, 0]  # 2 first-level slots at level 2
+    3: [3, 0, 0, 0, 0]
+    4: [3, 0, 0, 0, 0]
+    5: [4, 2, 0, 0, 0]
+    6: [4, 2, 0, 0, 0]
+    7: [4, 3, 0, 0, 0]
+    8: [4, 3, 0, 0, 0]
+    9: [4, 3, 2, 0, 0]
+    10: [4, 3, 2, 0, 0]
+    11: [4, 3, 3, 0, 0]
+    12: [4, 3, 3, 0, 0]
+    13: [4, 3, 3, 1, 0]
+    14: [4, 3, 3, 1, 0]
+    15: [4, 3, 3, 2, 0]
+    16: [4, 3, 3, 2, 0]
+    17: [4, 3, 3, 3, 1]
+    18: [4, 3, 3, 3, 1]
+    19: [4, 3, 3, 3, 2]
+    20: [4, 3, 3, 3, 2]
+
+# 2014-specific features
+features:
+  species_terminology: "race"  # 2014 uses "race" instead of "species"
+  
+  # Ability Score Improvements
+  ability_score_improvements:
+    method: "traditional"  # Traditional ASI at specific levels
+  
+  # Background changes
+  backgrounds:
+    provide_ability_scores: false  # 2014 backgrounds don't give ability score bonuses
