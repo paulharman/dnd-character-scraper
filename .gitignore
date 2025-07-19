@@ -16,6 +16,26 @@ test_output_*
 *_debug.json
 Unknown_Character_*.json
 
+# Security - Sensitive configuration files
+.env
+.env.local
+.env.production
+.env.development
+config/discord.yaml
+discord/discord_config.yml
+**/webhook_urls.txt
+**/session_cookies.txt
+**/*_secrets.*
+**/*_private.*
+
+# Additional webhook URL protection patterns
+**/discord_webhook_*.txt
+**/webhook_*.json
+**/webhook_*.yaml
+**/webhook_*.yml
+**/*webhook*.env
+**/*discord*.env
+
 # Editor files
 .vscode/
 .idea/
@@ -40,3 +60,17 @@ mcp/servers/sequentialthinking/node_modules/
 mcp/servers/sequentialthinking/dist/
 mcp/servers/sequentialthinking/package-lock.json
 mcp/servers/sequentialthinking/*.log
+
+# Development and setup scripts (not needed in public repo)
+setup_github_repo.py
+GITHUB_COMMANDS.txt
+FEATURE_COMPLETION_CLEANUP_REPORT.md
+FEATURE_COMPLETION_SUMMARY.md
+FEATURE_COMPLETION_REPORT.md
+DISCORD_SECURITY_COMPLETION_REPORT.md
+cleanup_report.json
+security_audit_results.json
+
+# Kiro IDE specific files (development only)
+.kiro/specs/
+.kiro/hooks/
