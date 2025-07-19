@@ -73,19 +73,19 @@ DISCORD_SECURITY_COMPLETION_REPORT.md
 cleanup_report.json
 security_audit_results.json
 
-# Development test scripts (not part of formal test suite)
-parser/test_baseline_validation.py
-parser/test_factory_integration.py
-parser/test_refactor_integration.py
-parser/test_refactored_parser.py
-discord/quick_discord_test.py
-discord/test_discord_system.py
-discord/setup_discord_monitor.py
-tools/testing/test_*.py
-tools/testing/compare_*.py
-tools/testing/phase*.py
+# All tests are for development only - not included in public release
+tests/
+parser/test_*.py
+discord/test_*.py
+discord/quick_*.py
+discord/setup_*.py
+tools/testing/
+**/test_*.py
 **/quick_test_*.py
 **/temp_test_*.py
+test.py
+pytest.ini
+test_results.json
 
 # Kiro IDE specific files (development only)
 .kiro/specs/
