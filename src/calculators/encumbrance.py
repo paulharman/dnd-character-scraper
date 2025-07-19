@@ -107,6 +107,7 @@ class EncumbranceCalculator(RuleAwareCalculator):
     def _calculate_total_weight(self, raw_data: Dict[str, Any]) -> float:
         """
         Calculate total weight of all inventory items with container organization.
+        Excludes items stored in extradimensional containers (Bag of Holding, etc.).
         
         Args:
             raw_data: Raw character data
@@ -118,7 +119,21 @@ class EncumbranceCalculator(RuleAwareCalculator):
         total_weight = 0.0
         weight_by_container = {}
         
-        # Organize items by container for detailed weight tracking
+        # First pass: identify extradimensional containers
+        extradimensional_containers = set()
+        for item in inventory:
+            definition = item.get('definition', {})
+            item_name = definition.get('name', '').lower()
+            
+            # Check for known extradimensional containers
+            if any(name in item_name for name in [
+                'bag of holding', 'heward\'s handy haversack', 'portable hole',
+                'handy haversack', 'efficient quiver'
+            ]):
+                extradimensional_containers.add(item.get('id'))
+                logger.debug(f"Identified extradimensional container: {definition.get('name')} (ID: {item.get('id')})")
+        
+        # Second pass: calculate weight, excluding items in extradimensional containers
         for item in inventory:
             # Get item definition
             definition = item.get('definition', {})
@@ -134,7 +149,19 @@ class EncumbranceCalculator(RuleAwareCalculator):
             
             # Calculate total weight for this item stack
             item_weight = base_weight * weight_multiplier * quantity
-            total_weight += item_weight
+            
+            # Check if item is stored in an extradimensional container
+            container_id = item.get('containerEntityId')
+            is_in_extradimensional = container_id in extradimensional_containers
+            
+            # Only add to total weight if NOT in an extradimensional container
+            if not is_in_extradimensional:
+                total_weight += item_weight
+            else:
+                logger.debug(f"Excluding {definition.get('name')} ({item_weight} lbs) - stored in extradimensional container")
+            
+            # Note: The extradimensional container itself (e.g., Bag of Holding = 5 lbs) 
+            # will be counted because it doesn't have a containerEntityId pointing to itself
             
             # Track weight by container for detailed breakdown
             container_id = item.get('containerEntityId', 'character')

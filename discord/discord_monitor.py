@@ -12,11 +12,11 @@ import argparse
 import logging
 import sys
 import signal
+import os
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, Dict, Any
 from datetime import datetime, timedelta
 import yaml
-import os
 import functools
 
 # Force all print statements to flush immediately for subprocess compatibility
@@ -98,8 +98,10 @@ if str(discord_root) not in sys.path:
 
 from services.notification_manager import NotificationManager, NotificationConfig
 from services.discord_service import DiscordService
-from formatters.discord_formatter import FormatType
 from services.change_detection_service import ChangePriority
+from services.webhook_manager import WebhookManager
+from services.configuration_validator import ConfigurationValidator, SecurityLevel
+from services.discord_logger import DiscordLogger, OperationType, LogLevel, log_configuration_event
 
 from scraper.enhanced_dnd_scraper import EnhancedDnDScraper
 from src.config.manager import get_config_manager
@@ -120,7 +122,7 @@ class DiscordMonitor:
     - Configuration file support
     """
     
-    def __init__(self, config_path: str, use_party_mode: bool = False):
+    def __init__(self, config_path: str, use_party_mode: bool = False, character_id_override: str = None):
         self.config_path = Path(config_path)
         self.config = None
         self.notification_manager = None
@@ -130,6 +132,10 @@ class DiscordMonitor:
         self.character_ids = []
         self.archiver = None
         self.use_party_mode = use_party_mode
+        self.character_id_override = character_id_override
+        
+        # Initialize enhanced logging
+        self.discord_logger = DiscordLogger('discord.monitor')
         
         # Load configuration
         self._load_config()
@@ -137,21 +143,139 @@ class DiscordMonitor:
         logger.info(f"Discord monitor initialized with config: {config_path}")
     
     def _load_config(self):
-        """Load configuration from YAML file."""
+        """Load configuration from YAML file with environment variable support."""
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
         
         with open(self.config_path, 'r') as f:
             raw_config = yaml.safe_load(f)
         
-        # Validate required fields
+        # Process environment variables and apply security enhancements
+        self.config = self._process_config_with_env_vars(raw_config)
+        
+        # Validate required fields after environment variable processing
         required_fields = ['webhook_url']
         for field in required_fields:
-            if field not in raw_config:
-                raise ValueError(f"Required configuration field missing: {field}")
+            if field not in self.config or not self.config[field]:
+                raise ValueError(f"Required configuration field missing or empty: {field}")
         
-        self.config = raw_config
         logger.info("Configuration loaded successfully")
+        
+        # Log configuration loading event
+        self.discord_logger.log_configuration_event(
+            "config_loaded",
+            f"Configuration loaded from {self.config_path}",
+            config_details={
+                'config_file': str(self.config_path),
+                'has_webhook_url': bool(self.config.get('webhook_url')),
+                'character_count': len(self.character_ids) if hasattr(self, 'character_ids') else 0
+            }
+        )
+    
+    def _process_config_with_env_vars(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Process configuration with environment variable substitution and security enhancements.
+        
+        Args:
+            config: Raw configuration dictionary
+            
+        Returns:
+            Processed configuration with environment variables resolved
+        """
+        processed_config = config.copy()
+        
+        # Environment variable mappings (prioritized over config file)
+        env_mappings = {
+            'webhook_url': ['DISCORD_WEBHOOK_URL', 'WEBHOOK_URL'],
+            'session_cookie': ['DND_SESSION_COOKIE', 'SESSION_COOKIE'],
+            'log_level': ['LOG_LEVEL']
+        }
+        
+        # Apply environment variables with priority
+        for config_key, env_vars in env_mappings.items():
+            for env_var in env_vars:
+                env_value = os.getenv(env_var)
+                if env_value:
+                    processed_config[config_key] = env_value
+                    logger.info(f"Using environment variable {env_var} for {config_key}")
+                    break
+        
+        # Process string interpolation for remaining values
+        processed_config = self._interpolate_env_vars(processed_config)
+        
+        # Security warnings for hardcoded sensitive values
+        self._check_config_security_warnings(processed_config)
+        
+        return processed_config
+    
+    def _interpolate_env_vars(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Interpolate environment variables in configuration values.
+        Supports ${VAR_NAME} and %VAR_NAME% formats.
+        """
+        import re
+        
+        def replace_env_vars(value):
+            if not isinstance(value, str):
+                return value
+            
+            # Handle ${VAR_NAME} format
+            def replace_bash_style(match):
+                var_name = match.group(1)
+                return os.getenv(var_name, match.group(0))  # Keep original if not found
+            
+            # Handle %VAR_NAME% format  
+            def replace_windows_style(match):
+                var_name = match.group(1)
+                return os.getenv(var_name, match.group(0))  # Keep original if not found
+            
+            value = re.sub(r'\$\{([^}]+)\}', replace_bash_style, value)
+            value = re.sub(r'%([^%]+)%', replace_windows_style, value)
+            
+            return value
+        
+        def process_dict(d):
+            if isinstance(d, dict):
+                return {k: process_dict(v) for k, v in d.items()}
+            elif isinstance(d, list):
+                return [process_dict(item) for item in d]
+            else:
+                return replace_env_vars(d)
+        
+        return process_dict(config)
+    
+    def _check_config_security_warnings(self, config: Dict[str, Any]):
+        """Check for security issues in configuration and log warnings."""
+        webhook_url = config.get('webhook_url', '')
+        session_cookie = config.get('session_cookie', '')
+        
+        # Check for hardcoded webhook URLs
+        if webhook_url and isinstance(webhook_url, str):
+            if webhook_url.startswith('https://discord') and 'webhooks' in webhook_url:
+                logger.warning("⚠️  SECURITY WARNING: Hardcoded webhook URL detected in configuration!")
+                logger.warning("   Recommendation: Use environment variable DISCORD_WEBHOOK_URL instead")
+                logger.warning("   Example: export DISCORD_WEBHOOK_URL='your-webhook-url'")
+                
+                # Enhanced logging for security events
+                self.discord_logger.log_configuration_event(
+                    "security_warning",
+                    "Hardcoded webhook URL detected in configuration",
+                    security_level="HIGH"
+                )
+        
+        # Check for hardcoded session cookies
+        if session_cookie and isinstance(session_cookie, str):
+            if len(session_cookie) > 20 and not session_cookie.startswith('${') and not session_cookie.startswith('%'):
+                logger.warning("⚠️  SECURITY WARNING: Hardcoded session cookie detected in configuration!")
+                logger.warning("   Recommendation: Use environment variable DND_SESSION_COOKIE instead")
+                logger.warning("   Example: export DND_SESSION_COOKIE='your-session-cookie'")
+                
+                # Enhanced logging for security events
+                self.discord_logger.log_configuration_event(
+                    "security_warning",
+                    "Hardcoded session cookie detected in configuration",
+                    security_level="HIGH"
+                )
     
     async def initialize(self, skip_webhook_test=False):
         """Initialize all services and connections."""
@@ -159,21 +283,31 @@ class DiscordMonitor:
         log_level = self.config.get('log_level', 'INFO')
         logging.getLogger().setLevel(getattr(logging, log_level.upper()))
         
-        # Configure storage directory
+        # Configure storage directory - use character_data/discord for new architecture
         configured_storage_dir = self.config.get('storage_dir', '../character_data')
         if Path(configured_storage_dir).is_absolute():
-            self.storage_dir = Path(configured_storage_dir)
+            # Absolute path - use discord subdirectory within it
+            base_storage_dir = Path(configured_storage_dir)
+            self.storage_dir = base_storage_dir / "discord"
         else:
-            self.storage_dir = project_root / configured_storage_dir.lstrip('../')
-        self.storage_dir.mkdir(exist_ok=True)
+            # Relative path - use character_data/discord from project root
+            base_storage_dir = project_root / configured_storage_dir.lstrip('../')
+            self.storage_dir = base_storage_dir / "discord"
+        
+        self.storage_dir.mkdir(exist_ok=True, parents=True)
+        logger.info(f"Using Discord storage directory: {self.storage_dir}")
         self.storage = None
         
         # Initialize scraper configuration
         self.session_cookie = self.config.get('session_cookie')
         self.config_manager = get_config_manager()
         
-        # Prepare character IDs based on mode
-        if self.use_party_mode:
+        # Prepare character IDs based on mode and overrides
+        if self.character_id_override:
+            # Command line override takes precedence
+            self.character_ids = [int(self.character_id_override)]
+            logger.info(f"Using character ID override from command line: {self.character_ids[0]}")
+        elif self.use_party_mode:
             # Party mode: use party config
             if 'party' in self.config and self.config['party']:
                 self.character_ids = [int(char['character_id']) for char in self.config['party']]
@@ -218,41 +352,51 @@ class DiscordMonitor:
     def _create_notification_config(self) -> NotificationConfig:
         """Create notification configuration from loaded config."""
         # Parse format type
-        format_type = FormatType(self.config.get('format_type', 'detailed'))
+        
         
         # Parse minimum priority
         min_priority_name = self.config.get('min_priority', 'LOW')
         min_priority = ChangePriority[min_priority_name.upper()]
         
-        # Parse filtering configuration
-        filtering = self.config.get('filtering', {})
+        # Parse filtering configuration - support both new and legacy formats
         include_groups = None
         exclude_groups = None
         
-        if 'change_types' in filtering:
-            change_types = filtering['change_types']
+        # Check for new format: change_types at top level (config/discord.yaml format)
+        if 'change_types' in self.config:
+            change_types = self.config['change_types']
             if isinstance(change_types, list):
                 include_groups = self._convert_change_types_to_groups(change_types)
                 logger.info(f"Using change types filter: {sorted(change_types)}")
             else:
                 logger.warning("change_types must be a list, ignoring")
-        elif 'preset' in filtering:
-            preset_name = filtering['preset']
-            include_groups, exclude_groups = self._get_preset_groups(preset_name)
-            logger.info(f"Using filtering preset: '{preset_name}'")
-        else:
-            if 'include_groups' in filtering:
-                include_groups = set(filtering['include_groups'])
-                logger.info(f"Using custom include groups: {sorted(include_groups)}")
-            if 'exclude_groups' in filtering:
-                exclude_groups = set(filtering['exclude_groups'])
-                logger.info(f"Using custom exclude groups: {sorted(exclude_groups)}")
         
-        # Default to all change types (excluding meta) if no filtering specified
-        if not filtering:
-            default_change_types = [ct for ct in self._get_all_change_types() if ct != 'meta']
-            include_groups = self._convert_change_types_to_groups(default_change_types)
-            logger.info(f"No filtering configured - using default change types: {sorted(default_change_types)}")
+        # Check for legacy format: filtering section (discord_config.yml format)
+        elif 'filtering' in self.config:
+            filtering = self.config.get('filtering', {})
+            
+            if 'change_types' in filtering:
+                change_types = filtering['change_types']
+                if isinstance(change_types, list):
+                    include_groups = self._convert_change_types_to_groups(change_types)
+                    logger.info(f"Using change types filter: {sorted(change_types)}")
+                else:
+                    logger.warning("change_types must be a list, ignoring")
+            elif 'preset' in filtering:
+                preset_name = filtering['preset']
+                include_groups, exclude_groups = self._get_preset_groups(preset_name)
+                logger.info(f"Using filtering preset: '{preset_name}'")
+            else:
+                if 'include_groups' in filtering:
+                    include_groups = set(filtering['include_groups'])
+                    logger.info(f"Using custom include groups: {sorted(include_groups)}")
+                if 'exclude_groups' in filtering:
+                    exclude_groups = set(filtering['exclude_groups'])
+                    logger.info(f"Using custom exclude groups: {sorted(exclude_groups)}")
+        
+        # Default to all change types if no filtering specified
+        if include_groups is None and exclude_groups is None:
+            logger.info("No filtering configured - all change types will be included")
         
         # Parse notifications settings
         notifications = self.config.get('notifications', {})
@@ -263,7 +407,6 @@ class DiscordMonitor:
             webhook_url=self.config['webhook_url'],
             username=notifications.get('username', 'D&D Beyond Monitor'),
             avatar_url=notifications.get('avatar_url'),
-            format_type=format_type,
             max_changes_per_notification=advanced.get('max_changes_per_notification', 20),
             min_priority=min_priority,
             include_groups=include_groups,
@@ -372,32 +515,24 @@ class DiscordMonitor:
         try:
             logger.info(f"Scraping character {character_id}")
             
-            # Create scraper for this character
+            # Create scraper for this character with discord_output enabled
             scraper = EnhancedDnDScraper(
                 character_id=str(character_id), 
-                session_cookie=self.session_cookie
+                session_cookie=self.session_cookie,
+                discord_output=True  # Always save to discord directory
             )
             
-            # Fetch and calculate character data
+            # Check rate limiting before API call
+            scraper._check_rate_limit()
+            
+            # Fetch character data
             if not scraper.fetch_character_data():
                 logger.warning(f"Failed to fetch data for character {character_id}")
                 return False
             
-            character_data = scraper.calculate_character_data()
-            
-            if not character_data:
-                logger.warning(f"No data returned for character {character_id}")
-                return False
-            
-            # Save current snapshot with timestamp
-            timestamp = datetime.now().isoformat()
-            filename = f"character_{character_id}_{timestamp.replace(':', '-')}.json"
-            
-            with open(self.storage_dir / filename, 'w') as f:
-                import json
-                json.dump(character_data, f, indent=2, default=str)
-            
-            logger.info(f"Saved character snapshot: {filename}")
+            # Save character data - this will automatically save to discord directory
+            output_path = scraper.save_character_data()
+            logger.info(f"Character data saved via scraper to: {output_path}")
             
             # Archive old snapshots if configured
             self.archiver.archive_old_snapshots(character_id, self.storage_dir)
@@ -596,6 +731,246 @@ class DiscordMonitor:
             else:
                 logger.error("Discord webhook test failed!")
                 return False
+    
+    async def validate_webhook(self):
+        """Validate webhook configuration and connectivity."""
+        logger.info("Validating Discord webhook...")
+        
+        webhook_url = self.config.get('webhook_url')
+        if not webhook_url:
+            logger.error("No webhook URL configured")
+            return False
+        
+        async with WebhookManager() as manager:
+            result = await manager.test_webhook_connectivity(webhook_url, send_test_message=False)
+            
+            if result.is_valid:
+                logger.info("✅ Webhook validation successful!")
+                if result.webhook_info:
+                    logger.info(f"Webhook Name: {result.webhook_info.name}")
+                    logger.info(f"Channel ID: {result.webhook_info.channel_id}")
+                    logger.info(f"Guild ID: {result.webhook_info.guild_id}")
+                return True
+            else:
+                logger.error(f"❌ Webhook validation failed: {result.error_message}")
+                logger.error(f"Error Type: {result.error_type.value if result.error_type else 'unknown'}")
+                
+                if result.troubleshooting_steps:
+                    logger.info("Troubleshooting steps:")
+                    for step in result.troubleshooting_steps:
+                        logger.info(f"  - {step}")
+                
+                return False
+    
+    def validate_config(self):
+        """Validate configuration file for errors and security issues."""
+        logger.info("Validating configuration...")
+        
+        validator = ConfigurationValidator()
+        result = validator.validate_discord_config(self.config, str(self.config_path))
+        
+        # Report results
+        if result.is_valid:
+            logger.info("✅ Configuration validation successful!")
+        else:
+            logger.error("❌ Configuration validation failed!")
+        
+        # Show errors
+        if result.errors:
+            logger.error("Configuration errors:")
+            for error in result.errors:
+                logger.error(f"  - {error}")
+        
+        # Show warnings
+        if result.warnings:
+            logger.warning("Configuration warnings:")
+            for warning in result.warnings:
+                logger.warning(f"  - {warning}")
+        
+        # Show security warnings
+        if result.security_warnings:
+            logger.warning("Security warnings:")
+            for warning in result.security_warnings:
+                severity_icon = "🔴" if warning.severity.value == "HIGH" else "🟡" if warning.severity.value == "MEDIUM" else "🔵"
+                logger.warning(f"  {severity_icon} [{warning.severity.value}] {warning.message}")
+                logger.warning(f"    Recommendation: {warning.recommendation}")
+                if warning.file_path:
+                    logger.warning(f"    File: {warning.file_path}")
+        
+        # Show suggestions
+        if result.suggestions:
+            logger.info("Suggestions for improvement:")
+            for suggestion in result.suggestions:
+                logger.info(f"  - {suggestion}")
+        
+        return result.is_valid
+    
+    def security_check(self):
+        """Perform comprehensive security audit."""
+        logger.info("Performing security audit...")
+        
+        validator = ConfigurationValidator()
+        
+        # Check configuration
+        config_result = validator.validate_discord_config(self.config, str(self.config_path))
+        
+        # Scan project files for webhooks
+        project_root = Path(__file__).parent.parent
+        file_warnings = validator.scan_files_for_webhooks(str(project_root))
+        
+        all_warnings = config_result.security_warnings + file_warnings
+        
+        if not all_warnings:
+            logger.info("✅ No security issues found!")
+            return True
+        
+        logger.warning(f"Found {len(all_warnings)} security issue(s):")
+        
+        high_count = sum(1 for w in all_warnings if w.severity == SecurityLevel.HIGH)
+        medium_count = sum(1 for w in all_warnings if w.severity == SecurityLevel.MEDIUM)
+        low_count = sum(1 for w in all_warnings if w.severity == SecurityLevel.LOW)
+        
+        logger.warning(f"  🔴 High: {high_count}")
+        logger.warning(f"  🟡 Medium: {medium_count}")
+        logger.warning(f"  🔵 Low: {low_count}")
+        
+        for warning in all_warnings:
+            severity_icon = "🔴" if warning.severity.value == "HIGH" else "🟡" if warning.severity.value == "MEDIUM" else "🔵"
+            logger.warning(f"{severity_icon} [{warning.severity.value}] {warning.message}")
+            logger.warning(f"  Recommendation: {warning.recommendation}")
+            if warning.file_path:
+                location = f"{warning.file_path}"
+                if warning.line_number:
+                    location += f":{warning.line_number}"
+                logger.warning(f"  Location: {location}")
+        
+        # Environment variable suggestions
+        env_suggestions = validator.suggest_environment_variables(self.config)
+        if env_suggestions:
+            logger.info("Recommended environment variables:")
+            for suggestion in env_suggestions:
+                logger.info(f"  - {suggestion}")
+        
+        return high_count == 0  # Return success if no high-severity issues
+    
+    async def run_diagnostic(self):
+        """Run comprehensive diagnostic tests."""
+        logger.info("Running comprehensive diagnostic tests...")
+        
+        results = {
+            'config_validation': False,
+            'security_check': False,
+            'webhook_validation': False,
+            'webhook_test': False,
+            'character_access': False
+        }
+        
+        # 1. Configuration validation
+        logger.info("1. Validating configuration...")
+        results['config_validation'] = self.validate_config()
+        
+        # 2. Security check
+        logger.info("2. Performing security audit...")
+        results['security_check'] = self.security_check()
+        
+        # 3. Webhook validation
+        logger.info("3. Validating webhook...")
+        results['webhook_validation'] = await self.validate_webhook()
+        
+        # 4. Webhook test message
+        if results['webhook_validation']:
+            logger.info("4. Testing webhook with message...")
+            webhook_url = self.config.get('webhook_url')
+            async with WebhookManager() as manager:
+                test_result = await manager.test_webhook_connectivity(webhook_url, send_test_message=True)
+                results['webhook_test'] = test_result.is_valid
+                if not test_result.is_valid:
+                    logger.error(f"Webhook test failed: {test_result.error_message}")
+        else:
+            logger.warning("4. Skipping webhook test due to validation failure")
+        
+        # 5. Character access test
+        logger.info("5. Testing character data access...")
+        try:
+            # Test scraping one character
+            if self.character_ids:
+                test_char_id = self.character_ids[0]
+                scrape_success = await self.scrape_character(test_char_id)
+                results['character_access'] = scrape_success
+                if scrape_success:
+                    logger.info(f"✅ Successfully accessed character {test_char_id}")
+                else:
+                    logger.error(f"❌ Failed to access character {test_char_id}")
+            else:
+                logger.warning("No character IDs configured for testing")
+        except Exception as e:
+            logger.error(f"Character access test failed: {e}")
+        
+        # Summary
+        logger.info("Diagnostic Results Summary:")
+        passed = sum(1 for result in results.values() if result)
+        total = len(results)
+        
+        for test_name, result in results.items():
+            status = "✅ PASS" if result else "❌ FAIL"
+            logger.info(f"  {test_name.replace('_', ' ').title()}: {status}")
+        
+        logger.info(f"Overall: {passed}/{total} tests passed")
+        
+        if passed == total:
+            logger.info("🎉 All diagnostic tests passed! System is ready for monitoring.")
+        else:
+            logger.warning("⚠️ Some diagnostic tests failed. Please address the issues above.")
+        
+        return passed == total
+    
+    def show_logging_stats(self):
+        """Display comprehensive logging and error statistics."""
+        logger.info("Discord Logging Statistics")
+        logger.info("=" * 50)
+        
+        # Get statistics from Discord logger
+        stats = self.discord_logger.get_operation_stats()
+        
+        # Operation statistics
+        if stats['operation_counts']:
+            logger.info("Operation Statistics:")
+            for operation, counts in stats['operation_counts'].items():
+                total = counts['total']
+                errors = counts['errors']
+                success_rate = ((total - errors) / total * 100) if total > 0 else 0
+                logger.info(f"  {operation}: {total} total, {errors} errors ({success_rate:.1f}% success)")
+        else:
+            logger.info("No operations logged yet")
+        
+        # Error statistics
+        if stats['error_counts']:
+            logger.info("\nError Type Statistics:")
+            for error_type, count in stats['error_counts'].items():
+                logger.info(f"  {error_type}: {count} occurrences")
+        else:
+            logger.info("\nNo errors logged")
+        
+        # Rate limiting statistics
+        rate_limit_count = stats['recent_rate_limits']
+        if rate_limit_count > 0:
+            logger.info(f"\nRate Limiting: {rate_limit_count} events in last 24 hours")
+            if stats['rate_limit_events']:
+                logger.info("Recent rate limit events:")
+                for event in stats['rate_limit_events'][-5:]:  # Show last 5
+                    timestamp = event['timestamp']
+                    retry_after = event['retry_after']
+                    operation = event['operation']
+                    logger.info(f"  {timestamp}: {operation} rate limited for {retry_after}s")
+        else:
+            logger.info("\nNo recent rate limiting")
+        
+        # Configuration events
+        logger.info(f"\nConfiguration Events: Check logs for security warnings and config loading events")
+        
+        logger.info("\n" + "=" * 50)
+    
+
 
 
 async def main():
@@ -603,8 +978,8 @@ async def main():
     parser = argparse.ArgumentParser(description='Discord Character Monitor')
     parser.add_argument(
         '--config',
-        default='discord_config.yml',
-        help='Path to configuration file (default: discord_config.yml)'
+        default='config/discord.yaml',
+        help='Path to configuration file (default: config/discord.yaml)'
     )
     parser.add_argument(
         '--test',
@@ -641,6 +1016,36 @@ async def main():
         action='store_true',
         help='Monitor all characters in party config instead of single character_id'
     )
+    parser.add_argument(
+        '--character-id',
+        help='Override character ID from config (for single character monitoring)'
+    )
+    parser.add_argument(
+        '--validate-webhook',
+        action='store_true',
+        help='Validate webhook configuration and connectivity'
+    )
+    parser.add_argument(
+        '--validate-config',
+        action='store_true',
+        help='Validate configuration file for errors and security issues'
+    )
+    parser.add_argument(
+        '--security-check',
+        action='store_true',
+        help='Perform security audit of configuration and files'
+    )
+    parser.add_argument(
+        '--diagnostic',
+        action='store_true',
+        help='Run comprehensive diagnostic tests'
+    )
+    parser.add_argument(
+        '--logging-stats',
+        action='store_true',
+        help='Show logging and error statistics'
+    )
+
     
     args = parser.parse_args()
     
@@ -664,7 +1069,7 @@ async def main():
     )
     
     try:
-        monitor = DiscordMonitor(args.config, use_party_mode=args.party)
+        monitor = DiscordMonitor(args.config, use_party_mode=args.party, character_id_override=getattr(args, 'character_id', None))
         
         if args.test:
             # Test mode
@@ -675,6 +1080,33 @@ async def main():
             # Detailed test mode
             success = await monitor.test_notifications(detailed=True)
             sys.exit(0 if success else 1)
+        
+        if args.validate_webhook:
+            # Webhook validation mode
+            success = await monitor.validate_webhook()
+            sys.exit(0 if success else 1)
+        
+        if args.validate_config:
+            # Configuration validation mode
+            success = monitor.validate_config()
+            sys.exit(0 if success else 1)
+        
+        if args.security_check:
+            # Security audit mode
+            success = monitor.security_check()
+            sys.exit(0 if success else 1)
+        
+        if args.diagnostic:
+            # Comprehensive diagnostic mode
+            success = await monitor.run_diagnostic()
+            sys.exit(0 if success else 1)
+        
+        if args.logging_stats:
+            # Show logging statistics
+            monitor.show_logging_stats()
+            sys.exit(0)
+        
+
         
         if args.check_only:
             success = await monitor.run_once(skip_scraping=True)

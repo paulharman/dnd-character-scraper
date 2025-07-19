@@ -2,9 +2,10 @@
 # Test setup for character ID 143359582
 
 # Required: Discord webhook URL
-webhook_url: "https://discord.com/api/webhooks/1389887641419517992/lfyZwuRctAzpuD1UYSBYqWMEiN8KXPnN_jLlHJBewJyupTIFAIXhvMXrphKCW1V7vEEZ"
+webhook_url: "${DISCORD_WEBHOOK_URL}"
 
 # Required: Character ID to monitor (single character mode)
+# Note: Can be overridden with --character-id command line parameter
 character_id: "143359582"
 
 # Optional: Party monitoring - multiple characters (use --party flag to enable)
@@ -24,6 +25,7 @@ check_interval: 600  # 10 minutes
 format_type: "detailed"  # Options: compact, detailed, json
 
 # Directory to store character data snapshots
+# Note: Discord monitor now automatically uses character_data/discord subdirectory
 storage_dir: "../character_data"
 
 # Snapshot archiving: keep only the most recent X snapshots per character

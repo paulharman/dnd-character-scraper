@@ -26,19 +26,21 @@ class TestExtremeStats(unittest.TestCase):
         This helper function allows tests to continue using the simpler flat access pattern
         while working with the new structured v6.0.0 calculator output.
         """
-        basic_info = complete_data.get('basic_info', {})
+        # Get character info from the new structure
+        character_info = complete_data.get('character_info', {})
         
         # Extract basic fields
         flat_data = {
-            'id': basic_info.get('character_id', 0),
-            'name': basic_info.get('name', 'Unknown'),
-            'level': basic_info.get('level', 0),
-            'proficiency_bonus': basic_info.get('proficiency_bonus', 2),
+            'id': character_info.get('character_id', 0),
+            'name': character_info.get('name', 'Unknown'),
+            'level': character_info.get('level', 0),
+            'proficiency_bonus': character_info.get('proficiency_bonus', 2),
         }
         
-        # Extract ability scores and modifiers with defaults for errors
-        raw_ability_scores = complete_data.get('ability_scores', {})
-        raw_ability_modifiers = complete_data.get('ability_modifiers', {})
+        # Extract ability scores and modifiers from new structure
+        abilities_data = complete_data.get('abilities', {})
+        raw_ability_scores = abilities_data.get('ability_scores', {})
+        raw_ability_modifiers = abilities_data.get('ability_modifiers', {})
         
         # Handle both flat and structured ability score formats
         flat_abilities = {}
@@ -59,19 +61,23 @@ class TestExtremeStats(unittest.TestCase):
             'ability_modifiers': flat_modifiers,
         })
         
-        # Extract calculated values
+        # Extract calculated values from combat data
+        combat_data = complete_data.get('combat', {})
+        hit_points = combat_data.get('hit_points', {})
+        
         flat_data.update({
-            'armor_class': complete_data.get('armor_class', {}).get('total', 10) if isinstance(complete_data.get('armor_class'), dict) else complete_data.get('armor_class', 10),
-            'max_hp': complete_data.get('hit_points', {}).get('maximum', 1) if isinstance(complete_data.get('hit_points'), dict) else complete_data.get('max_hp', 1),
-            'initiative_bonus': complete_data.get('initiative_bonus', 0),
+            'armor_class': combat_data.get('armor_class', 10),
+            'max_hp': hit_points.get('maximum', 1) if isinstance(hit_points, dict) else 1,
+            'initiative_bonus': combat_data.get('initiative_bonus', 0),
         })
         
-        # Extract spellcasting info - handle both flat and structured formats
+        # Extract spellcasting info from new structure
+        spellcasting_data = complete_data.get('spellcasting', {})
         flat_data['spellcasting'] = {
-            'is_spellcaster': complete_data.get('is_spellcaster', False),
-            'spellcasting_ability': complete_data.get('spellcasting_ability'),
-            'spell_save_dc': complete_data.get('spell_save_dc'),
-            'spell_attack_bonus': complete_data.get('spell_attack_bonus'),
+            'is_spellcaster': spellcasting_data.get('is_spellcaster', False),
+            'spellcasting_ability': spellcasting_data.get('spellcasting_ability'),
+            'spell_save_dc': spellcasting_data.get('spell_save_dc'),
+            'spell_attack_bonus': spellcasting_data.get('spell_attack_bonus'),
         }
         
         return flat_data
@@ -113,7 +119,8 @@ class TestExtremeStats(unittest.TestCase):
         
         # AC should be extremely high with Unarmored Defense
         # Barbarian: 10 + Dex + Con = 10 + 10 + 10 = 30
-        self.assertEqual(result['armor_class'], 30)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertEqual(ac_value, 30)
         
         # HP should be extremely high
         # 20 levels of d12 + Con bonus = significant but realistic
@@ -158,8 +165,9 @@ class TestExtremeStats(unittest.TestCase):
         
         # AC should be very low but not below 1
         # 10 + Dex = 10 + (-4) = 6
-        self.assertEqual(result['armor_class'], 6)
-        self.assertGreaterEqual(result['armor_class'], 1)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertEqual(ac_value, 6)
+        self.assertGreaterEqual(ac_value, 1)
         
         # HP should be at least 1 (even with negative Con)
         self.assertGreaterEqual(result['max_hp'], 1)
@@ -203,7 +211,8 @@ class TestExtremeStats(unittest.TestCase):
         self.assertEqual(result['ability_modifiers']['charisma'], -1)
         
         # AC should be low due to terrible Dex
-        self.assertLessEqual(result['armor_class'], 10)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertLessEqual(ac_value, 10)
         
         # HP should be decent due to good Con and Fighter hit die
         # Level 10 Fighter with +5 Con: minimum would be 10 * (1 + 5) = 60, but actual calculation is more complex
@@ -391,7 +400,8 @@ class TestExtremeStats(unittest.TestCase):
         self.assertGreaterEqual(result['level'], 0)
         
         # Should have basic stats working
-        self.assertIsInstance(result['armor_class'], int)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertIsInstance(ac_value, int)
         self.assertIsInstance(result['max_hp'], int)
         self.assertGreaterEqual(result['max_hp'], 1)
     
@@ -412,7 +422,8 @@ class TestExtremeStats(unittest.TestCase):
         
         # Should have default values
         self.assertIsInstance(result['level'], int)
-        self.assertIsInstance(result['armor_class'], int)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertIsInstance(ac_value, int)
         self.assertIsInstance(result['max_hp'], int)
         self.assertIsInstance(result['proficiency_bonus'], int)
         
@@ -453,7 +464,8 @@ class TestExtremeStats(unittest.TestCase):
         self.assertEqual(result['level'], 5)
         
         # Should still calculate stats correctly
-        self.assertIsInstance(result['armor_class'], int)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertIsInstance(ac_value, int)
         self.assertIsInstance(result['max_hp'], int)
 
 

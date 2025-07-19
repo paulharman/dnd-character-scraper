@@ -93,21 +93,21 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
             # Wearing armor: armor AC + dex (capped) + shield + misc
             base_ac = armor_ac
             dex_bonus = self._get_dexterity_bonus_armored(raw_data)
+            unarmored_defense_bonus = 0  # No unarmored defense when wearing armor
             logger.debug(f"Armored AC calculation: base {base_ac} (from armor)")
         else:
             # Unarmored: 10 + dex + unarmored defense + misc
             base_ac = 10
             unarmored_defense_bonus = self._get_unarmored_defense_bonus(raw_data)
-            base_ac += unarmored_defense_bonus
             dex_bonus = self._get_dexterity_bonus(raw_data)
-            logger.debug(f"Unarmored AC calculation: base {base_ac} (10 + unarmored defense {unarmored_defense_bonus})")
+            logger.debug(f"Unarmored AC calculation: base {base_ac} + unarmored defense {unarmored_defense_bonus}")
         
         shield_bonus = self._get_shield_bonus(raw_data)
         natural_armor = self._get_natural_armor_bonus(raw_data)
         deflection_bonus = self._get_deflection_bonus(raw_data)
         misc_bonus = self._get_misc_ac_bonus(raw_data)
         
-        total_ac = base_ac + shield_bonus + dex_bonus + natural_armor + deflection_bonus + misc_bonus
+        total_ac = base_ac + shield_bonus + dex_bonus + unarmored_defense_bonus + natural_armor + deflection_bonus + misc_bonus
         
         logger.debug(f"AC components: base:{base_ac} shield:{shield_bonus} dex:{dex_bonus} natural:{natural_armor} deflection:{deflection_bonus} misc:{misc_bonus}")
         return total_ac
@@ -137,15 +137,18 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
         
         # Calculate detailed breakdown (same logic as main calculation)
         armor_ac = self._get_equipped_armor_ac(raw_data)
+        unarmored_defense_bonus = 0
+        armor_bonus = 0
+        
         if armor_ac > 0:
             # Wearing armor
             base_ac = armor_ac
+            armor_bonus = armor_ac - 10  # Armor bonus above base 10 AC
             dex_bonus = self._get_dexterity_bonus_armored(raw_data)
         else:
             # Unarmored
             base_ac = 10
             unarmored_defense_bonus = self._get_unarmored_defense_bonus(raw_data)
-            base_ac += unarmored_defense_bonus
             dex_bonus = self._get_dexterity_bonus(raw_data)
         
         shield_bonus = self._get_shield_bonus(raw_data)
@@ -153,7 +156,7 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
         deflection_bonus = self._get_deflection_bonus(raw_data)
         misc_bonus = self._get_misc_ac_bonus(raw_data)
         
-        total_ac = base_ac + shield_bonus + dex_bonus + natural_armor + deflection_bonus + misc_bonus
+        total_ac = base_ac + shield_bonus + dex_bonus + unarmored_defense_bonus + natural_armor + deflection_bonus + misc_bonus
         
         # Get equipment details
         armor_info = self._get_armor_info(raw_data)
@@ -163,8 +166,10 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
         breakdown = {
             'total': total_ac,
             'base': base_ac,
+            'armor_bonus': armor_bonus,
             'shield_bonus': shield_bonus,
             'dexterity_bonus': dex_bonus,
+            'unarmored_defense': unarmored_defense_bonus,
             'natural_armor': natural_armor,
             'deflection_bonus': deflection_bonus,
             'misc_bonus': misc_bonus,
@@ -220,16 +225,18 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
         
         for item in inventory:
             if self._is_equipped_armor(item):
-                # Try to get AC from definition first, then fall back to lookup
-                item_def = item.get('definition', {})
-                armor_class = item_def.get('armorClass')
-                
                 # Get item name from definition or top level
+                item_def = item.get('definition', {})
                 armor_name = item_def.get('name', item.get('name', 'Unknown Armor'))
                 
-                if armor_class is None or armor_class == 0:
-                    # Look up AC by name
-                    armor_class = self._get_armor_ac_by_name(armor_name)
+                # Try name lookup first for standard D&D 5e armor
+                armor_class = self._get_armor_ac_by_name(armor_name)
+                
+                if armor_class == 0:
+                    # Fallback: API armorClass field might be a bonus above 10
+                    armor_bonus = item_def.get('armorClass', 0)
+                    if armor_bonus > 0:
+                        armor_class = 10 + armor_bonus
                 
                 logger.debug(f"Equipped armor {armor_name}: AC {armor_class}")
                 return armor_class  # Return first equipped armor's AC
@@ -247,21 +254,28 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
         inventory = raw_data.get('inventory', [])
         for item in inventory:
             if self._is_equipped_armor(item):
-                # Get armor name from definition or top level
                 armor_def = item.get('definition', {})
-                armor_name = armor_def.get('name', item.get('name', '')).lower()
+                armor_name = armor_def.get('name', item.get('name', ''))
                 
-                if 'chain mail' in armor_name or 'splint' in armor_name or 'plate' in armor_name:
-                    dex_cap = 0  # Heavy armor
-                elif 'scale mail' in armor_name or 'chain shirt' in armor_name or 'breastplate' in armor_name:
-                    dex_cap = 2  # Medium armor cap
-                else:
-                    dex_cap = None  # Light armor or no cap
+                # First try to get cap from the item definition
+                dex_cap = armor_def.get('maxDexModifier')
+                
+                if dex_cap is None:
+                    # Fallback to armor type-based caps
+                    armor_name_lower = armor_name.lower()
+                    if any(heavy_armor in armor_name_lower for heavy_armor in ['chain mail', 'splint', 'plate']):
+                        dex_cap = 0  # Heavy armor
+                    elif any(medium_armor in armor_name_lower for medium_armor in ['scale mail', 'chain shirt', 'breastplate', 'half plate', 'hide']):
+                        dex_cap = 2  # Medium armor cap
+                    else:
+                        dex_cap = None  # Light armor or no cap
                 
                 if dex_cap is not None:
                     capped_dex = min(dex_bonus, dex_cap)
-                    logger.debug(f"Dex bonus capped by {armor_name}: {dex_bonus} -> {capped_dex}")
+                    logger.debug(f"Dex bonus capped by {armor_name}: {dex_bonus} -> {capped_dex} (cap: {dex_cap})")
                     return capped_dex
+                else:
+                    logger.debug(f"No Dex cap for armor {armor_name}")
         
         return dex_bonus  # No cap found
     
@@ -588,9 +602,9 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
             return False
         
         armor_names = [
-            'padded', 'leather', 'studded leather',
-            'hide', 'chain shirt', 'scale mail', 'breastplate', 'half plate',
-            'ring mail', 'chain mail', 'splint', 'plate'
+            'padded', 'leather', 'leather armor', 'studded leather',
+            'hide', 'chain shirt', 'scale mail', 'breastplate', 'half plate', 'half plate armor',
+            'ring mail', 'chain mail', 'splint', 'splint armor', 'plate', 'plate armor'
         ]
         
         return item_name.lower() in armor_names
@@ -602,18 +616,25 @@ class ArmorClassCalculator(ArmorClassCalculatorInterface):
             
         # Standard D&D 5e armor AC values
         armor_ac_table = {
+            # Light Armor
             'padded': 11,
             'leather': 11,
+            'leather armor': 11,
             'studded leather': 12,
+            # Medium Armor
             'hide': 12,
             'chain shirt': 13,
             'scale mail': 14,
             'breastplate': 14,
             'half plate': 15,
+            'half plate armor': 15,
+            # Heavy Armor
             'ring mail': 14,
             'chain mail': 16,
             'splint': 17,
-            'plate': 18
+            'splint armor': 17,
+            'plate': 18,
+            'plate armor': 18
         }
         
         return armor_ac_table.get(item_name.lower(), 0)

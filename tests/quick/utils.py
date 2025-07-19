@@ -92,20 +92,18 @@ class DirectoryValidator:
             print(f"{Fore.YELLOW}⚠ Warning: Missing directories: {validation_results['missing_dirs']}{Style.RESET_ALL}")
             print(f"{Fore.YELLOW}Some quick test features may not be available.{Style.RESET_ALL}")
 
-class TimingDecorator:
+def TimingDecorator(func):
     """Decorator for timing test execution."""
     
-    def __init__(self, func):
-        self.func = func
-        self.execution_time = 0
-    
-    def __call__(self, *args, **kwargs):
+    def wrapper(*args, **kwargs):
         start_time = time.time()
-        result = self.func(*args, **kwargs)
-        self.execution_time = time.time() - start_time
+        result = func(*args, **kwargs)
+        execution_time = time.time() - start_time
         
         # Add timing to result if it's a dict
         if isinstance(result, dict):
-            result['execution_time'] = self.execution_time
+            result['execution_time'] = execution_time
         
         return result
+    
+    return wrapper

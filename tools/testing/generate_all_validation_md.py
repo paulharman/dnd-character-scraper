@@ -45,7 +45,7 @@ def generate_markdown_with_delay(character_id: int, output_dir: Path) -> bool:
         # Build command (with enhanced spells to match v5.2.0 behavior)
         cmd = [
             sys.executable, 
-            "dnd_json_to_markdown.py",
+            "parser/dnd_json_to_markdown.py",
             str(character_id),
             str(output_file),
             "--scraper-path", "enhanced_dnd_scraper.py",

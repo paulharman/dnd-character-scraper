@@ -94,7 +94,14 @@ class HitPointCalculator(HitPointCalculatorInterface):
         """
         logger.debug("Calculating maximum hit points")
         
-        # Check if there's an override in hitPointInfo
+        # PRIORITY 1: Check for direct hit_points field (v6.0.0 structure) - use this first
+        hit_points_data = raw_data.get('hit_points', {})
+        if 'maximum' in hit_points_data:
+            max_hp = hit_points_data['maximum']
+            logger.debug(f"Using direct hit_points maximum: {max_hp}")
+            return max_hp
+        
+        # PRIORITY 2: Check if there's an override in hitPointInfo
         hit_point_info = raw_data.get('hitPointInfo', {})
         if 'maximum' in hit_point_info:
             max_hp = hit_point_info['maximum']
@@ -240,7 +247,9 @@ class HitPointCalculator(HitPointCalculatorInterface):
             hit_dice_used = class_data.get('hitDiceUsed', 0)
             
             # Get hit die size
-            hit_die_size = self.class_hit_dice.get(class_name, 8)
+            if class_name not in self.class_hit_dice:
+                raise ValueError(f"No hit die configured for class '{class_name}' - check constants.yaml")
+            hit_die_size = self.class_hit_dice[class_name]
             
             hit_dice[class_name] = {
                 'die_size': hit_die_size,
@@ -280,7 +289,9 @@ class HitPointCalculator(HitPointCalculatorInterface):
             class_level = class_data.get('level', 0)
             
             # Get hit die size for this class
-            hit_die_size = self.class_hit_dice.get(class_name, 8)
+            if class_name not in self.class_hit_dice:
+                raise ValueError(f"No hit die configured for class '{class_name}' - check constants.yaml")
+            hit_die_size = self.class_hit_dice[class_name]
             
             if class_level > 0:
                 # First level is always max hit die (without CON modifier for base)
@@ -497,7 +508,14 @@ class HitPointCalculator(HitPointCalculatorInterface):
     
     def _get_current_hp(self, raw_data: Dict[str, Any]) -> Optional[int]:
         """Get current HP from D&D Beyond data."""
-        # Try new format first (hitPointInfo)
+        # PRIORITY 1: Check for direct hit_points field (v6.0.0 structure)
+        hit_points_data = raw_data.get('hit_points', {})
+        if 'current' in hit_points_data:
+            current_hp = hit_points_data['current']
+            logger.debug(f"Using direct hit_points current: {current_hp}")
+            return current_hp
+        
+        # PRIORITY 2: Try hitPointInfo format
         hit_point_info = raw_data.get('hitPointInfo', {})
         current_hp = hit_point_info.get('current')
         if current_hp is not None:
@@ -552,8 +570,15 @@ class HitPointCalculator(HitPointCalculatorInterface):
     
     def _get_temporary_hp(self, raw_data: Dict[str, Any]) -> int:
         """Get temporary HP from D&D Beyond data."""
+        # Try multiple possible locations for temporary HP
         hit_point_info = raw_data.get('hitPointInfo', {})
-        return hit_point_info.get('temp', 0)
+        temp_hp = hit_point_info.get('temp', 0)
+        
+        # Also check direct field (for test compatibility)
+        if not temp_hp:
+            temp_hp = raw_data.get('temporaryHitPoints', 0)
+        
+        return temp_hp
     
     def _get_total_level(self, raw_data: Dict[str, Any]) -> int:
         """Get total character level."""
@@ -592,7 +617,10 @@ class HitPointCalculator(HitPointCalculatorInterface):
             class_level = class_data.get('level', 0)
             
             # Get hit die size
-            hit_die_size = self.class_hit_dice.get(class_name.lower(), 8)
+            class_name_lower = class_name.lower()
+            if class_name_lower not in self.class_hit_dice:
+                raise ValueError(f"No hit die configured for class '{class_name}' - check constants.yaml")
+            hit_die_size = self.class_hit_dice[class_name_lower]
             
             # Estimate HP contribution (first level max, others average)
             if class_level > 0:

@@ -12,7 +12,7 @@ This package provides comprehensive Discord integration for character change not
 from .services.discord_service import DiscordService, EmbedColor
 from .services.change_detection_service import ChangeDetectionService, ChangePriority
 from .services.notification_manager import NotificationManager, NotificationConfig
-from .formatters.discord_formatter import DiscordFormatter, FormatType
+from .formatters.discord_formatter import DiscordFormatter
 
 __all__ = [
     'DiscordService',
@@ -21,8 +21,7 @@ __all__ = [
     'ChangePriority',
     'NotificationManager',
     'NotificationConfig',
-    'DiscordFormatter', 
-    'FormatType'
+    'DiscordFormatter'
 ]
 
 __version__ = "1.0.0"

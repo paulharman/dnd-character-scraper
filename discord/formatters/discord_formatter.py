@@ -9,7 +9,6 @@ colors, and structured formatting.
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from enum import Enum
 
 # Handle imports with fallback for different execution contexts
 try:
@@ -34,28 +33,18 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class FormatType(Enum):
-    """Format types for Discord notifications."""
-    COMPACT = "compact"
-    DETAILED = "detailed" 
-    JSON = "json"
-
-
 class DiscordFormatter:
     """
     Formatter for Discord character change notifications.
     
     Features:
-    - Multiple format types (compact, detailed, JSON)
     - Rich emoji and color coding
     - Field grouping and prioritization
     - Configurable change limits per message
     - Support for multiple characters
     """
     
-    def __init__(self, format_type: FormatType = FormatType.DETAILED):
-        self.format_type = format_type
-        
+    def __init__(self):
         # Emoji mappings for different types of changes
         self.change_emojis = {
             ChangeType.ADDED: "➕",
@@ -91,12 +80,12 @@ class DiscordFormatter:
             'classes': '📚'
         }
         
-        logger.info(f"Discord formatter initialized with format type: {format_type.value}")
+        logger.info("Discord formatter initialized")
     
     def format_character_changes(
         self,
         change_set: CharacterChangeSet,
-        max_changes: int = 200,  # Increased default, will split based on Discord limits
+        max_changes: int = 200,
         avatar_url: Optional[str] = None
     ) -> List[DiscordMessage]:
         """
@@ -110,62 +99,11 @@ class DiscordFormatter:
         Returns:
             List of formatted Discord messages (split if needed)
         """
-        if self.format_type == FormatType.COMPACT:
-            return [self._format_compact(change_set, max_changes, avatar_url)]
-        elif self.format_type == FormatType.DETAILED:
-            return self._format_detailed_with_splitting(change_set, max_changes, avatar_url)
-        elif self.format_type == FormatType.JSON:
-            return [self._format_json(change_set, max_changes, avatar_url)]
+        # For single message with few changes, use detailed format
+        if len(change_set.changes) <= 10:
+            return [self._format_detailed(change_set, max_changes, avatar_url)]
         else:
-            raise ValueError(f"Unknown format type: {self.format_type}")
-    
-    def _format_compact(
-        self,
-        change_set: CharacterChangeSet,
-        max_changes: int,
-        avatar_url: Optional[str]
-    ) -> DiscordMessage:
-        """Format changes in compact style."""
-        embed_color = self._get_embed_color(change_set)
-        
-        # Group changes by priority
-        high_changes = change_set.get_changes_by_priority(ChangePriority.HIGH)
-        medium_changes = change_set.get_changes_by_priority(ChangePriority.MEDIUM)
-        
-        # Build description
-        description_parts = []
-        
-        if high_changes:
-            description_parts.append(f"**{len(high_changes)} important changes**")
-            for change in high_changes[:5]:  # Show first 5 high priority
-                emoji = self.change_emojis.get(change.change_type, "🔄")
-                description_parts.append(f"{emoji} {change.description}")
-        
-        if medium_changes and len(description_parts) < max_changes:
-            remaining = max_changes - len(description_parts)
-            description_parts.append(f"**{len(medium_changes)} other changes**")
-            for change in medium_changes[:remaining-1]:
-                emoji = self.change_emojis.get(change.change_type, "🔄")
-                description_parts.append(f"{emoji} {change.description}")
-        
-        total_changes = len(change_set.changes)
-        shown_changes = min(len(description_parts), max_changes)
-        
-        if total_changes > shown_changes:
-            description_parts.append(f"*... and {total_changes - shown_changes} more changes*")
-        
-        embed = DiscordEmbed(
-            title=f"🎲 {change_set.character_name} Updated",
-            description="\n".join(description_parts),
-            color=embed_color.value,
-            timestamp=change_set.timestamp.isoformat(),
-            footer={
-                'text': f"v{change_set.from_version} → v{change_set.to_version} • {total_changes} total changes"
-            },
-            thumbnail={'url': avatar_url} if avatar_url else None
-        )
-        
-        return DiscordMessage(embeds=[embed])
+            return self._format_detailed_with_splitting(change_set, max_changes, avatar_url)
     
     def _format_detailed(
         self,
@@ -173,31 +111,19 @@ class DiscordFormatter:
         max_changes: int,
         avatar_url: Optional[str]
     ) -> DiscordMessage:
-        """Format changes in detailed style with grouped fields."""
+        """Format changes in detailed style with everything in description."""
         embed_color = self._get_embed_color(change_set) 
         
         # Group changes by category
         grouped_changes = self._group_changes_by_category(change_set.changes)
         
-        # Create main embed
-        embed = DiscordEmbed(
-            title=f"🎲 {change_set.character_name} Character Update",
-            description=f"**{len(change_set.changes)} changes detected**\n{change_set.summary}",
-            color=embed_color.value,
-            timestamp=change_set.timestamp.isoformat(),
-            thumbnail={'url': avatar_url} if avatar_url else None,
-            footer={
-                'text': f"Version {change_set.from_version} → {change_set.to_version}"
-            }
-        )
-        
-        # Add fields for each category
-        fields = []
+        # Build description with all changes
+        description_parts = [f"**{len(change_set.changes)} total changes**"]
         changes_shown = 0
         
         # Priority order for categories
         category_priority = [
-            'level', 'experience', 'hit_points', 'armor_class', 'classes',
+            'level', 'experience', 'hit_points', 'armor_class', 'feats', 'classes',
             'spells', 'spell_slots', 'inventory', 'equipment', 'ability_scores',
             'skills', 'currency', 'other'
         ]
@@ -214,8 +140,10 @@ class DiscordFormatter:
             category_emoji = self.field_emojis.get(category, "📋")
             category_title = category.replace('_', ' ').title()
             
-            # Format changes for this category
-            change_lines = []
+            # Add category header
+            description_parts.append(f"{category_emoji} {category_title} ({len(changes)})")
+            
+            # Add individual changes
             for change in changes:
                 if changes_shown >= max_changes:
                     break
@@ -227,25 +155,20 @@ class DiscordFormatter:
                 if len(desc) > 120:
                     desc = desc[:117] + "..."
                 
-                change_lines.append(f"{emoji} {desc}")
+                description_parts.append(f"{emoji} {desc}")
                 changes_shown += 1
-            
-            if change_lines:
-                field_value = "\n".join(change_lines)
-                if len(change_lines) < len(changes):
-                    field_value += f"\n*... {len(changes) - len(change_lines)} more*"
-                
-                fields.append({
-                    'name': f"{category_emoji} {category_title} ({len(changes)})",
-                    'value': field_value,
-                    'inline': False  # Always full width for better readability
-                })
         
-        embed.fields = fields
-        
-        # Add avatar thumbnail if available
-        if avatar_url:
-            embed.thumbnail = {"url": avatar_url}
+        # Create main embed with everything in description
+        embed = DiscordEmbed(
+            title=f"🎲 {change_set.character_name} Updated",
+            description="\n".join(description_parts),
+            color=embed_color.value,
+            timestamp=change_set.timestamp.isoformat(),
+            thumbnail={'url': avatar_url} if avatar_url else None,
+            footer={
+                'text': f"Version {change_set.from_version} → {change_set.to_version}"
+            }
+        )
         
         return DiscordMessage(embeds=[embed])
     
@@ -358,7 +281,7 @@ class DiscordFormatter:
         if len(messages) > 1:
             logger.info(f"Split character changes into {len(messages)} Discord messages due to size limits")
         
-        return messages if messages else [self._format_detailed(change_set, max_changes, avatar_url)]
+        return messages if messages else []
     
     def _create_split_message(
         self,
@@ -394,55 +317,6 @@ class DiscordFormatter:
         
         if avatar_url:
             embed.thumbnail = {"url": avatar_url}
-        
-        return DiscordMessage(embeds=[embed])
-    
-    def _format_json(
-        self,
-        change_set: CharacterChangeSet,
-        max_changes: int,
-        avatar_url: Optional[str]
-    ) -> DiscordMessage:
-        """Format changes as JSON for debugging."""
-        import json
-        
-        # Convert changes to serializable format
-        changes_data = []
-        for change in change_set.changes[:max_changes]:
-            changes_data.append({
-                'field': change.field_path,
-                'type': change.change_type.value,
-                'priority': change.priority.name,
-                'old_value': str(change.old_value),
-                'new_value': str(change.new_value),
-                'description': change.description
-            })
-        
-        # Create JSON content
-        data = {
-            'character_id': change_set.character_id,
-            'character_name': change_set.character_name,
-            'from_version': change_set.from_version,
-            'to_version': change_set.to_version,
-            'timestamp': change_set.timestamp.isoformat(),
-            'total_changes': len(change_set.changes),
-            'changes_shown': len(changes_data),
-            'changes': changes_data
-        }
-        
-        json_content = json.dumps(data, indent=2)
-        
-        # Discord has a 2000 character limit for messages
-        if len(json_content) > 1900:
-            json_content = json_content[:1900] + "\n... (truncated)"
-        
-        embed = DiscordEmbed(
-            title=f"🎲 {change_set.character_name} - Change Data",
-            description=f"```json\n{json_content}\n```",
-            color=EmbedColor.INFO.value,
-            timestamp=change_set.timestamp.isoformat(),
-            footer={'text': f"JSON Debug Format"}
-        )
         
         return DiscordMessage(embeds=[embed])
     
@@ -507,34 +381,6 @@ class DiscordFormatter:
                 return category
         
         return 'other'
-    
-    def format_multiple_characters(
-        self,
-        change_sets: List[CharacterChangeSet],
-        max_changes_per_character: int = 10
-    ) -> List[DiscordMessage]:
-        """
-        Format changes for multiple characters.
-        
-        Args:
-            change_sets: List of character change sets
-            max_changes_per_character: Max changes to show per character
-            
-        Returns:
-            List of Discord messages (one per character)
-        """
-        messages = []
-        
-        for change_set in change_sets:
-            if change_set.changes:  # Only send if there are changes
-                message = self.format_character_changes(
-                    change_set, 
-                    max_changes_per_character
-                )
-                messages.append(message)
-        
-        logger.info(f"Formatted {len(messages)} Discord messages for {len(change_sets)} characters")
-        return messages
     
     def create_summary_message(self, change_sets: List[CharacterChangeSet]) -> DiscordMessage:
         """

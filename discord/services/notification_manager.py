@@ -18,7 +18,7 @@ from .change_detection_service import ChangeDetectionService, CharacterChangeSet
 
 # Handle both relative and absolute imports
 try:
-    from ..formatters.discord_formatter import DiscordFormatter, FormatType
+    from ..formatters.discord_formatter import DiscordFormatter
 except (ImportError, ValueError):
     # Fallback for when running as main module or beyond top-level package
     import sys
@@ -26,7 +26,7 @@ except (ImportError, ValueError):
     discord_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if discord_dir not in sys.path:
         sys.path.insert(0, discord_dir)
-    from formatters.discord_formatter import DiscordFormatter, FormatType
+    from formatters.discord_formatter import DiscordFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,6 @@ class NotificationConfig:
     webhook_url: str
     username: str = "D&D Beyond Monitor"
     avatar_url: Optional[str] = None
-    format_type: FormatType = FormatType.DETAILED
     max_changes_per_notification: int = 20
     min_priority: ChangePriority = ChangePriority.LOW
     include_groups: Optional[Set[str]] = None
@@ -71,12 +70,16 @@ class NotificationManager:
     ):
         self.storage = storage
         self.config = config
-        # Use unified character_data directory (one level up from discord folder)
-        self.storage_dir = Path(storage_dir) if storage_dir else Path("../character_data")
+        # Use provided storage directory or default to character_data directory
+        if storage_dir:
+            self.storage_dir = Path(storage_dir)
+        else:
+            # Default to character_data/discord directory (where character files are stored)
+            self.storage_dir = Path("../character_data/discord")
         
         # Initialize services
         self.change_detector = ChangeDetectionService()
-        self.formatter = DiscordFormatter(config.format_type)
+        self.formatter = DiscordFormatter()
         
         # Track last notification times to avoid spam
         self.last_notification_times: Dict[int, datetime] = {}
@@ -114,18 +117,27 @@ class NotificationManager:
             # Find all snapshot files for this character
             snapshot_files = sorted(storage_dir.glob(pattern), key=lambda p: p.stat().st_mtime)
             
-            if len(snapshot_files) < 2:
-                logger.info(f"Character {character_id} is new or has no previous snapshot - sending welcome notification")
-                # Send a "character discovered" notification instead
+            if len(snapshot_files) == 0:
+                logger.info(f"Character {character_id} has no snapshots - this shouldn't happen after scraper runs")
+                if return_message_content:
+                    return False, ""
+                return False
+            elif len(snapshot_files) == 1:
+                logger.info(f"Character {character_id} has 1 snapshot - sending welcome notification for new character")
+                # Send a "character discovered" notification for first snapshot
                 await self._send_character_discovered_notification(character_id)
+                if return_message_content:
+                    return True, "New character discovered notification sent"
                 return True
+            
+            # We have 2+ snapshots, proceed with comparison
             
             # Load the two most recent snapshots
             try:
                 import json
-                with open(snapshot_files[-2], 'r') as f:
+                with open(snapshot_files[-2], 'r', encoding='utf-8') as f:
                     old_data = json.load(f)
-                with open(snapshot_files[-1], 'r') as f:
+                with open(snapshot_files[-1], 'r', encoding='utf-8') as f:
                     new_data = json.load(f)
                 
                 # Create simple snapshot objects for comparison
@@ -167,7 +179,7 @@ class NotificationManager:
             change_set = self.change_detector.detect_changes(previous_snapshot, current_snapshot)
             
             if not change_set.changes:
-                logger.debug(f"No changes detected for character {character_id}")
+                logger.info(f"No changes detected for character {character_id}")
                 if return_message_content:
                     return False, ""
                 return False
@@ -180,6 +192,7 @@ class NotificationManager:
             )
             
             if not filtered_changes:
+                logger.info(f"Detected 0 changes for character {character_id}")
                 logger.info(f"All changes for character {character_id} were filtered out")
                 if return_message_content:
                     return False, ""
@@ -193,12 +206,15 @@ class NotificationManager:
                                  if change.priority.value >= self.config.min_priority.value]
             
             if not qualifying_changes:
+                logger.info(f"Detected 0 changes for character {character_id}")
                 logger.info(f"No changes meet minimum priority {self.config.min_priority.name}")
                 logger.info(f"Change priorities: {[f'{change.field_path}:{change.priority.name}' for change in filtered_changes]}")
                 if return_message_content:
                     return False, ""
                 return False
             
+            # Log final count after all filtering is complete
+            logger.info(f"Detected {len(qualifying_changes)} changes for character {character_id}")
             logger.info(f"Sending notification for {len(qualifying_changes)} qualifying changes (min priority: {self.config.min_priority.name})")
             
             # Output change summaries for parser integration
@@ -281,9 +297,9 @@ class NotificationManager:
                 # Load the two most recent snapshots
                 try:
                     import json
-                    with open(snapshot_files[-2], 'r') as f:
+                    with open(snapshot_files[-2], 'r', encoding='utf-8') as f:
                         old_data = json.load(f)
-                    with open(snapshot_files[-1], 'r') as f:
+                    with open(snapshot_files[-1], 'r', encoding='utf-8') as f:
                         new_data = json.load(f)
                     
                     # Create simple snapshot objects for comparison
@@ -437,13 +453,115 @@ class NotificationManager:
                     
                     if hasattr(embed, 'fields') and embed.fields:
                         for field in embed.fields:
-                            if hasattr(field, 'name') and hasattr(field, 'value'):
-                                console_output.append(f"**{self._make_console_safe(field.name)}:** {self._make_console_safe(field.value)}")
+                            # Handle field as dict (which is what we're using)
+                            if isinstance(field, dict):
+                                field_name = field.get('name', '')
+                                field_value = field.get('value', '')
+                                console_output.append(f"**{self._make_console_safe(field_name)}**")
+                                console_output.append(self._make_console_safe(field_value))
+                            # Handle field as object with attributes
+                            elif hasattr(field, 'name') and hasattr(field, 'value'):
+                                console_output.append(f"**{self._make_console_safe(field.name)}**")
+                                console_output.append(self._make_console_safe(field.value))
             
             if len(messages) > 1 and i < len(messages) - 1:
                 console_output.append("")  # Empty line between messages
         
         return "\n".join(console_output)
+    
+    async def send_startup_notification(self):
+        """Send a notification when the monitor starts."""
+        try:
+            async with DiscordService(
+                webhook_url=self.config.webhook_url,
+                username=self.config.username,
+                avatar_url=self.config.avatar_url
+            ) as discord:
+                character_count = len(self.character_ids) if hasattr(self, 'character_ids') else 1
+                await discord.send_embed(
+                    title="🚀 D&D Beyond Monitor Started",
+                    description=f"Monitoring {character_count} character(s) for changes",
+                    color=EmbedColor.SUCCESS,
+                    footer_text="Monitor started successfully"
+                )
+                logger.info("Startup notification sent")
+        except Exception as e:
+            logger.error(f"Failed to send startup notification: {e}")
+    
+    async def send_shutdown_notification(self):
+        """Send a notification when the monitor shuts down."""
+        try:
+            async with DiscordService(
+                webhook_url=self.config.webhook_url,
+                username=self.config.username,
+                avatar_url=self.config.avatar_url
+            ) as discord:
+                await discord.send_embed(
+                    title="🛑 D&D Beyond Monitor Stopped",
+                    description="Character monitoring has been stopped",
+                    color=EmbedColor.WARNING,
+                    footer_text="Monitor stopped"
+                )
+                logger.info("Shutdown notification sent")
+        except Exception as e:
+            logger.error(f"Failed to send shutdown notification: {e}")
+    
+    async def test_notification_system(self):
+        """Test the notification system with a simple message."""
+        try:
+            async with DiscordService(
+                webhook_url=self.config.webhook_url,
+                username=self.config.username,
+                avatar_url=self.config.avatar_url
+            ) as discord:
+                return await discord.test_webhook()
+        except Exception as e:
+            logger.error(f"Notification system test failed: {e}")
+            return False
+    
+    async def send_detailed_test(self):
+        """Send a detailed test notification with sample data."""
+        try:
+            async with DiscordService(
+                webhook_url=self.config.webhook_url,
+                username=self.config.username,
+                avatar_url=self.config.avatar_url
+            ) as discord:
+                # Send a comprehensive test message
+                fields = [
+                    {"name": "Test Type", "value": "Detailed System Test", "inline": True},
+                    {"name": "Timestamp", "value": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "inline": True},
+                    {"name": "Status", "value": "✅ All systems operational", "inline": False}
+                ]
+                
+                return await discord.send_embed(
+                    title="🧪 Detailed Test Notification",
+                    description="This is a comprehensive test of the Discord notification system with sample formatting.",
+                    color=EmbedColor.INFO,
+                    fields=fields,
+                    footer_text="Detailed test completed"
+                )
+        except Exception as e:
+            logger.error(f"Detailed test failed: {e}")
+            return False
+    
+    async def _send_character_discovered_notification(self, character_id: int):
+        """Send notification for newly discovered character."""
+        try:
+            async with DiscordService(
+                webhook_url=self.config.webhook_url,
+                username=self.config.username,
+                avatar_url=self.config.avatar_url
+            ) as discord:
+                await discord.send_embed(
+                    title="🆕 New Character Discovered",
+                    description=f"Started monitoring character {character_id}",
+                    color=EmbedColor.SUCCESS,
+                    footer_text="Character monitoring started"
+                )
+                logger.info(f"Character discovered notification sent for {character_id}")
+        except Exception as e:
+            logger.error(f"Failed to send character discovered notification: {e}")
     
     async def _send_multiple_character_notifications(
         self, 
@@ -514,30 +632,33 @@ class NotificationManager:
                 
             # Load the latest snapshot
             import json
-            with open(snapshot_files[-1], 'r') as f:
+            with open(snapshot_files[-1], 'r', encoding='utf-8') as f:
                 character_data = json.load(f)
             
             # Try to get avatar URL from various possible locations
             if isinstance(character_data, dict):
-                # Check basic_info first (most common location)
-                if 'basic_info' in character_data:
-                    basic_info = character_data['basic_info']
-                    if isinstance(basic_info, dict):
+                # Check character_info first (v6.0.0 format)
+                if 'character_info' in character_data:
+                    character_info = character_data['character_info']
+                    if isinstance(character_info, dict):
                         # Check for avatarUrl (D&D Beyond format)
-                        if 'avatarUrl' in basic_info and basic_info['avatarUrl']:
-                            avatar_url = basic_info['avatarUrl']
+                        if 'avatarUrl' in character_info and character_info['avatarUrl']:
+                            avatar_url = character_info['avatarUrl']
                             # Add size parameters for Discord thumbnail optimization
                             avatar_url = self._add_avatar_size_params(avatar_url)
                             return avatar_url
                         # Check for avatar_url (alternative format)
-                        if 'avatar_url' in basic_info and basic_info['avatar_url']:
-                            avatar_url = basic_info['avatar_url']
+                        if 'avatar_url' in character_info and character_info['avatar_url']:
+                            avatar_url = character_info['avatar_url']
                             avatar_url = self._add_avatar_size_params(avatar_url)
                             return avatar_url
-                        
-                        # Generate default D&D Beyond avatar if no custom avatar
-                        character_name = basic_info.get('name', 'Unknown')
-                        character_id = basic_info.get('character_id')
+                
+                # Generate default D&D Beyond avatar if no custom avatar found
+                if 'character_info' in character_data:
+                    character_info = character_data['character_info']
+                    if isinstance(character_info, dict):
+                        character_name = character_info.get('name', 'Unknown')
+                        character_id = character_info.get('character_id')
                         if character_id:
                             default_avatar = self._generate_default_avatar_url(character_id, character_name)
                             if default_avatar:
@@ -805,8 +926,7 @@ class NotificationManager:
                     title="🎲 D&D Beyond Monitor Started",
                     description="Character monitoring system is now active and watching for changes.",
                     color=EmbedColor.SUCCESS,
-                    footer_text=f"Format: {self.config.format_type.value} | "
-                               f"Min Priority: {self.config.min_priority.name}"
+                    footer_text=f"Min Priority: {self.config.min_priority.name}"
                 )
                 
         except Exception as e:

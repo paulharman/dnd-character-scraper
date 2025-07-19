@@ -1,10 +1,9 @@
 # Testing Environment Configuration
-# Settings optimized for automated testing and CI/CD
+# Only environment-specific overrides for automated testing and CI/CD
 
 # API settings for testing
 api:
-  timeout: 30
-  max_retries: 2
+  max_retries: 2  # Different from default 3
   retry_delay: 0.5  # Faster retries for testing
   
   # Mock API responses for consistent testing
@@ -12,10 +11,7 @@ api:
   mock_data_path: "tests/fixtures/api_responses/"
   
 # Output settings for testing
-output:
-  verbose: false
-  include_raw_data: false
-  format: "json"
+# (inherits include_raw_data: true from scraper.yaml for debugging)
   
 # Testing configurations
 testing:
@@ -37,6 +33,5 @@ testing:
     
 # Logging for testing
 logging:
-  level: "INFO"
-  include_timestamps: false
+  include_timestamps: false  # Different from default
   capture_for_analysis: true

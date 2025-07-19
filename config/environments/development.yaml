@@ -1,5 +1,5 @@
 # Development Environment Configuration
-# Settings optimized for development and testing
+# Only environment-specific overrides for development
 
 # Override API settings for development
 api:
@@ -9,9 +9,7 @@ api:
   
 # Enhanced output for development  
 output:
-  verbose: true
-  include_raw_data: true
-  format: "json"
+  verbose: true  # More verbose output for debugging
   
 # Development-specific logging
 logging:
@@ -21,6 +19,4 @@ logging:
   
 # Testing configurations
 testing:
-  mock_api_responses: false
-  use_cached_responses: false
   test_character_ids: [144986992, 145081718, 29682199]  # Subset for dev testing

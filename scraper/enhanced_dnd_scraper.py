@@ -64,7 +64,8 @@ class EnhancedDnDScraper:
     
     def __init__(self, character_id: str, session_cookie: Optional[str] = None, 
                  force_rule_version: Optional[RuleVersion] = None, no_html: bool = False,
-                 discord_config: Optional[Dict[str, Any]] = None, storage_dir: Optional[str] = None):
+                 discord_config: Optional[Dict[str, Any]] = None, storage_dir: Optional[str] = None,
+                 discord_output: bool = False):
         """
         Initialize the enhanced scraper.
         
@@ -75,11 +76,13 @@ class EnhancedDnDScraper:
             no_html: Whether to strip HTML from text fields
             discord_config: Optional Discord configuration for notifications
             storage_dir: Directory for storing character snapshots (for Discord)
+            discord_output: Whether to also save JSON to discord directory
         """
         self.character_id = character_id
         self.session_cookie = session_cookie
         self.force_rule_version = force_rule_version
         self.no_html = no_html
+        self.discord_output = discord_output
         
         # Initialize Discord integration if config provided
         self.discord_service = None
@@ -263,9 +266,45 @@ class EnhancedDnDScraper:
         
         return complete_data
     
+    def _get_rate_limit_file(self) -> Path:
+        """Get path to rate limit tracking file."""
+        project_root = self._find_project_root()
+        return project_root / "character_data" / ".last_scrape"
+    
+    def _check_rate_limit(self) -> bool:
+        """Check if enough time has passed since last scrape and wait if needed."""
+        config_manager = get_config_manager()
+        delay_seconds = config_manager.get_config_value('rate_limit', 'delay_between_requests', default=30)
+        
+        rate_limit_file = self._get_rate_limit_file()
+        
+        if rate_limit_file.exists():
+            try:
+                with open(rate_limit_file, 'r') as f:
+                    last_scrape_time = float(f.read().strip())
+                
+                current_time = time.time()
+                elapsed = current_time - last_scrape_time
+                
+                if elapsed < delay_seconds:
+                    wait_time = delay_seconds - elapsed
+                    logger.info(f"Rate limiting: waiting {wait_time:.1f} seconds since last scrape")
+                    time.sleep(wait_time)
+                    
+            except (ValueError, FileNotFoundError):
+                # Invalid or missing file, proceed without waiting
+                pass
+        
+        # Update the last scrape time
+        rate_limit_file.parent.mkdir(exist_ok=True)
+        with open(rate_limit_file, 'w') as f:
+            f.write(str(time.time()))
+        
+        return True
+    
     def save_character_data(self, output_file: Optional[str] = None) -> str:
         """
-        Save character data to JSON file.
+        Save character data to JSON file with new directory structure.
         
         Args:
             output_file: Optional output filename
@@ -279,54 +318,51 @@ class EnhancedDnDScraper:
         # Calculate complete data
         complete_data = self.calculate_character_data()
         
-        # Check if Discord snapshots are enabled in config
+        # Check if raw data should be saved automatically
         config_manager = get_config_manager()
-        should_create_discord_snapshot = config_manager.get_config_value('discord', 'create_snapshots', default=True)
-        explicit_output_provided = output_file is not None
+        include_raw_data = config_manager.get_config_value('output', 'include_raw_data', default=False)
+        if include_raw_data:
+            # Save raw data to scraper/raw directory automatically
+            self.save_raw_data()
         
-        if not output_file:
-            # No output file specified - use Discord-compatible naming in character_data/
-            # Find project root directory containing character_data
-            project_root = self._find_project_root()
-            character_data_dir = project_root / "character_data"
-            character_data_dir.mkdir(exist_ok=True)
-            from datetime import datetime
-            timestamp = datetime.now().isoformat().replace(':', '-')
-            output_file = f"character_{self.character_id}_{timestamp}.json"
-            output_path = character_data_dir / output_file
-        else:
+        # Find project root and create directory structure
+        project_root = self._find_project_root()
+        scraper_dir = project_root / "character_data" / "scraper"
+        discord_dir = project_root / "character_data" / "discord"
+        scraper_dir.mkdir(exist_ok=True, parents=True)
+        
+        # Generate timestamp for filename
+        from datetime import datetime
+        timestamp = datetime.now().isoformat().replace(':', '-')
+        
+        # Determine output path
+        if output_file:
             # Explicit output file specified - use exact path for backward compatibility
             output_path = Path(output_file)
+        else:
+            # Default: save to scraper directory
+            output_file = f"character_{self.character_id}_{timestamp}.json"
+            output_path = scraper_dir / output_file
         
-        # Save to requested output path
+        # Save to primary output path (scraper directory or explicit path)
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(complete_data, f, indent=2, ensure_ascii=False)
         
         logger.info(f"Character data saved to: {output_path.absolute()}")
         
-        # If Discord snapshots are enabled and an explicit output was provided, 
-        # also save a Discord-compatible file
-        if should_create_discord_snapshot and explicit_output_provided:
-            # Create Discord-compatible snapshot in addition to requested output
-            # Find project root directory containing character_data
-            project_root = self._find_project_root()
-            character_data_dir = project_root / "character_data"
-            character_data_dir.mkdir(exist_ok=True)
-            from datetime import datetime
-            timestamp = datetime.now().isoformat().replace(':', '-')
+        # If --discord flag is set, also save to discord directory
+        if self.discord_output:
+            discord_dir.mkdir(exist_ok=True, parents=True)
             discord_filename = f"character_{self.character_id}_{timestamp}.json"
-            discord_path = character_data_dir / discord_filename
+            discord_path = discord_dir / discord_filename
             
             with open(discord_path, 'w', encoding='utf-8') as f:
                 json.dump(complete_data, f, indent=2, ensure_ascii=False)
             
-            logger.info(f"Discord snapshot saved to: {discord_path.absolute()}")
-        
-        # Discord monitor will be triggered by the parser, not the scraper
-        # This ensures notifications happen after markdown generation is complete
+            logger.info(f"Discord copy saved to: {discord_path.absolute()}")
         
         # Send Discord notification if Discord service is explicitly configured (CLI)
-        elif self.discord_service:
+        if self.discord_service:
             try:
                 import asyncio
                 # Run Discord notification
@@ -344,12 +380,12 @@ class EnhancedDnDScraper:
         
         return str(output_path.absolute())
     
-    def save_raw_data(self, raw_output_file: str) -> str:
+    def save_raw_data(self, raw_output_file: Optional[str] = None) -> str:
         """
         Save raw API response to file for debugging.
         
         Args:
-            raw_output_file: Output filename for raw data
+            raw_output_file: Optional output filename (uses scraper/raw/ if not specified)
             
         Returns:
             Path to saved file
@@ -357,7 +393,20 @@ class EnhancedDnDScraper:
         if not hasattr(self, 'raw_data'):
             raise ValueError("No raw data to save. Call fetch_character_data() first.")
         
-        raw_path = Path(raw_output_file)
+        if raw_output_file:
+            # Explicit file specified
+            raw_path = Path(raw_output_file)
+        else:
+            # Default: save to scraper/raw directory
+            project_root = self._find_project_root()
+            raw_dir = project_root / "character_data" / "scraper" / "raw"
+            raw_dir.mkdir(exist_ok=True, parents=True)
+            
+            from datetime import datetime
+            timestamp = datetime.now().isoformat().replace(':', '-')
+            raw_filename = f"character_{self.character_id}_{timestamp}_raw.json"
+            raw_path = raw_dir / raw_filename
+        
         with open(raw_path, 'w', encoding='utf-8') as f:
             json.dump(self.raw_data, f, indent=2, ensure_ascii=False)
         
@@ -410,7 +459,6 @@ Local JSON files are not supported.
 
     parser.add_argument(
         "character_id",
-        nargs='?',
         help="D&D Beyond character ID (from character URL)"
     )
 
@@ -480,6 +528,12 @@ Local JSON files are not supported.
     parser.add_argument(
         "--discord-config",
         help="Path to Discord configuration file (default: discord/discord_config.yml)"
+    )
+    
+    parser.add_argument(
+        "--discord",
+        action="store_true",
+        help="Save JSON output to discord directory for monitoring (character_data/discord/)"
     )
 
     return parser
@@ -584,8 +638,12 @@ def process_batch_characters(batch_file: str, args):
                 session_cookie=args.session,
                 force_rule_version=args.force_rule_version if hasattr(args, 'force_rule_version') else None,
                 discord_config=discord_config,
-                storage_dir="character_data"
+                storage_dir="character_data",
+                discord_output=getattr(args, 'discord', False)
             )
+            
+            # Check rate limiting before API call
+            scraper._check_rate_limit()
             
             # Fetch character data
             if not scraper.fetch_character_data():
@@ -667,10 +725,7 @@ def main():
             logger.error(f"❌ Batch processing error: {e}")
             sys.exit(1)
     
-    # Validate character_id for non-batch mode
-    if not args.character_id:
-        logger.error("character_id is required when not using --batch mode")
-        sys.exit(1)
+    # character_id is now required by argparse, so no need to validate here
 
     try:
         # Handle HTML preservation configuration
@@ -708,8 +763,12 @@ def main():
             session_cookie=args.session,
             force_rule_version=force_rule_version,
             discord_config=discord_config,
-            storage_dir="character_data"
+            storage_dir="character_data",
+            discord_output=args.discord
         )
+
+        # Check rate limiting before API call
+        scraper._check_rate_limit()
 
         # Fetch character data
         if not scraper.fetch_character_data():

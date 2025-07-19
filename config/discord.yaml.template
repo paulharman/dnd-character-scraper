@@ -1,0 +1,66 @@
+# Discord Configuration Template
+# Copy this file to discord.yaml and configure with your settings
+# Use environment variables for sensitive data (recommended)
+
+# Core Discord Settings
+enabled: true                     # Enable Discord integration
+webhook_url: "${DISCORD_WEBHOOK_URL}"  # Use environment variable (RECOMMENDED)
+# webhook_url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"  # Direct URL (NOT RECOMMENDED)
+username: "D&D Beyond Scraper"    # Discord bot username
+avatar_url: null                  # Discord bot avatar URL (optional)
+
+# Character Configuration
+character_id: 12345              # Character ID (public identifier, not sensitive)
+
+# Session Cookie (for D&D Beyond access)
+session_cookie: "${DND_SESSION_COOKIE}"  # Use environment variable (RECOMMENDED)
+# session_cookie: "your-session-cookie"   # Direct cookie (NOT RECOMMENDED)
+
+# Notification Settings
+format_type: "detailed"           # Notification format: compact, detailed, json
+min_priority: "LOW"               # Minimum change priority: LOW, MEDIUM, HIGH, CRITICAL
+max_changes_per_notification: 200 # Maximum changes per notification
+timezone: "UTC"                   # Timezone for timestamps
+
+# Monitoring Settings
+check_interval: 600               # Check interval in seconds (10 minutes)
+run_continuous: false            # Run continuously or once
+log_level: "INFO"                # Logging level: DEBUG, INFO, WARNING, ERROR
+
+# Change Type Filtering
+# Remove types you don't want to monitor
+change_types:
+  - "level"              # Character level changes
+  - "experience"         # Experience point changes
+  - "hit_points"         # HP/health changes
+  - "armor_class"        # AC changes
+  - "ability_scores"     # Strength, Dex, Con, Int, Wis, Cha changes
+  - "spells_known"       # New spells learned
+  - "spell_slots"        # Spell slot changes
+  - "inventory_items"    # Items added/removed from inventory
+  - "equipment"          # Equipment changes
+  - "currency"           # Gold/currency changes
+  - "skills"             # Skill proficiency changes
+  - "proficiencies"      # Other proficiency changes
+  - "feats"              # Feat changes
+  - "class_features"     # Class feature changes
+  - "appearance"         # Appearance/avatar changes
+  - "background"         # Background changes
+
+# Advanced Settings (optional)
+advanced:
+  max_changes_per_notification: 20
+  delay_between_messages: 2.0
+  error_retry_delay: 60
+  shutdown_check_interval: 30
+  rate_limit:
+    requests_per_minute: 3
+    burst_limit: 1
+
+# Party Mode (optional - for monitoring multiple characters)
+# Uncomment and configure if using --party flag
+# party:
+#   - character_id: 12345
+#     name: "Character 1"
+#   - character_id: 67890
+#     name: "Character 2"

@@ -1,35 +1,16 @@
 # Production Environment Configuration
-# Settings optimized for production use
+# Only environment-specific settings that differ from scraper.yaml defaults
 
-# API settings for production
+# API settings for production (only overrides)
 api:
-  timeout: 30
-  max_retries: 3
-  retry_delay: 2.0
+  retry_delay: 2.0  # Faster retries for production vs 30s default
   
-  # Rate limiting for production
-  rate_limit:
-    requests_per_minute: 3  # Respectful rate limiting
-    delay_between_requests: 30  # 30 seconds between requests
-    
-# Output settings for production
-output:
-  verbose: false
-  include_raw_data: false
-  format: "json"
-  
-# Production logging
+# Production logging (environment-specific)
 logging:
   level: "INFO"
   include_timestamps: true
   log_to_file: true
   log_file_path: "logs/scraper.log"
-  
-# Error handling
-error_handling:
-  graceful_degradation: true
-  retry_on_failure: true
-  continue_on_error: true
   
 # Weekly batch processing settings
 batch_processing:

@@ -12,11 +12,11 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from calculators.armor_class import ArmorClassCalculator
-from calculators.hit_points import HitPointsCalculator  
-from calculators.spellcasting import SpellcastingCalculator
-from calculators.ability_scores import AbilityScoresCalculator
-from calculators.wealth import WealthCalculator
+from src.calculators.armor_class import ArmorClassCalculator
+from src.calculators.hit_points import HitPointCalculator
+from src.calculators.spellcasting import SpellcastingCalculator
+from src.calculators.ability_scores import AbilityScoreCalculator
+from src.calculators.wealth import WealthCalculator
 
 from ..factories.character_archetypes import CharacterArchetypeFactory
 from ..factories.api_responses import APIResponseFactory
@@ -82,13 +82,13 @@ class TestArmorClassCalculator:
         assert result.total_ac == 18  # 16 + 2 shield
 
 class TestHitPointsCalculator:
-    """Tests for HitPointsCalculator."""
+    """Tests for HitPointCalculator."""
     
     @pytest.mark.quick
     def test_basic_hp_calculation(self):
         """Test basic HP calculation for fighter."""
         character_data = CharacterArchetypeFactory.create_fighter(level=1)
-        calculator = HitPointsCalculator()
+        calculator = HitPointCalculator()
         
         mock_character = Mock()
         mock_character.level = 1
@@ -108,7 +108,7 @@ class TestHitPointsCalculator:
     def test_multiclass_hp_calculation(self):
         """Test HP calculation for multiclass character."""
         character_data = CharacterArchetypeFactory.create_multiclass_fighter_wizard(3, 2)
-        calculator = HitPointsCalculator()
+        calculator = HitPointCalculator()
         
         mock_character = Mock()
         mock_character.level = 5
@@ -128,7 +128,7 @@ class TestHitPointsCalculator:
     @pytest.mark.quick
     def test_negative_con_modifier(self):
         """Test HP calculation with negative constitution modifier."""
-        calculator = HitPointsCalculator()
+        calculator = HitPointCalculator()
         
         mock_character = Mock()
         mock_character.level = 1
@@ -209,13 +209,13 @@ class TestSpellcastingCalculator:
         assert hasattr(result, 'spell_slots')
 
 class TestAbilityScoresCalculator:
-    """Tests for AbilityScoresCalculator."""
+    """Tests for AbilityScoreCalculator."""
     
     @pytest.mark.quick
     def test_basic_ability_scores(self):
         """Test basic ability score calculation."""
         character_data = CharacterArchetypeFactory.create_fighter(level=1)
-        calculator = AbilityScoresCalculator()
+        calculator = AbilityScoreCalculator()
         
         mock_character = Mock()
         mock_character.base_ability_scores = {
@@ -239,7 +239,7 @@ class TestAbilityScoresCalculator:
     @pytest.mark.quick
     def test_ability_score_modifiers(self):
         """Test ability score modifier calculation."""
-        calculator = AbilityScoresCalculator()
+        calculator = AbilityScoreCalculator()
         
         mock_character = Mock()
         mock_character.base_ability_scores = {
@@ -349,7 +349,7 @@ class TestCalculatorErrorHandling:
     @pytest.mark.quick
     def test_missing_data_handling(self):
         """Test handling of missing required data."""
-        calculator = HitPointsCalculator()
+        calculator = HitPointCalculator()
         
         mock_character = Mock()
         mock_character.level = None

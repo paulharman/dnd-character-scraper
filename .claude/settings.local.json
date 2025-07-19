@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.dndbeyond.com)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(diff:*)",
+      "Bash(python:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:blacksmithgu.github.io)"
+    ],
+    "deny": []
+  }
+}

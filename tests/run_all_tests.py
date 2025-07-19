@@ -107,15 +107,28 @@ class ComprehensiveTestRunner:
                 'tests.unit.calculators.test_ability_scores',
                 'tests.unit.calculators.test_hit_points',
                 'tests.unit.calculators.test_spellcasting',
-                'tests.unit.calculators.test_proficiency'
+                'tests.unit.calculators.test_proficiency',
+                'tests.unit.calculators.test_coordinators'
+            ],
+            'Calculator Tests': [
+                'tests.calculators.test_enhanced_spell_processor',
+                'tests.calculators.test_enhanced_weapon_attacks',
+                'tests.calculators.test_equipment_integration',
+                'tests.calculators.test_magic_item_integration',
+                'tests.calculators.test_skill_bonus_calculator',
+                'tests.calculators.test_class_resource_calculator',
+                'tests.calculators.test_damage_calculator'
+            ],
+            'Integration Tests': [
+                'tests.integration.test_character_processing',
+                'tests.integration.test_character_validation',
+                'tests.integration.test_fresh_data_comparison',
+                'tests.integration.test_parser_refactor_comparison'
             ],
             'Edge Case Tests': [
                 'tests.edge_cases.test_multiclass_scenarios',
                 'tests.edge_cases.test_extreme_stats',
                 'tests.edge_cases.test_unknown_content'
-            ],
-            'Integration Tests': [
-                'tests.integration.test_character_processing'
             ]
         }
         
@@ -286,7 +299,7 @@ def main():
     parser = argparse.ArgumentParser(description='Run comprehensive test suite')
     parser.add_argument('-v', '--verbosity', type=int, choices=[0, 1, 2], default=2,
                        help='Test output verbosity (0=quiet, 1=normal, 2=verbose)')
-    parser.add_argument('--suite', choices=['unit', 'edge', 'integration', 'all'], default='all',
+    parser.add_argument('--suite', choices=['unit', 'calculator', 'integration', 'edge', 'all'], default='all',
                        help='Run specific test suite')
     parser.add_argument('--output', default='test_results.json',
                        help='Output file for test results')
@@ -301,8 +314,9 @@ def main():
         # Run specific suite
         suite_map = {
             'unit': 'Unit Tests',
-            'edge': 'Edge Case Tests', 
-            'integration': 'Integration Tests'
+            'calculator': 'Calculator Tests',
+            'integration': 'Integration Tests',
+            'edge': 'Edge Case Tests'
         }
         
         suite_name = suite_map[args.suite]

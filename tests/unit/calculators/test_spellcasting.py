@@ -187,8 +187,8 @@ class TestSpellcastingCalculator(unittest.TestCase):
         self.assertTrue(result['is_spellcaster'])
         self.assertEqual(result['spellcasting_ability'], 'Intelligence')
         
-        # Level 9 Arcane Trickster should have: 3 1st level, 2 2nd level
-        self.assertEqual(result['spell_slots_level_1'], 3)
+        # Level 9 Arcane Trickster should have: 4 1st level, 2 2nd level (3 caster levels)
+        self.assertEqual(result['spell_slots_level_1'], 4)
         self.assertEqual(result['spell_slots_level_2'], 2)
         self.assertEqual(result['spell_slots_level_3'], 0)
     

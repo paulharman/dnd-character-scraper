@@ -274,14 +274,15 @@ class TestFormatterSmoke:
         try:
             from formatters.yaml_formatter import YAMLFormatter
             
-            formatter = YAMLFormatter()
+            # YAMLFormatter requires character_data parameter
+            test_data = {"name": "Test", "level": 1}
+            formatter = YAMLFormatter(test_data)
             assert formatter is not None
             assert hasattr(formatter, 'format')
             assert callable(formatter.format)
             
-            # Test basic formatting
-            test_data = {"name": "Test", "level": 1}
-            result = formatter.format(test_data)
+            # Test basic formatting - format() method doesn't take additional parameters
+            result = formatter.format()
             assert result is not None
             assert isinstance(result, str)
             assert "Test" in result

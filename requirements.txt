@@ -1,8 +1,25 @@
+# D&D Beyond Character Scraper - Core Requirements
+
+# HTTP client for D&D Beyond API
 requests>=2.25.0
+
+# HTML parsing and cleaning
 beautifulsoup4>=4.9.0
+
+# Data validation and serialization
 pydantic>=2.0.0
+
+# YAML configuration file parsing
 pyyaml>=6.0.0
+
+# Async HTTP client for Discord integration
 aiohttp>=3.8.0
+
+# Async file operations
 aiofiles>=23.0.0
+
+# Async SQLite database support
 aiosqlite>=0.19.0
+
+# Async PostgreSQL support (optional)
 asyncpg>=0.29.0

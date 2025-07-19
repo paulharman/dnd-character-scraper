@@ -1,71 +1,43 @@
 # Parser Configuration for D&D Beyond Character Scraper
-# This file contains parser-specific settings and defaults
+# User preferences for parser behavior and output formatting
 
 parser:
-  version: "6.0.0"
-  
-  # Default behavior settings (can be overridden by CLI flags)
+  # Default behavior settings (user preferences)
   defaults:
     enhance_spells: true           # Use enhanced spell data from local files
-    use_dnd_ui_toolkit: false     # Generate DnD UI Toolkit compatible blocks
-    use_yaml_frontmatter: false   # Add YAML frontmatter with character metadata
+    use_dnd_ui_toolkit: true      # Generate DnD UI Toolkit compatible blocks (always enabled)
     verbose: false                # Enable verbose logging
-    rule_version: "auto"          # Rule version preference: "auto", "2014", "2024"
   
-  # Template and Component Settings
+  # Template and Component Settings (actively used)
   templates:
     jsx_components_dir: "z_Templates"              # Directory for JSX components
     inventory_component: "InventoryManager.jsx"   # Inventory management component
     spell_component: "SpellQuery.jsx"             # Spell management component
-    
-    # Code block templates
-    datacorejsx:
-      inventory_query: |
-        const { InventoryQuery } = await dc.require("{jsx_components_dir}/{inventory_component}");
-        return <InventoryQuery characterName="{character_name}" />;
-    
-    run_python:
-      working_directory: "parser"   # Working directory for run-python blocks
-      use_shell: false             # Whether to use shell=True in subprocess
   
-  # Output Formatting
+  # Output Formatting (user preferences)
   output:
-    # Section ordering in generated markdown
+    # Section ordering in generated markdown (user configurable)
+    # Users can reorder these sections as desired. See CONFIG_GUIDE.md for descriptions.
+    # Available sections: metadata, character_info, abilities, appearance, spellcasting,
+    # features, racial_traits, combat, proficiency, background, backstory, inventory
     section_order:
-      - "yaml_frontmatter"
-      - "character_header"
-      - "combat_stats"
-      - "spells"
-      - "inventory"
-      - "features"
-      - "refresh_block"
-    
-    # Formatting preferences
-    formatting:
-      clean_html: true             # Strip HTML tags from descriptions
-      spell_source_indicator: true # Show 'F' for file, 'A' for API in spell badges
-      include_rule_version: true   # Include rule version in output
+      - "metadata"        # Character metadata and technical info
+      - "character_info"  # Name, level, class, race, etc.
+      - "abilities"       # Ability scores, modifiers, saving throws
+      - "appearance"      # Physical description and appearance
+      - "spellcasting"    # Spells, spell slots, spellcasting abilities
+      - "features"        # Class features and special abilities
+      - "racial_traits"   # Racial traits and features
+      - "combat"          # Combat stats, attacks, defenses
+      - "proficiency"     # Proficiencies, skills, expertise
+      - "background"      # Background information and features
+      - "backstory"       # Character backstory and personal details
+      - "inventory"       # Equipment, items, and wealth
   
-  # Spell Enhancement Settings
+  # Spell Enhancement Settings (actively used)
   spell_enhancement:
     enabled: true                  # Master switch for spell enhancement
-    file_suffix: "-xphb.md"       # Expected suffix for spell files
-    fallback_to_api: true         # Fall back to API data if spell file not found
-    
-    # Spell description processing
-    processing:
-      remove_duplicate_headers: true
-      remove_image_references: true
-      remove_summary_sections: true
-      convert_headers_to_h5: true
   
-  # Discord Integration Settings
+  # Discord Integration Settings (actively used)
   discord:
     enabled: true                 # Enable Discord notifications when parsing
-    show_changes_in_console: true # Display Discord changes in parser output
-    
-  # Logging Configuration
-  logging:
-    level: "INFO"                 # DEBUG, INFO, WARNING, ERROR
-    include_timestamps: true      # Include timestamps in log messages
-    include_rule_detection: true  # Log rule version detection

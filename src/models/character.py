@@ -96,6 +96,7 @@ class Background(ExtensibleModel):
     """Character background information."""
     id: Optional[int] = None
     name: str
+    description: str = Field(default="")
     
     # 2024 backgrounds provide ability score increases
     ability_score_increases: Dict[str, int] = Field(default_factory=dict)

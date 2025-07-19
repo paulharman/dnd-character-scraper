@@ -43,8 +43,8 @@ class CharacterArchetypeFactory:
                 "wisdom": 12,
                 "charisma": 8
             },
-            "race": "Human",
-            "background": "Soldier",
+            "species": {"name": "Human"},
+            "background": {"name": "Soldier"},
             "armor_class": 16,  # Chain mail
             "hit_points": 10 + ((level - 1) * 6),  # d10 + con mod
             "is_spellcaster": False,
@@ -71,8 +71,8 @@ class CharacterArchetypeFactory:
                 "wisdom": 12,
                 "charisma": 10
             },
-            "race": "High Elf",
-            "background": "Sage",
+            "species": {"name": "High Elf"},
+            "background": {"name": "Sage"},
             "armor_class": 12,  # Mage armor
             "hit_points": 6 + ((level - 1) * 4),  # d6 + con mod
             "is_spellcaster": True,
@@ -81,6 +81,12 @@ class CharacterArchetypeFactory:
                 "1": min(level + 1, 4) if level >= 1 else 0,
                 "2": min(level - 1, 3) if level >= 3 else 0,
                 "3": min(level - 3, 3) if level >= 5 else 0,
+                "4": min(level - 5, 3) if level >= 7 else 0,
+                "5": 1 if level >= 9 else 0,  # Level 9 gets 1 5th level slot
+                "6": min(level - 9, 1) if level >= 11 else 0,
+                "7": min(level - 11, 1) if level >= 13 else 0,
+                "8": min(level - 13, 1) if level >= 15 else 0,
+                "9": min(level - 15, 1) if level >= 17 else 0,
             }
         }
     
@@ -104,8 +110,8 @@ class CharacterArchetypeFactory:
                 "wisdom": 13,
                 "charisma": 8
             },
-            "race": "Halfling",
-            "background": "Criminal",
+            "species": {"name": "Halfling"},
+            "background": {"name": "Criminal"},
             "armor_class": 13,  # Leather armor + dex
             "hit_points": 8 + ((level - 1) * 5),  # d8 + con mod
             "is_spellcaster": False,
@@ -141,15 +147,22 @@ class CharacterArchetypeFactory:
                 "wisdom": 12,
                 "charisma": 10
             },
-            "race": "Half-Elf",
-            "background": "Noble",
+            "species": {"name": "Half-Elf"},
+            "background": {"name": "Noble"},
             "armor_class": 16,  # Chain mail
             "hit_points": 10 + 6 + ((total_level - 2) * 5),  # Fighter d10 + Wizard d6 + avg
             "is_spellcaster": True,
             "proficiency_bonus": 2 + ((total_level - 1) // 4),
             "spell_slots": {
-                "1": 3 if wizard_level >= 1 else 0,
-                "2": 1 if wizard_level >= 3 else 0,
+                "1": min(wizard_level + 1, 4) if wizard_level >= 1 else 0,
+                "2": min(wizard_level - 1, 3) if wizard_level >= 3 else 0,
+                "3": min(wizard_level - 3, 3) if wizard_level >= 5 else 0,
+                "4": min(wizard_level - 5, 3) if wizard_level >= 7 else 0,
+                "5": 1 if wizard_level >= 9 else 0,
+                "6": min(wizard_level - 9, 1) if wizard_level >= 11 else 0,
+                "7": min(wizard_level - 11, 1) if wizard_level >= 13 else 0,
+                "8": min(wizard_level - 13, 1) if wizard_level >= 15 else 0,
+                "9": min(wizard_level - 15, 1) if wizard_level >= 17 else 0,
             }
         }
     
@@ -173,8 +186,8 @@ class CharacterArchetypeFactory:
                 "wisdom": 12,
                 "charisma": 10
             },
-            "race": "Half-Orc",
-            "background": "Outlander",
+            "species": {"name": "Half-Orc"},
+            "background": {"name": "Outlander"},
             "armor_class": 17,  # Unarmored defense: 10 + dex(2) + con(5)
             "hit_points": 285,  # Max HP for level 20 barbarian
             "is_spellcaster": False,

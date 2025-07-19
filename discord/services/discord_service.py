@@ -14,6 +14,10 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 
+from .discord_error_handler import DiscordErrorHandler, ErrorHandlingResult
+from .webhook_manager import WebhookManager, WebhookValidationResult
+from .discord_logger import DiscordLogger, OperationType, LogLevel, timed_operation
+
 logger = logging.getLogger(__name__)
 
 # Discord message limits
@@ -150,7 +154,18 @@ class DiscordService:
         self.rate_limiter = RateLimiter(rate_limit_requests_per_minute, rate_limit_burst)
         self.session = None
         
-        logger.info(f"Discord service initialized for webhook: {webhook_url[:50]}...")
+        # Initialize enhanced error handling and logging
+        self.error_handler = DiscordErrorHandler(
+            max_retries=max_retries,
+            base_delay=1.0,
+            max_delay=retry_max_delay,
+            backoff_factor=retry_backoff_factor
+        )
+        self.discord_logger = DiscordLogger('discord.service')
+        
+        # Log with masked webhook URL for security
+        masked_url = self._mask_webhook_url(webhook_url)
+        logger.info(f"Discord service initialized for webhook: {masked_url}")
     
     async def __aenter__(self):
         """Async context manager entry."""
@@ -197,32 +212,93 @@ class DiscordService:
                     if response.status == 204:
                         logger.info(f"Discord message sent successfully (attempt {attempt + 1})")
                         print(f"DEBUG: Successfully sent Discord message (attempt {attempt + 1}, content hash: {hash(str(payload))})")
-                        return True
-                    elif response.status == 429:
-                        # Rate limited by Discord
-                        retry_after = int(response.headers.get('Retry-After', 1))
-                        logger.warning(f"Discord rate limited, waiting {retry_after} seconds")
-                        await asyncio.sleep(retry_after)
-                        continue
-                    else:
-                        error_text = await response.text()
-                        logger.error(f"Discord API error {response.status}: {error_text}")
                         
-                        # Don't retry client errors (4xx except 429)
-                        if 400 <= response.status < 500 and response.status != 429:
+                        # Record success for error handler and enhanced logging
+                        self.error_handler.record_success()
+                        self.discord_logger.log_webhook_operation(
+                            "send_message",
+                            self.webhook_url,
+                            True,
+                            duration_ms=None
+                        )
+                        return True
+                    else:
+                        # Handle error using enhanced error handler
+                        error = Exception(f"HTTP {response.status}")
+                        error_result = self.error_handler.handle_webhook_error(error, response)
+                        
+                        logger.error(f"Discord API error: {error_result.user_message}")
+                        logger.debug(f"Technical details: {error_result.technical_details}")
+                        
+                        # Enhanced logging for webhook errors
+                        self.discord_logger.log_webhook_operation(
+                            "send_message",
+                            self.webhook_url,
+                            False,
+                            error_details={
+                                'status_code': response.status,
+                                'error_type': error_result.error_type.value,
+                                'user_message': error_result.user_message,
+                                'attempt': attempt + 1
+                            }
+                        )
+                        
+                        # Log rate limiting specifically
+                        if response.status == 429:
+                            retry_after = float(response.headers.get('Retry-After', 1))
+                            self.discord_logger.log_rate_limit_event(
+                                retry_after,
+                                "send_message"
+                            )
+                        
+                        # Check if we should retry
+                        if not error_result.should_retry or attempt >= self.max_retries:
+                            if error_result.is_permanent:
+                                logger.error("Permanent error - not retrying")
+                                logger.info("Troubleshooting steps:")
+                                for step in error_result.troubleshooting_steps:
+                                    logger.info(f"  - {step}")
                             return False
+                        
+                        # Wait for retry delay
+                        if error_result.retry_delay > 0:
+                            logger.info(f"Waiting {error_result.retry_delay} seconds before retry")
+                            await asyncio.sleep(error_result.retry_delay)
+                        continue
                             
-            except asyncio.TimeoutError:
-                logger.error(f"Discord request timeout (attempt {attempt + 1})")
             except Exception as e:
-                logger.error(f"Discord request failed (attempt {attempt + 1}): {e}")
-            
-            # Calculate backoff delay
-            if attempt < self.max_retries:
-                delay = min(
-                    self.retry_backoff_factor ** attempt,
-                    self.retry_max_delay
+                # Handle exception using enhanced error handler
+                error_result = self.error_handler.handle_webhook_error(e)
+                
+                logger.error(f"Discord request error: {error_result.user_message}")
+                logger.debug(f"Technical details: {error_result.technical_details}")
+                
+                # Enhanced logging for exceptions
+                self.discord_logger.log_error_with_context(
+                    e,
+                    OperationType.MESSAGE_SEND,
+                    context={
+                        'attempt': attempt + 1,
+                        'webhook_masked': self._mask_webhook_url(self.webhook_url),
+                        'error_classification': error_result.error_type.value
+                    }
                 )
+                
+                # Check if we should retry
+                if not error_result.should_retry or attempt >= self.max_retries:
+                    if error_result.is_permanent:
+                        logger.error("Permanent error - not retrying")
+                        logger.info("Troubleshooting steps:")
+                        for step in error_result.troubleshooting_steps:
+                            logger.info(f"  - {step}")
+                    return False
+                
+                # Calculate backoff delay if not specified
+                if error_result.retry_delay == 0:
+                    delay = self.error_handler.get_retry_delay(attempt)
+                else:
+                    delay = error_result.retry_delay
+                
                 logger.info(f"Retrying Discord request in {delay:.1f} seconds")
                 await asyncio.sleep(delay)
         
@@ -297,6 +373,73 @@ class DiscordService:
             color=EmbedColor.SUCCESS,
             footer_text="Test message"
         )
+    
+    async def validate_webhook(self) -> WebhookValidationResult:
+        """
+        Validate the webhook configuration and connectivity.
+        
+        Returns:
+            WebhookValidationResult with validation details
+        """
+        async with WebhookManager() as manager:
+            return await manager.test_webhook_connectivity(self.webhook_url, send_test_message=False)
+    
+    async def validate_webhook_with_test(self) -> WebhookValidationResult:
+        """
+        Validate the webhook and send a test message.
+        
+        Returns:
+            WebhookValidationResult with validation details
+        """
+        async with WebhookManager() as manager:
+            return await manager.test_webhook_connectivity(self.webhook_url, send_test_message=True)
+    
+    def get_error_handler_status(self) -> Dict[str, Any]:
+        """
+        Get current error handler status for monitoring.
+        
+        Returns:
+            Dictionary with error handler status information
+        """
+        return self.error_handler.get_circuit_breaker_status()
+    
+    def _mask_webhook_url(self, url: str) -> str:
+        """
+        Mask sensitive parts of webhook URL for logging.
+        
+        Args:
+            url: Full webhook URL
+            
+        Returns:
+            Masked URL safe for logging
+        """
+        if not url or len(url) < 20:
+            return "***"
+        
+        # Extract parts for masking
+        if 'webhooks' in url:
+            # Format: https://discord.com/api/webhooks/ID/TOKEN
+            parts = url.split('/')
+            if len(parts) >= 6:
+                # Show domain and first few chars of ID, mask token completely
+                webhook_id = parts[-2]
+                masked_id = f"{webhook_id[:4]}...{webhook_id[-4:]}" if len(webhook_id) > 8 else "***"
+                return f"https://discord.com/api/webhooks/{masked_id}/***"
+        
+        # Fallback: show first and last few characters
+        return f"{url[:15]}...{url[-4:]}"
+    
+    def get_logging_stats(self) -> Dict[str, Any]:
+        """
+        Get comprehensive logging and error statistics.
+        
+        Returns:
+            Dictionary with logging statistics and error handler status
+        """
+        return {
+            'logging_stats': self.discord_logger.get_operation_stats(),
+            'error_handler_status': self.error_handler.get_circuit_breaker_status()
+        }
 
 
 # Convenience function for quick Discord notifications

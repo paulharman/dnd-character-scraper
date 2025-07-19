@@ -141,8 +141,8 @@ class TestAPIDataValidation:
         """Test that character data contains expected fields."""
         character_data = CharacterArchetypeFactory.create_wizard(level=5)
         
-        # Required fields
-        required_fields = ["name", "level", "classes", "ability_scores", "race", "background"]
+        # Required fields (using 'species' for 2024 D&D terminology)
+        required_fields = ["name", "level", "classes", "ability_scores", "species", "background"]
         for field in required_fields:
             assert field in character_data, f"Missing required field: {field}"
         
@@ -303,7 +303,7 @@ class TestAPIDataConsistency:
             assert "level" in archetype
             assert "classes" in archetype
             assert "ability_scores" in archetype
-            assert "race" in archetype
+            assert "species" in archetype
             assert "background" in archetype
             
             # All should have valid levels

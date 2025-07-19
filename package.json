@@ -1,0 +1,23 @@
+{
+  "name": "dnd-character-scraper",
+  "version": "6.0.0",
+  "description": "D&D Beyond Character Scraper Testing Scripts",
+  "scripts": {
+    "test": "python test.py",
+    "test:quick": "python test.py --quick",
+    "test:unit": "python test.py --unit",
+    "test:integration": "python test.py --integration",
+    "test:calculator": "python test.py --calculator",
+    "test:spell": "python test.py --spell",
+    "test:edge": "python test.py --edge",
+    "test:coverage": "python test.py --coverage",
+    "test:coverage-html": "python test.py --coverage-html",
+    "test:setup": "python test.py --setup-check",
+    "test:list": "python test.py --list",
+    "test:verbose": "python test.py --verbose",
+    "test:quiet": "python test.py --quiet"
+  },
+  "keywords": ["testing", "dnd", "character", "scraper"],
+  "author": "D&D Character Scraper Team",
+  "license": "MIT"
+}

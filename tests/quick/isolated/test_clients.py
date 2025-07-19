@@ -12,8 +12,8 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
-from clients.dnd_beyond_client import DNDBeyondClient
-from clients.mock_client import MockClient
+from src.clients.dndbeyond_client import DNDBeyondClient
+from src.clients.mock_client import MockDNDBeyondClient
 
 from ..factories.character_archetypes import CharacterArchetypeFactory
 from ..factories.api_responses import APIResponseFactory
@@ -160,20 +160,20 @@ class TestDNDBeyondClient:
         assert result.get('success', False) is False
         assert 'error' in result
 
-class TestMockClient:
-    """Tests for MockClient."""
+class TestMockDNDBeyondClient:
+    """Tests for MockDNDBeyondClient."""
     
     @pytest.mark.quick
     def test_mock_client_initialization(self):
-        """Test MockClient initialization."""
-        client = MockClient()
+        """Test MockDNDBeyondClient initialization."""
+        client = MockDNDBeyondClient()
         assert client is not None
         assert hasattr(client, 'get_character')
 
     @pytest.mark.quick
     def test_mock_client_fighter_response(self):
-        """Test MockClient fighter response."""
-        client = MockClient()
+        """Test MockDNDBeyondClient fighter response."""
+        client = MockDNDBeyondClient()
         result = client.get_character("fighter")
         
         assert result is not None
@@ -183,8 +183,8 @@ class TestMockClient:
 
     @pytest.mark.quick
     def test_mock_client_wizard_response(self):
-        """Test MockClient wizard response."""
-        client = MockClient()
+        """Test MockDNDBeyondClient wizard response."""
+        client = MockDNDBeyondClient()
         result = client.get_character("wizard")
         
         assert result is not None
@@ -195,8 +195,8 @@ class TestMockClient:
 
     @pytest.mark.quick
     def test_mock_client_error_response(self):
-        """Test MockClient error response."""
-        client = MockClient()
+        """Test MockDNDBeyondClient error response."""
+        client = MockDNDBeyondClient()
         result = client.get_character("error")
         
         assert result is not None
@@ -205,8 +205,8 @@ class TestMockClient:
 
     @pytest.mark.quick
     def test_mock_client_unknown_character(self):
-        """Test MockClient with unknown character ID."""
-        client = MockClient()
+        """Test MockDNDBeyondClient with unknown character ID."""
+        client = MockDNDBeyondClient()
         result = client.get_character("unknown_character_id")
         
         assert result is not None
@@ -215,10 +215,10 @@ class TestMockClient:
 
     @pytest.mark.quick
     def test_mock_client_performance(self):
-        """Test MockClient performance."""
+        """Test MockDNDBeyondClient performance."""
         import time
         
-        client = MockClient()
+        client = MockDNDBeyondClient()
         
         start_time = time.time()
         result = client.get_character("fighter")
@@ -234,7 +234,7 @@ class TestClientInterface:
     @pytest.mark.quick
     def test_client_interface_compliance(self):
         """Test that clients implement required interface."""
-        clients = [DNDBeyondClient(), MockClient()]
+        clients = [DNDBeyondClient(), MockDNDBeyondClient()]
         
         for client in clients:
             assert hasattr(client, 'get_character')
@@ -243,7 +243,7 @@ class TestClientInterface:
     @pytest.mark.quick
     def test_client_response_format(self):
         """Test that clients return consistent response format."""
-        clients = [MockClient()]  # DNDBeyondClient requires mocking
+        clients = [MockDNDBeyondClient()]  # DNDBeyondClient requires mocking
         
         for client in clients:
             result = client.get_character("fighter")
@@ -262,7 +262,7 @@ class TestClientInterface:
     @pytest.mark.quick
     def test_client_error_consistency(self):
         """Test that client errors are consistently formatted."""
-        client = MockClient()
+        client = MockDNDBeyondClient()
         
         error_result = client.get_character("error")
         
@@ -278,7 +278,7 @@ class TestClientFactoryIntegration:
     @pytest.mark.quick
     def test_client_with_archetype_factory(self):
         """Test client integration with character archetypes."""
-        client = MockClient()
+        client = MockDNDBeyondClient()
         
         # Test different archetypes
         archetypes = ['fighter', 'wizard', 'rogue']
@@ -309,8 +309,8 @@ class TestClientPerformance:
     
     @pytest.mark.quick
     def test_mock_client_batch_requests(self):
-        """Test MockClient with multiple requests."""
-        client = MockClient()
+        """Test MockDNDBeyondClient with multiple requests."""
+        client = MockDNDBeyondClient()
         
         # Test batch of requests
         character_ids = ['fighter', 'wizard', 'rogue'] * 10
@@ -330,7 +330,7 @@ class TestClientPerformance:
     @pytest.mark.quick
     def test_client_memory_usage(self):
         """Test client memory usage stays reasonable."""
-        client = MockClient()
+        client = MockDNDBeyondClient()
         
         # Make multiple requests to check for memory leaks
         for i in range(100):

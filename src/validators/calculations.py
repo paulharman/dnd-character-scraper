@@ -9,8 +9,8 @@ import logging
 from typing import Dict, Any, List, Optional
 
 from .base import BaseValidator, ValidationResult
-from ..calculators.character_calculator import CharacterCalculator
-from ..rules.constants import GameConstants
+from src.calculators.character_calculator import CharacterCalculator
+from src.rules.constants import GameConstants
 
 logger = logging.getLogger(__name__)
 

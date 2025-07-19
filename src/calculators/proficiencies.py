@@ -37,7 +37,7 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         # Skill to ability mappings
         self.skill_abilities = self.constants.skills.ability_mappings
         
-    def calculate(self, character: Character, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def calculate(self, character: Character, raw_data: Dict[str, Any], calculated_abilities: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Calculate all proficiency information.
         
@@ -47,7 +47,7 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         logger.info(f"Calculating proficiencies for character {character.id}")
         
         proficiency_bonus = self.calculate_proficiency_bonus(character)
-        skill_proficiencies = self.get_skill_proficiencies(raw_data)
+        skill_proficiencies = self.get_skill_proficiencies(raw_data, calculated_abilities)
         saving_throw_proficiencies = self.get_saving_throw_proficiencies(raw_data)
         tool_proficiencies = self.get_tool_proficiencies(raw_data)
         language_proficiencies = self.get_language_proficiencies(raw_data)
@@ -91,12 +91,13 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         
         return self.proficiency_bonus_table.get(character.level, 2)
     
-    def get_skill_proficiencies(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def get_skill_proficiencies(self, raw_data: Dict[str, Any], calculated_abilities: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
         Get skill proficiencies with sources.
         
         Args:
             raw_data: Raw D&D Beyond character data
+            calculated_abilities: Calculated ability scores from abilities coordinator (optional)
             
         Returns:
             List of skill proficiency dictionaries with sources
@@ -108,8 +109,8 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         # Get modifiers for skill proficiencies
         modifiers = raw_data.get('modifiers', {})
         
-        # Track skills we've seen to avoid duplicates
-        seen_skills = set()
+        # Track skills we've seen to merge expertise
+        skills_map = {}
         
         # Process modifiers from different sources
         for source_type, modifier_list in modifiers.items():
@@ -119,23 +120,30 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
             for modifier in modifier_list:
                 if self._is_skill_proficiency_modifier(modifier):
                     skill_info = self._extract_skill_proficiency(modifier, source_type, raw_data)
-                    if skill_info and skill_info['name'] not in seen_skills:
-                        skills.append(skill_info)
-                        seen_skills.add(skill_info['name'])
-                        logger.debug(f"Skill proficiency: {skill_info['name']} (source: {skill_info['source']})")
+                    if skill_info:
+                        skill_name = skill_info['name']
+                        if skill_name in skills_map:
+                            # Merge expertise information
+                            if skill_info.get('expertise', False):
+                                skills_map[skill_name]['expertise'] = True
+                        else:
+                            skills_map[skill_name] = skill_info
+                        logger.debug(f"Skill proficiency: {skill_name} (source: {skill_info['source']}, expertise: {skill_info.get('expertise', False)})")
+        
+        # Convert map to list
+        skills = list(skills_map.values())
         
         # Also check proficiencies array if available
         proficiencies = raw_data.get('proficiencies', [])
         for prof in proficiencies:
             if self._is_skill_proficiency(prof):
                 skill_info = self._extract_skill_from_proficiency(prof)
-                if skill_info and skill_info['name'] not in seen_skills:
-                    skills.append(skill_info)
-                    seen_skills.add(skill_info['name'])
+                if skill_info and skill_info['name'] not in skills_map:
+                    skills_map[skill_info['name']] = skill_info
         
         # Calculate ability modifiers and total bonuses
         for skill in skills:
-            skill['ability_modifier'] = self._get_ability_modifier_for_skill(raw_data, skill['name'])
+            skill['ability_modifier'] = self._get_ability_modifier_for_skill(raw_data, skill['name'], calculated_abilities)
             skill['proficiency_bonus'] = self._get_proficiency_bonus(raw_data)
             
             # For expertise, double the proficiency bonus
@@ -148,7 +156,7 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         
         return sorted(skills, key=lambda x: x['name'])
     
-    def get_saving_throw_proficiencies(self, raw_data: Dict[str, Any]) -> List[str]:
+    def get_saving_throw_proficiencies(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Get saving throw proficiencies.
         
@@ -156,11 +164,12 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
             raw_data: Raw D&D Beyond character data
             
         Returns:
-            List of ability names for saving throw proficiencies
+            List of saving throw proficiency dictionaries with sources
         """
         logger.debug("Calculating saving throw proficiencies")
         
         saving_throws = []
+        seen_saves = set()
         
         # Get modifiers for saving throw proficiencies
         modifiers = raw_data.get('modifiers', {})
@@ -172,8 +181,15 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
             for modifier in modifier_list:
                 if self._is_saving_throw_modifier(modifier):
                     ability = self._extract_saving_throw_ability(modifier)
-                    if ability and ability not in saving_throws:
-                        saving_throws.append(ability)
+                    if ability and ability not in seen_saves:
+                        save_info = {
+                            'name': ability.title(),
+                            'source': self._get_source_name(source_type, raw_data),
+                            'source_type': source_type,
+                            'description': f'{ability.title()} saving throw proficiency'
+                        }
+                        saving_throws.append(save_info)
+                        seen_saves.add(ability)
                         logger.debug(f"Saving throw proficiency: {ability} (source: {source_type})")
         
         # Also check proficiencies array
@@ -181,17 +197,24 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         for prof in proficiencies:
             if self._is_saving_throw_proficiency(prof):
                 ability = self._extract_saving_throw_from_proficiency(prof)
-                if ability and ability not in saving_throws:
-                    saving_throws.append(ability)
+                if ability and ability not in seen_saves:
+                    save_info = {
+                        'name': ability.title(),
+                        'source': 'Proficiency List',
+                        'source_type': 'proficiency',
+                        'description': f'{ability.title()} saving throw proficiency'
+                    }
+                    saving_throws.append(save_info)
+                    seen_saves.add(ability)
         
-        return sorted(saving_throws)
+        return sorted(saving_throws, key=lambda x: x['name'])
     
     def _is_skill_proficiency_modifier(self, modifier: Dict[str, Any]) -> bool:
-        """Check if a modifier grants skill proficiency."""
+        """Check if a modifier grants skill proficiency or expertise."""
         subtype = modifier.get('subType', '').lower()
         friendly_type = modifier.get('friendlyTypeName', '').lower()
         
-        skill_keywords = ['skill', 'proficiency']
+        skill_keywords = ['skill', 'proficiency', 'expertise']
         
         return any(keyword in subtype or keyword in friendly_type for keyword in skill_keywords)
     
@@ -258,7 +281,7 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         subtype = modifier.get('subType', '').lower()
         friendly_type = modifier.get('friendlyTypeName', '').lower()
         
-        save_keywords = ['saving-throw', 'save']
+        save_keywords = ['saving-throw', 'saving-throws', 'save']
         
         return any(keyword in subtype or keyword in friendly_type for keyword in save_keywords)
     
@@ -292,16 +315,27 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         
         return None
     
-    def _get_ability_modifier_for_skill(self, raw_data: Dict[str, Any], skill_name: str) -> int:
+    def _get_ability_modifier_for_skill(self, raw_data: Dict[str, Any], skill_name: str, calculated_abilities: Dict[str, Any] = None) -> int:
         """Get ability modifier for a specific skill."""
         ability = self.skill_abilities.get(skill_name)
         if not ability:
             return 0
         
-        return self._get_ability_modifier(raw_data, ability)
+        return self._get_ability_modifier(raw_data, ability, calculated_abilities)
     
-    def _get_ability_modifier(self, raw_data: Dict[str, Any], ability_name: str) -> int:
+    def _get_ability_modifier(self, raw_data: Dict[str, Any], ability_name: str, calculated_abilities: Dict[str, Any] = None) -> int:
         """Get ability modifier for given ability."""
+        # If we have calculated abilities, use those (they include all bonuses)
+        if calculated_abilities and ability_name.lower() in calculated_abilities:
+            ability_data = calculated_abilities[ability_name.lower()]
+            if isinstance(ability_data, dict) and 'modifier' in ability_data:
+                return ability_data['modifier']
+            elif isinstance(ability_data, dict) and 'score' in ability_data:
+                # Calculate modifier from score if modifier not available
+                score = ability_data['score']
+                return (score - 10) // 2
+        
+        # Fallback to raw data if calculated abilities not available
         ability_id_map = {
             'strength': 1,
             'dexterity': 2,
@@ -508,12 +542,9 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         # Tool keywords to look for
         tool_keywords = ['supplies', 'kit', 'tools', 'set', 'instrument']
         
-        # Check if it's a proficiency type
-        if 'proficiency' not in friendly_type:
-            return False
-        
-        # Check if the subtype contains tool-related keywords
-        return any(keyword in friendly_subtype for keyword in tool_keywords)
+        # Check if it's a tool type or contains tool keywords
+        return ('tool' in friendly_type or 
+                any(keyword in friendly_subtype for keyword in tool_keywords))
     
     def _extract_tool_proficiency(self, modifier: Dict[str, Any], source_type: str, raw_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """Extract tool proficiency information from modifier."""
@@ -532,11 +563,12 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         friendly_subtype = modifier.get('friendlySubtypeName', '').lower()
         friendly_type = modifier.get('friendlyTypeName', '').lower()
         
-        # Common language names
-        languages = ['common', 'elvish', 'draconic', 'dwarvish', 'halfling', 'gnomish', 'giant', 'goblin', 'orc']
+        # Common language names  
+        languages = ['common', 'elvish', 'draconic', 'dwarvish', 'halfling', 'gnomish', 'giant', 'goblin', 'orc', 'thieves']
         
         # Check if it's a language-related modifier
-        return 'language' in subtype or 'language' in friendly_subtype or any(lang in friendly_subtype for lang in languages)
+        return ('language' in subtype or 'language' in friendly_subtype or 'language' in friendly_type or 
+                any(lang in friendly_subtype for lang in languages))
     
     def _extract_language_proficiency(self, modifier: Dict[str, Any], source_type: str, raw_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """Extract language proficiency information from modifier."""
@@ -585,12 +617,9 @@ class ProficiencyCalculator(ProficiencyCalculatorInterface):
         # Weapon keywords to look for
         weapon_keywords = ['weapon', 'simple', 'martial', 'sword', 'bow', 'crossbow', 'dagger', 'staff']
         
-        # Check if it's a proficiency type
-        if 'proficiency' not in friendly_type:
-            return False
-        
-        # Check if the subtype contains weapon-related keywords
-        return any(keyword in friendly_subtype for keyword in weapon_keywords)
+        # Check if it's a weapon type or contains weapon keywords
+        return ('weapon' in friendly_type or 
+                any(keyword in friendly_subtype for keyword in weapon_keywords))
     
     def _extract_weapon_proficiency(self, modifier: Dict[str, Any], source_type: str, raw_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """Extract weapon proficiency information from modifier."""

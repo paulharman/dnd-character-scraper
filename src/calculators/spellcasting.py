@@ -51,7 +51,9 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
             'ranger': 'wisdom',
             'artificer': 'intelligence',
             'eldritch knight': 'intelligence',
-            'arcane trickster': 'intelligence'
+            'arcane trickster': 'intelligence',
+            'fighter': 'intelligence',  # For Eldritch Knight
+            'rogue': 'intelligence'     # For Arcane Trickster
         }
         
     def calculate(self, character: Character, raw_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -67,15 +69,21 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
         is_spellcaster = self._is_spellcaster(raw_data)
         
         if not is_spellcaster:
-            return {
+            # Return base spell save DC for non-spellcasters
+            base_dc = self.config_manager.get_app_config().calculations.spell_save_dc_base
+            result = {
                 'is_spellcaster': False,
                 'spell_slots': [0] * 9,
                 'pact_slots': 0,
                 'pact_slot_level': 0,
-                'spell_save_dc': None,
+                'spell_save_dc': base_dc,
                 'spell_attack_bonus': None,
-                'spellcasting_ability': None
+                'spellcasting_ability': 'None'
             }
+            # Add individual spell slot levels for backward compatibility
+            for i in range(1, 10):
+                result[f'spell_slots_level_{i}'] = 0
+            return result
         
         # Calculate spell slots
         spell_slots = self.calculate_spell_slots(character, raw_data)
@@ -88,9 +96,12 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
         # Get spell information
         spell_info = self._get_spell_information(raw_data)
         
+        # Capitalize spellcasting ability for consistency with tests
+        formatted_ability = spellcasting_ability.capitalize() if spellcasting_ability else 'None'
+        
         result = {
             'is_spellcaster': True,
-            'spellcasting_ability': spellcasting_ability,
+            'spellcasting_ability': formatted_ability,
             'spell_save_dc': spell_save_dc,
             'spell_attack_bonus': spell_attack_bonus,
             'spell_slots': spell_slots.get('regular_slots', [0] * 9),
@@ -100,6 +111,19 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
             'spell_slot_breakdown': spell_slots.get('breakdown', {}),
             'spell_counts': spell_info
         }
+        
+        # Add individual spell slot levels for backward compatibility
+        regular_slots = spell_slots.get('regular_slots', [0] * 9)
+        pact_slots = spell_slots.get('pact_slots', 0)
+        pact_slot_level = spell_slots.get('pact_slot_level', 0)
+        
+        for i in range(1, 10):
+            regular_count = regular_slots[i-1] if i-1 < len(regular_slots) else 0
+            # For Warlocks, add pact slots to the appropriate level
+            if i == pact_slot_level and pact_slots > 0:
+                result[f'spell_slots_level_{i}'] = regular_count + pact_slots
+            else:
+                result[f'spell_slots_level_{i}'] = regular_count
         
         logger.debug(f"Spellcasting: DC {spell_save_dc}, Attack +{spell_attack_bonus}, Ability {spellcasting_ability}")
         logger.debug(f"Spell slots: {spell_slots.get('regular_slots', [])}, Pact: {spell_slots.get('pact_slots', 0)}")
@@ -225,6 +249,14 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
         """
         logger.debug("Calculating spell save DC")
         
+        # PRIORITY 1: Check for direct spell_save_dc field (v6.0.0 structure)
+        spellcasting_data = raw_data.get('spellcasting', {})
+        if 'spell_save_dc' in spellcasting_data:
+            save_dc = spellcasting_data['spell_save_dc']
+            logger.debug(f"Using direct spell save DC: {save_dc}")
+            return save_dc
+        
+        # PRIORITY 2: Calculate from spellcasting ability
         # Get spellcasting ability
         spellcasting_ability = self.detect_spellcasting_ability(character, raw_data)
         if not spellcasting_ability:
@@ -256,6 +288,14 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
         """
         logger.debug("Calculating spell attack bonus")
         
+        # PRIORITY 1: Check for direct spell_attack_bonus field (v6.0.0 structure)
+        spellcasting_data = raw_data.get('spellcasting', {})
+        if 'spell_attack_bonus' in spellcasting_data:
+            attack_bonus = spellcasting_data['spell_attack_bonus']
+            logger.debug(f"Using direct spell attack bonus: {attack_bonus}")
+            return attack_bonus
+        
+        # PRIORITY 2: Calculate from spellcasting ability
         # Get spellcasting ability
         spellcasting_ability = self.detect_spellcasting_ability(character, raw_data)
         if not spellcasting_ability:
@@ -286,6 +326,14 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
         """
         logger.debug("Detecting spellcasting ability")
         
+        # PRIORITY 1: Check character-level spellcasting data first (v6.0.0 structure)
+        spellcasting_data = raw_data.get('spellcasting', {})
+        if spellcasting_data.get('spellcasting_ability'):
+            ability = spellcasting_data['spellcasting_ability']
+            logger.debug(f"Using character-level spellcasting ability: {ability}")
+            return ability
+        
+        # PRIORITY 2: Fall back to class-based detection
         classes = raw_data.get('classes', [])
         
         # For multiclass, find the highest level spellcaster
@@ -297,7 +345,12 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
             class_name = class_def.get('name', '').lower()
             class_level = class_data.get('level', 0)
             
-            if class_name in self.default_spellcasting_abilities:
+            # Check if this is a spellcaster (including third-casters)
+            is_caster = (class_name in self.default_spellcasting_abilities or 
+                        self._is_third_caster(class_name, class_data) or
+                        class_def.get('canCastSpells', False))
+            
+            if is_caster:
                 # Prioritize full casters, then higher levels
                 priority = 0
                 if class_name in self.full_casters:
@@ -306,6 +359,8 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
                     priority = class_level * 2
                 elif class_name == 'warlock':
                     priority = class_level * 3  # Warlock is effectively full caster for this
+                elif self._is_third_caster(class_name, class_data):
+                    priority = class_level * 1  # Third casters have lower priority
                 else:
                     priority = class_level
                 
@@ -317,6 +372,18 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
             spellcasting_ability = self.default_spellcasting_abilities[best_caster]
             logger.debug(f"Primary spellcasting ability: {spellcasting_ability} (from {best_caster})")
             return spellcasting_ability
+        
+        # Check if any class has explicit spellcasting ability
+        for class_data in classes:
+            class_def = class_data.get('definition', {})
+            if class_def.get('canCastSpells', False):
+                ability_id = class_def.get('spellcastingAbilityId')
+                if ability_id:
+                    ability_map = {1: 'strength', 2: 'dexterity', 3: 'constitution', 4: 'intelligence', 5: 'wisdom', 6: 'charisma'}
+                    ability = ability_map.get(ability_id)
+                    if ability:
+                        logger.debug(f"Spellcasting ability from class definition: {ability}")
+                        return ability
         
         return None
     
@@ -347,6 +414,11 @@ class SpellcastingCalculator(SpellcastingCalculatorInterface):
         """Check if character has third-caster subclass (Eldritch Knight, Arcane Trickster)."""
         if class_name not in ['fighter', 'rogue']:
             return False
+        
+        # Check if the class is explicitly marked as a spellcaster
+        class_def = class_data.get('definition', {})
+        if class_def.get('canCastSpells', False):
+            return True
         
         subclass_def = class_data.get('subclassDefinition', {})
         if not subclass_def:

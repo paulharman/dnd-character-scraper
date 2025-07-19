@@ -61,12 +61,14 @@ class TestProficiencyCalculator(unittest.TestCase):
         # Should track skill proficiencies
         if 'skill_proficiencies' in result:
             skills = result['skill_proficiencies']
-            self.assertIn('Athletics', skills)
+            skill_names = [skill['name'] for skill in skills if isinstance(skill, dict)]
+            self.assertIn('Athletics', skill_names)
         
         # Should track saving throw proficiencies
         if 'saving_throw_proficiencies' in result:
             saves = result['saving_throw_proficiencies']
-            self.assertIn('Strength', saves)
+            save_names = [save['name'] for save in saves if isinstance(save, dict)]
+            self.assertIn('Strength', save_names)
     
     def test_skill_bonuses_calculation(self):
         """Test skill bonus calculations with proficiency."""
@@ -227,8 +229,9 @@ class TestProficiencyCalculator(unittest.TestCase):
         # Should track tool proficiencies
         if 'tool_proficiencies' in result:
             tools = result['tool_proficiencies']
-            self.assertIn("Thieves' Tools", tools)
-            self.assertIn("Smith's Tools", tools)
+            tool_names = [tool['name'] for tool in tools if isinstance(tool, dict)]
+            self.assertIn("Thieves' Tools", tool_names)
+            self.assertIn("Smith's Tools", tool_names)
     
     def test_language_proficiencies(self):
         """Test language proficiency tracking."""
@@ -264,9 +267,10 @@ class TestProficiencyCalculator(unittest.TestCase):
         # Should track language proficiencies
         if 'language_proficiencies' in result:
             languages = result['language_proficiencies']
-            self.assertIn('Common', languages)
-            self.assertIn('Elvish', languages)
-            self.assertIn("Thieves' Cant", languages)
+            language_names = [lang['name'] for lang in languages if isinstance(lang, dict)]
+            self.assertIn('Common', language_names)
+            self.assertIn('Elvish', language_names)
+            self.assertIn("Thieves' Cant", language_names)
     
     def test_armor_proficiencies(self):
         """Test armor proficiency tracking."""
@@ -330,8 +334,9 @@ class TestProficiencyCalculator(unittest.TestCase):
         # Should track weapon proficiencies
         if 'weapon_proficiencies' in result:
             weapons = result['weapon_proficiencies']
-            self.assertIn('Simple Weapons', weapons)
-            self.assertIn('Martial Weapons', weapons)
+            weapon_names = [weapon['name'] for weapon in weapons if isinstance(weapon, dict)]
+            self.assertIn('Simple Weapons', weapon_names)
+            self.assertIn('Martial Weapons', weapon_names)
     
     def test_proficiency_sources(self):
         """Test tracking proficiency sources."""

@@ -48,7 +48,7 @@ class RuleVersionManager:
         self.force_version: Optional[RuleVersion] = None
         
         # 2024 Source Book IDs (official D&D Beyond sources)
-        self.SOURCE_2024_IDS = {145, 146, 147, 148, 149, 150}  # 2024 D&D content sources
+        self.SOURCE_2024_IDS = {142, 143, 144, 145, 146, 147, 148, 149, 150}  # 2024 D&D content sources
         
         # Known homebrew/unofficial source patterns (to ignore)
         self.HOMEBREW_INDICATORS = {

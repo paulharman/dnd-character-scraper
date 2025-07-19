@@ -24,11 +24,13 @@ try:
         ChangeDetectionService, CharacterSnapshot, ChangePriority
     )
     from services.notification_manager import NotificationManager, NotificationConfig
-    from formatters.discord_formatter import FormatType
 except ImportError as e:
     logging.warning(f"Discord services not available: {e}")
     ChangeDetectionService = None
     NotificationManager = None
+    CharacterSnapshot = None
+    ChangePriority = None
+    NotificationConfig = None
 
 logger = logging.getLogger(__name__)
 
@@ -195,10 +197,6 @@ class DiscordIntegrationService:
     
     def _create_notification_config(self) -> NotificationConfig:
         """Create notification config from Discord config."""
-        # Parse format type
-        format_type_str = self.config.get('format_type', 'detailed')
-        format_type = FormatType(format_type_str)
-        
         # Parse minimum priority
         min_priority_str = self.config.get('min_priority', 'LOW')
         min_priority = ChangePriority[min_priority_str.upper()]
@@ -211,7 +209,6 @@ class DiscordIntegrationService:
             webhook_url=self.config.get('webhook_url', ''),
             username=self.config.get('username', 'D&D Beyond Scraper'),
             avatar_url=self.config.get('avatar_url'),
-            format_type=format_type,
             max_changes_per_notification=200,  # High limit, will split if needed
             min_priority=min_priority,
             include_groups=include_groups,
@@ -223,9 +220,10 @@ class DiscordIntegrationService:
             delay_between_messages=2.0
         )
     
-    def _convert_change_types_to_groups(self, change_types: List[str]) -> set:
+    def _convert_change_types_to_groups(self, change_types: List[str]) -> Optional[set]:
         """Convert change types to Discord notification groups."""
         # Mapping from config change types to notification groups
+        # These map to the group definitions in change_detection_service.py
         type_to_group_map = {
             'level': 'basic',
             'experience': 'basic',
@@ -245,12 +243,24 @@ class DiscordIntegrationService:
             'background': 'backstory'
         }
         
+        if not change_types:
+            logger.info("No change types specified in config - all changes will be included")
+            return None  # None means include all groups
+        
         groups = set()
         for change_type in change_types:
             if change_type in type_to_group_map:
                 groups.add(type_to_group_map[change_type])
+                logger.debug(f"Mapped change type '{change_type}' to group '{type_to_group_map[change_type]}'")
+            else:
+                logger.warning(f"Unknown change type in config: '{change_type}'")
         
-        return groups if groups else None
+        if groups:
+            logger.info(f"Discord notifications will include change groups: {sorted(groups)}")
+            return groups
+        else:
+            logger.warning("No valid change types found in config - all changes will be included")
+            return None
     
     def _filter_changes(self, changes):
         """Apply additional filtering based on config."""

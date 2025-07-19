@@ -26,19 +26,21 @@ class TestMulticlassScenarios(unittest.TestCase):
         This helper function allows tests to continue using the simpler flat access pattern
         while working with the new structured v6.0.0 calculator output.
         """
-        basic_info = complete_data.get('basic_info', {})
+        # Get character info from the new structure
+        character_info = complete_data.get('character_info', {})
         
         # Extract basic fields
         flat_data = {
-            'id': basic_info.get('character_id', 0),
-            'name': basic_info.get('name', 'Unknown'),
-            'level': basic_info.get('level', 0),
-            'proficiency_bonus': basic_info.get('proficiency_bonus', 2),
+            'id': character_info.get('character_id', 0),
+            'name': character_info.get('name', 'Unknown'),
+            'level': character_info.get('level', 0),
+            'proficiency_bonus': character_info.get('proficiency_bonus', 2),
         }
         
-        # Extract ability scores and modifiers with defaults for errors
-        raw_ability_scores = complete_data.get('ability_scores', {})
-        raw_ability_modifiers = complete_data.get('ability_modifiers', {})
+        # Extract ability scores and modifiers from new structure
+        abilities_data = complete_data.get('abilities', {})
+        raw_ability_scores = abilities_data.get('ability_scores', {})
+        raw_ability_modifiers = abilities_data.get('ability_modifiers', {})
         
         # Handle both flat and structured ability score formats
         flat_abilities = {}
@@ -59,31 +61,36 @@ class TestMulticlassScenarios(unittest.TestCase):
             'ability_modifiers': flat_modifiers,
         })
         
-        # Extract calculated values
+        # Extract calculated values from combat data
+        combat_data = complete_data.get('combat', {})
+        hit_points = combat_data.get('hit_points', {})
+        
         flat_data.update({
-            'armor_class': complete_data.get('armor_class', {}).get('total', 10) if isinstance(complete_data.get('armor_class'), dict) else complete_data.get('armor_class', 10),
-            'max_hp': complete_data.get('hit_points', {}).get('maximum', 1) if isinstance(complete_data.get('hit_points'), dict) else complete_data.get('max_hp', 1),
-            'initiative_bonus': complete_data.get('initiative_bonus', 0),
+            'armor_class': combat_data.get('armor_class', 10),
+            'max_hp': hit_points.get('maximum', 1) if isinstance(hit_points, dict) else 1,
+            'initiative_bonus': combat_data.get('initiative_bonus', 0),
         })
         
-        # Extract spellcasting info - handle both flat and structured formats
-        spell_slots = complete_data.get('spell_slots', {})
+        # Extract spellcasting info from new structure
+        spellcasting_data = complete_data.get('spellcasting', {})
+        spell_slots = spellcasting_data.get('spell_slots', [])
+        
         flat_data['spellcasting'] = {
-            'is_spellcaster': complete_data.get('is_spellcaster', False),
-            'spellcasting_ability': complete_data.get('spellcasting_ability'),
-            'spell_save_dc': complete_data.get('spell_save_dc'),
-            'spell_attack_bonus': complete_data.get('spell_attack_bonus'),
+            'is_spellcaster': spellcasting_data.get('is_spellcaster', False),
+            'spellcasting_ability': spellcasting_data.get('spellcasting_ability'),
+            'spell_save_dc': spellcasting_data.get('spell_save_dc'),
+            'spell_attack_bonus': spellcasting_data.get('spell_attack_bonus'),
             # Include spell slots in spellcasting for compatibility
-            'spell_slots_level_1': spell_slots.get('level_1', 0),
-            'spell_slots_level_2': spell_slots.get('level_2', 0),
-            'spell_slots_level_3': spell_slots.get('level_3', 0),
-            'spell_slots_level_4': spell_slots.get('level_4', 0),
-            'spell_slots_level_5': spell_slots.get('level_5', 0),
+            'spell_slots_level_1': spell_slots[0] if len(spell_slots) > 0 else 0,
+            'spell_slots_level_2': spell_slots[1] if len(spell_slots) > 1 else 0,
+            'spell_slots_level_3': spell_slots[2] if len(spell_slots) > 2 else 0,
+            'spell_slots_level_4': spell_slots[3] if len(spell_slots) > 3 else 0,
+            'spell_slots_level_5': spell_slots[4] if len(spell_slots) > 4 else 0,
         }
         
-        # Extract spell slots
+        # Extract spell slots and pact slots
         flat_data['spell_slots'] = spell_slots
-        flat_data['pact_slots'] = complete_data.get('pact_slots', 0)
+        flat_data['pact_slots'] = spellcasting_data.get('pact_slots', 0)
         
         return flat_data
     
@@ -141,8 +148,9 @@ class TestMulticlassScenarios(unittest.TestCase):
         self.assertGreaterEqual(result['max_hp'], 10)  # At least 1 per level
         
         # Should have reasonable AC
-        self.assertGreaterEqual(result['armor_class'], 10)
-        self.assertLessEqual(result['armor_class'], 25)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertGreaterEqual(ac_value, 10)
+        self.assertLessEqual(ac_value, 25)
     
     def test_fighter_rogue_multiclass(self):
         """Test Fighter/Rogue multiclass with different hit dice."""
@@ -181,7 +189,8 @@ class TestMulticlassScenarios(unittest.TestCase):
         # Should have high Dex-based AC
         dex_mod = (18 - 10) // 2  # +4
         expected_min_ac = 10 + dex_mod  # 14
-        self.assertGreaterEqual(result['armor_class'], expected_min_ac)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertGreaterEqual(ac_value, expected_min_ac)
         
         # Should have good initiative from high Dex
         self.assertEqual(result['initiative_bonus'], dex_mod)
@@ -288,7 +297,8 @@ class TestMulticlassScenarios(unittest.TestCase):
         
         # Should use the better calculation (or at least one of them)
         expected_ac = max(barbarian_ac, monk_ac)  # 16
-        self.assertGreaterEqual(result['armor_class'], expected_ac)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertGreaterEqual(ac_value, expected_ac)
         
         # Should have reasonable HP from Barbarian hit die + Con
         expected_min_hp = 20  # More realistic minimum for this build
@@ -383,8 +393,9 @@ class TestMulticlassScenarios(unittest.TestCase):
         self.assertGreaterEqual(result['max_hp'], 20)  # At least 1 per level
         self.assertLessEqual(result['max_hp'], 400)    # Not absurdly high
         
-        self.assertGreaterEqual(result['armor_class'], 10)
-        self.assertLessEqual(result['armor_class'], 30)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertGreaterEqual(ac_value, 10)
+        self.assertLessEqual(ac_value, 30)
     
     def test_single_level_dips(self):
         """Test many single-level dips."""
@@ -421,7 +432,8 @@ class TestMulticlassScenarios(unittest.TestCase):
         self.assertEqual(result['proficiency_bonus'], 4)
         
         # Should not crash on complex feature interactions
-        self.assertIsInstance(result['armor_class'], int)
+        ac_value = result['armor_class']['total'] if isinstance(result['armor_class'], dict) else result['armor_class']
+        self.assertIsInstance(ac_value, int)
         self.assertIsInstance(result['max_hp'], int)
 
 

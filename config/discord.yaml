@@ -1,55 +1,38 @@
 # Discord Configuration
-# Discord webhook settings, notification preferences, and formatting options
+# User preferences for Discord integration and notifications
 
-# Core Discord Settings
+# Core Discord Settings (user preferences)
 enabled: true                     # Enable parser → Discord monitor integration
-webhook_url: "https://discord.com/api/webhooks/1389887641419517992/lfyZwuRctAzpuD1UYSBYqWMEiN8KXPnN_jLlHJBewJyupTIFAIXhvMXrphKCW1V7vEEZ"
+webhook_url: "${DISCORD_WEBHOOK_URL}"
 username: "D&D Beyond Scraper"    # Discord bot username
 avatar_url: null                  # Discord bot avatar URL
+character_id: 143359582           # Character ID to monitor
 
-# Integration Settings
-create_snapshots: true            # Always create Discord-compatible snapshots
-notify_on_save: true              # Send notifications when characters are saved
-config_file: "discord/discord_config.yml"  # Legacy Discord monitor config file
-
-# Notification Settings
+# Notification Settings (user preferences)
 format_type: "detailed"           # Notification format: compact, detailed, json
 min_priority: "LOW"               # Minimum change priority: LOW, MEDIUM, HIGH, CRITICAL
+max_changes_per_notification: 200 # Maximum changes per notification
+timezone: "UTC"                   # Timezone for timestamps
 
-# Rate Limiting
-rate_limit:
-  requests_per_minute: 3
-  burst: 1
-  delay_between_messages: 2.0
-
-# Message Settings
-messages:
-  max_changes_per_notification: 200
-  send_summary_for_multiple: false
-  timezone: "UTC"
-
-# Change Type Filtering
-# Remove types you don't want to monitor
+# Change Type Filtering (user configurable)
+# Remove types you don't want to monitor. See CONFIG_GUIDE.md for full descriptions.
+# Available types: level, experience, hit_points, armor_class, ability_scores, 
+# spells_known, spell_slots, inventory_items, equipment, currency, skills, 
+# proficiencies, feats, class_features, appearance, background
 change_types:
-  - "level"
-  - "experience"
-  - "hit_points"
-  - "armor_class"
-  - "ability_scores"
-  - "spells_known"
-  - "spell_slots"
-  - "inventory_items"
-  - "equipment"
-  - "currency"
-  - "skills"
-  - "proficiencies"
-  - "feats"
-  - "class_features"
-  - "appearance"
-  - "background"
-
-# Legacy Support
-# These settings ensure compatibility with existing discord_config.yml
-legacy:
-  support_old_config: true
-  config_file_override: null
+  - "level"              # Character level changes
+  - "experience"         # Experience point changes
+  - "hit_points"         # HP/health changes
+  - "armor_class"        # AC changes
+  - "ability_scores"     # Strength, Dex, Con, Int, Wis, Cha changes
+  - "spells_known"       # New spells learned
+  - "spell_slots"        # Spell slot changes
+  - "inventory_items"    # Items added/removed from inventory
+  - "equipment"          # Equipment changes
+  - "currency"           # Gold/currency changes
+  - "skills"             # Skill proficiency changes
+  - "proficiencies"      # Other proficiency changes
+  - "feats"              # Feat changes
+  - "class_features"     # Class feature changes
+  - "appearance"         # Appearance/avatar changes
+  - "background"         # Background changes

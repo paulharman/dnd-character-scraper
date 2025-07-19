@@ -1,26 +1,28 @@
-# Development Dependencies for D&D Beyond Character Scraper
+# D&D Beyond Character Scraper - Development Requirements
 
-# Testing
+# Include core requirements
+-r requirements.txt
+
+# Testing framework
 pytest>=7.0.0
-pytest-cov>=4.0.0
-pytest-mock>=3.10.0
 pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
 
-# Code Quality
+# Code formatting and linting
 black>=23.0.0
 flake8>=6.0.0
 mypy>=1.0.0
-bandit>=1.7.0
-safety>=2.0.0
 
-# Type Stubs
-types-PyYAML>=6.0.0
-types-requests>=2.28.0
-
-# Development Tools
+# Pre-commit hooks for code quality
 pre-commit>=3.0.0
-tox>=4.0.0
 
-# Documentation (if needed)
-# sphinx>=6.0.0
-# sphinx-rtd-theme>=1.0.0
+# Security analysis
+bandit>=1.7.0
+
+# Documentation generation
+sphinx>=6.0.0
+sphinx-rtd-theme>=1.2.0
+
+# Development utilities
+ipython>=8.0.0
+jupyter>=1.0.0

@@ -26,19 +26,21 @@ class TestUnknownContent(unittest.TestCase):
         This helper function allows tests to continue using the simpler flat access pattern
         while working with the new structured v6.0.0 calculator output.
         """
-        basic_info = complete_data.get('basic_info', {})
+        # Get character info from the new structure
+        character_info = complete_data.get('character_info', {})
         
         # Extract basic fields
         flat_data = {
-            'id': basic_info.get('character_id', 0),
-            'name': basic_info.get('name', 'Unknown'),
-            'level': basic_info.get('level', 0),
-            'proficiency_bonus': basic_info.get('proficiency_bonus', 2),
+            'id': character_info.get('character_id', 0),
+            'name': character_info.get('name', 'Unknown'),
+            'level': character_info.get('level', 0),
+            'proficiency_bonus': character_info.get('proficiency_bonus', 2),
         }
         
-        # Extract ability scores and modifiers with defaults for errors
-        raw_ability_scores = complete_data.get('ability_scores', {})
-        raw_ability_modifiers = complete_data.get('ability_modifiers', {})
+        # Extract ability scores and modifiers from new structure
+        abilities_data = complete_data.get('abilities', {})
+        raw_ability_scores = abilities_data.get('ability_scores', {})
+        raw_ability_modifiers = abilities_data.get('ability_modifiers', {})
         
         # Handle both flat and structured ability score formats
         flat_abilities = {}
@@ -69,22 +71,26 @@ class TestUnknownContent(unittest.TestCase):
             except (ValueError, TypeError):
                 return default
         
-        ac_value = complete_data.get('armor_class', {}).get('total', 10) if isinstance(complete_data.get('armor_class'), dict) else complete_data.get('armor_class', 10)
-        hp_value = complete_data.get('hit_points', {}).get('maximum', 1) if isinstance(complete_data.get('hit_points'), dict) else complete_data.get('max_hp', 1)
+        # Extract calculated values from combat data
+        combat_data = complete_data.get('combat', {})
+        hit_points = combat_data.get('hit_points', {})
+        
+        ac_value = combat_data.get('armor_class', 10)
+        hp_value = hit_points.get('maximum', 1) if isinstance(hit_points, dict) else 1
         
         flat_data.update({
             'armor_class': safe_int(ac_value, 10),
             'max_hp': safe_int(hp_value, 1),
-            'initiative_bonus': safe_int(complete_data.get('initiative_bonus'), 0),
+            'initiative_bonus': safe_int(combat_data.get('initiative_bonus'), 0),
         })
         
-        # Extract spellcasting info - handle both flat and structured formats
-        spell_slots = complete_data.get('spell_slots', {})
+        # Extract spellcasting info from new structure
+        spellcasting_data = complete_data.get('spellcasting', {})
         flat_data['spellcasting'] = {
-            'is_spellcaster': complete_data.get('is_spellcaster', False),
-            'spellcasting_ability': complete_data.get('spellcasting_ability'),
-            'spell_save_dc': complete_data.get('spell_save_dc'),
-            'spell_attack_bonus': complete_data.get('spell_attack_bonus'),
+            'is_spellcaster': spellcasting_data.get('is_spellcaster', False),
+            'spellcasting_ability': spellcasting_data.get('spellcasting_ability'),
+            'spell_save_dc': spellcasting_data.get('spell_save_dc'),
+            'spell_attack_bonus': spellcasting_data.get('spell_attack_bonus'),
         }
         
         # Extract spell and item data
