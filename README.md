@@ -139,9 +139,6 @@ python discord/discord_monitor.py --validate-config
 
 # Test webhook connectivity (without sending notifications)
 python discord/discord_monitor.py --validate-webhook
-
-# Test webhook validation features
-python discord/test_webhook_validation.py
 ```
 
 ### 🌍 Environment Setup
@@ -274,7 +271,7 @@ See **[GITHUB_SETUP_GUIDE.md](GITHUB_SETUP_GUIDE.md)** for detailed instructions
 │   ├── parser/          # Generated markdown files
 │   └── discord/         # Discord monitoring data
 ├── obsidian/            # Obsidian-specific components and templates
-├── tests/               # Test suite with comprehensive coverage
+├── scripts/             # Security and utility scripts
 ├── tools/               # Utility scripts and analysis tools
 ├── data/                # Baseline and validation data
 └── docs/                # Documentation
@@ -317,30 +314,17 @@ cp config/discord.yaml.example config/discord.yaml
 # Edit configuration files as needed
 ```
 
-## Testing
+## Security Tools
 
-The project includes a comprehensive test suite with easy-to-use commands:
+The project includes comprehensive security tools for safe operation:
 
 ```bash
-# Quick commands using the test script
-python test.py                    # Run all tests
-python test.py --quick            # Quick smoke tests (~30 seconds)
-python test.py --spell            # All spell-related tests
-python test.py --coverage         # Run with coverage report
+# Run security audit
+python scripts/security_audit.py
 
-# Run specific test suites
-python test.py --unit             # Unit tests only
-python test.py --calculator       # Calculator tests only
-python test.py --integration      # Integration tests only
-
-# Traditional pytest commands
-pytest                            # Run all tests
-pytest --cov=src --cov-report=html  # Generate HTML coverage report
-python tests/run_all_tests.py    # Comprehensive test runner
+# Validate Discord configuration
+python discord/discord_monitor.py --validate-config
 ```
-
-### Test Structure
-- `tests/unit/` - Unit tests for individual components
 - `tests/calculators/` - Calculator-specific tests  
 - `tests/integration/` - End-to-end workflow tests
 - `tests/fixtures/` - Standardized test data fixtures
