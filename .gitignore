@@ -68,8 +68,24 @@ FEATURE_COMPLETION_CLEANUP_REPORT.md
 FEATURE_COMPLETION_SUMMARY.md
 FEATURE_COMPLETION_REPORT.md
 DISCORD_SECURITY_COMPLETION_REPORT.md
+
+# Security audit results (generated files, not the tool itself)
 cleanup_report.json
 security_audit_results.json
+
+# Development test scripts (not part of formal test suite)
+parser/test_baseline_validation.py
+parser/test_factory_integration.py
+parser/test_refactor_integration.py
+parser/test_refactored_parser.py
+discord/quick_discord_test.py
+discord/test_discord_system.py
+discord/setup_discord_monitor.py
+tools/testing/test_*.py
+tools/testing/compare_*.py
+tools/testing/phase*.py
+**/quick_test_*.py
+**/temp_test_*.py
 
 # Kiro IDE specific files (development only)
 .kiro/specs/
