@@ -64,14 +64,22 @@ mcp/servers/sequentialthinking/*.log
 # Development and setup scripts (not needed in public repo)
 setup_github_repo.py
 GITHUB_COMMANDS.txt
-FEATURE_COMPLETION_CLEANUP_REPORT.md
-FEATURE_COMPLETION_SUMMARY.md
-FEATURE_COMPLETION_REPORT.md
+FEATURE_COMPLETION_*.md
 DISCORD_SECURITY_COMPLETION_REPORT.md
+GITHUB_SETUP_GUIDE.md
+api_call_analysis.log
 
 # Security audit results (generated files, not the tool itself)
 cleanup_report.json
 security_audit_results.json
+ci_results.json
+
+# Personal character data (keep folder structure, exclude personal data)
+character_data/discord/*.json
+character_data/parser/*.md
+character_data/scraper/*.json
+character_data/archive/
+character_data/.last_scrape
 
 # All tests are for development only - not included in public release
 tests/
@@ -87,6 +95,8 @@ test.py
 pytest.ini
 test_results.json
 
-# Kiro IDE specific files (development only)
-.kiro/specs/
-.kiro/hooks/
+# IDE and development environment files (exclude from public repo)
+.kiro/
+.claude/
+.vscode/
+.idea/

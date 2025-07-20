@@ -341,11 +341,10 @@ See [docs/testing-workflow.md](docs/testing-workflow.md) for complete testing do
 ### Development & Testing  
 - **[testing-workflow.md](docs/testing-workflow.md)** - Testing workflow and best practices
 - **[tests/README.md](tests/README.md)** - Quick testing reference
-- **[FEATURE_COMPLETION_SUMMARY.md](FEATURE_COMPLETION_SUMMARY.md)** - Latest feature updates
+- **[testing-improvements-summary.md](docs/testing-improvements-summary.md)** - Testing improvements overview
 
-### Project Reports
-- **[DISCORD_SECURITY_COMPLETION_REPORT.md](DISCORD_SECURITY_COMPLETION_REPORT.md)** - Detailed security enhancement report
-- **[FEATURE_COMPLETION_REPORT.md](FEATURE_COMPLETION_REPORT.md)** - General feature completion status
+### Project Status
+- **[project-status.md](docs/project-status.md)** - Current project status and completed improvements
 
 ## Troubleshooting
 

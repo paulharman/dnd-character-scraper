@@ -347,6 +347,9 @@ class DiscordMonitor:
                 if not test_success:
                     raise RuntimeError("Discord webhook test failed")
         
+        # Quick startup validation
+        self._validate_startup_config()
+        
         logger.info("All services initialized successfully")
     
     def _create_notification_config(self) -> NotificationConfig:
@@ -969,6 +972,37 @@ class DiscordMonitor:
         logger.info(f"\nConfiguration Events: Check logs for security warnings and config loading events")
         
         logger.info("\n" + "=" * 50)
+    
+    def _validate_startup_config(self):
+        """Quick validation of critical configuration on startup."""
+        issues = []
+        
+        # Check webhook URL
+        webhook_url = self.config.get('webhook_url')
+        if not webhook_url:
+            issues.append("Missing webhook_url in configuration")
+        elif webhook_url.startswith('${') and webhook_url.endswith('}'):
+            env_var = webhook_url[2:-1]
+            if not os.getenv(env_var):
+                issues.append(f"Environment variable {env_var} is not set")
+        
+        # Check character IDs
+        if not self.character_ids:
+            issues.append("No character IDs configured")
+        
+        # Check change types
+        change_types = self.config.get('change_types', [])
+        if not change_types:
+            logger.warning("No change types configured - all changes will be ignored")
+        
+        # Report issues
+        if issues:
+            logger.error("Configuration validation failed:")
+            for issue in issues:
+                logger.error(f"  - {issue}")
+            raise ValueError(f"Configuration validation failed: {'; '.join(issues)}")
+        
+        logger.debug("Startup configuration validation passed")
     
 
 

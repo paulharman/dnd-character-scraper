@@ -240,12 +240,14 @@ class NotificationManager:
                 if success:
                     self.last_notification_times[character_id] = datetime.now()
                     logger.info(f"Successfully sent notification for character {character_id}")
+                    self._track_delivery_success(character_id)
                 return success, message_content
             else:
                 success = result
                 if success:
                     self.last_notification_times[character_id] = datetime.now()
                     logger.info(f"Successfully sent notification for character {character_id}")
+                    self._track_delivery_success(character_id)
                 return success
             
         except Exception as e:
@@ -970,3 +972,20 @@ class NotificationManager:
         except Exception as e:
             logger.error(f"Failed to send character discovered notification: {e}")
             return False
+    
+    def _track_delivery_success(self, character_id: int):
+        """Track successful notification delivery for simple reliability monitoring."""
+        if not hasattr(self, 'delivery_stats'):
+            self.delivery_stats = {}
+        
+        if character_id not in self.delivery_stats:
+            self.delivery_stats[character_id] = {'total': 0, 'last_success': None}
+        
+        self.delivery_stats[character_id]['total'] += 1
+        self.delivery_stats[character_id]['last_success'] = datetime.now()
+        
+        logger.debug(f"Delivery success tracked for character {character_id}")
+    
+    def get_delivery_stats(self) -> Dict[int, Dict[str, Any]]:
+        """Get simple delivery statistics."""
+        return getattr(self, 'delivery_stats', {})
