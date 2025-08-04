@@ -44,7 +44,7 @@ try:
     from src.calculators.character_calculator import CharacterCalculator
     ADVANCED_FEATURES_AVAILABLE = True
 except ImportError as e:
-    logger.warning(f"Advanced features not available due to missing dependencies: {e}")
+    logger.warning(f"Parser:   Advanced features not available due to missing dependencies: {e}")
     ConfigManager = None
     SnapshotArchiver = None
     CharacterCalculator = None
@@ -125,7 +125,7 @@ class CharacterMarkdownGenerator:
             template_type=template_type
         )
         
-        logger.info(f"Initialized CharacterMarkdownGenerator for {self.character_name} (Level {self.character_level})")
+        logger.info(f"Parser:   Initialized CharacterMarkdownGenerator for {self.character_name} (Level {self.character_level})")
     
     def generate_markdown(self) -> str:
         """
@@ -137,7 +137,7 @@ class CharacterMarkdownGenerator:
         try:
             return self.generator.generate_markdown(self.character_data)
         except Exception as e:
-            logger.error(f"Failed to generate markdown for {self.character_name}: {e}")
+            logger.error(f"Parser:   Failed to generate markdown for {self.character_name}: {e}")
             raise
     
     def generate_section(self, section_name: str) -> str:
@@ -153,7 +153,7 @@ class CharacterMarkdownGenerator:
         try:
             return self.generator.generate_section(section_name, self.character_data)
         except Exception as e:
-            logger.error(f"Failed to generate {section_name} section for {self.character_name}: {e}")
+            logger.error(f"Parser:   Failed to generate {section_name} section for {self.character_name}: {e}")
             raise
     
     def get_available_sections(self) -> list:
@@ -222,22 +222,23 @@ def process_character_json(json_file: str, output_dir: str = None, **kwargs) -> 
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(markdown)
             
-            logger.info(f"Saved {character_name} to {output_file}")
+            logger.info(f"Parser:   Saved {character_name} to {output_file}")
         
         return markdown
         
     except Exception as e:
-        logger.error(f"Failed to process {json_file}: {e}")
+        logger.error(f"Parser:   Failed to process {json_file}: {e}")
         raise
 
 
-def trigger_discord_monitor(character_id: str, parser_config_manager = None) -> None:
+def trigger_discord_monitor(character_id: str, parser_config_manager = None, verbose: bool = False) -> None:
     """
     Execute Discord monitor to check for character changes and send notifications.
     
     Args:
         character_id: The character ID to monitor
         parser_config_manager: Parser configuration manager (optional)
+        verbose: Enable verbose logging in Discord monitor
     """
     try:
         # Check if Discord integration is enabled in parser config
@@ -246,7 +247,7 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None) -> 
             discord_enabled = parser_config_manager.get_parser_config("parser", "discord", "enabled", default=True)
         
         if not discord_enabled:
-            logger.debug("Discord integration disabled in parser config")
+            logger.debug("Parser:   Discord integration disabled in parser config")
             return
         
         # Locate project root and Discord monitor script
@@ -270,17 +271,18 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None) -> 
         discord_monitor_script = project_root / "discord" / "discord_monitor.py"
         
         if not discord_monitor_script.exists():
-            logger.warning(f"Discord monitor script not found at {discord_monitor_script}")
+            logger.warning(f"Parser:   Discord monitor script not found at {discord_monitor_script}")
             return
         
         # Get Discord config file path
-        discord_config_file = project_root / "discord" / "discord_config.yml"
+        discord_config_file = project_root / "config" / "discord.yaml"
         
         if not discord_config_file.exists():
-            logger.warning(f"Discord config file not found at {discord_config_file}")
+            logger.warning(f"Parser:   Discord config file not found at {discord_config_file}")
             return
         
         # Execute Discord monitor in check-only mode with character ID
+        # Use --check-only to skip scraping since parser already created the file
         cmd = [
             sys.executable,
             str(discord_monitor_script),
@@ -289,12 +291,21 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None) -> 
             '--character-id', character_id
         ]
         
+        # Add verbose flag if requested
+        if verbose:
+            cmd.append('--verbose')
+        
         run_id = str(uuid.uuid4())[:8]
-        logger.info(f"Triggering Discord monitor for character {character_id} (run_id: {run_id})")
-        logger.debug(f"Discord monitor command: {' '.join(cmd)}")
+        logger.info(f"Parser:   Triggering Discord monitor for character {character_id} (run_id: {run_id})")
+        logger.debug(f"Parser:   Discord monitor command: {' '.join(cmd)}")
         
         # Run Discord monitor as subprocess
-        logger.debug(f"Running Discord monitor from directory: {project_root}")
+        logger.debug(f"Parser:   Running Discord monitor from directory: {project_root}")
+        
+        # Pass current environment variables to subprocess
+        import os
+        env = os.environ.copy()
+        
         result = subprocess.run(
             cmd,
             cwd=str(project_root),
@@ -302,7 +313,8 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None) -> 
             text=True,
             timeout=60,
             encoding='utf-8',
-            errors='replace'
+            errors='replace',
+            env=env  # Pass environment variables to subprocess
         )
         
         # Parse Discord monitor output
@@ -312,6 +324,21 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None) -> 
         
         # Check both stdout and stderr for Discord activity
         all_output = (result.stdout or "") + "\n" + (result.stderr or "")
+        
+        # Show verbose output if requested
+        if verbose:
+            logger.debug("Parser:   Discord monitor output:")
+            for line in all_output.split('\n'):
+                if line.strip():
+                    # Remove timestamp from Discord output to avoid duplication
+                    # Discord logs have format: "HH:MM:SS - LEVEL - message"
+                    clean_line = line
+                    if ' - ' in line and len(line.split(' - ')) >= 3:
+                        # Strip timestamp and level, keep just the message
+                        parts = line.split(' - ', 2)
+                        if len(parts) >= 3:
+                            clean_line = parts[2]  # Just the message part
+                    logger.debug(f"Discord:   {clean_line}")
         
         for line in all_output.split('\n'):
             # Look for the authoritative PARSER_CHANGES output from notification manager
@@ -353,9 +380,9 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None) -> 
             print("="*60, flush=True)
                 
     except subprocess.TimeoutExpired:
-        logger.warning("Discord monitor timed out after 60 seconds")
+        logger.warning("Parser:   Discord monitor timed out after 60 seconds")
     except Exception as e:
-        logger.warning(f"Error running Discord monitor: {e}")
+        logger.warning(f"Parser:   Error running Discord monitor: {e}")
 
 
 def main():
@@ -364,7 +391,7 @@ def main():
         description='Convert D&D Beyond JSON to Markdown with YAML frontmatter and DnD UI Toolkit blocks'
     )
     parser.add_argument('character_id', help='D&D Beyond character ID')
-    parser.add_argument('output_path', help='Output markdown file path')
+    parser.add_argument('output_path', nargs='?', help='Output markdown file path (default: character_data/parser/current_output_{character_id}.md)')
     
     # Core options
     parser.add_argument('--session', help='D&D Beyond session cookie for private characters')
@@ -389,6 +416,8 @@ def main():
     
     args = parser.parse_args()
     
+    # Note: Default output path will be set after loading character data to use character name
+    
     # Configure logging level
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
@@ -399,11 +428,11 @@ def main():
         project_root = Path(__file__).parent.parent
         
         # Step 1: Call the scraper to get fresh data
-        logger.info(f"Calling scraper for character {character_id}")
+        logger.info(f"Parser:   Calling scraper for character {character_id})")
         scraper_script = project_root / "scraper" / "enhanced_dnd_scraper.py"
         
         if not scraper_script.exists():
-            logger.error(f"Scraper script not found at {scraper_script}")
+            logger.error(f"Parser:   Scraper script not found at {scraper_script}")
             sys.exit(1)
         
         # Build scraper command
@@ -413,22 +442,32 @@ def main():
         if args.session:
             scraper_cmd.extend(['--session', args.session])
         
+        # Add verbose flag if requested
+        if args.verbose:
+            scraper_cmd.append('--verbose')
+        
         # Check if Discord is enabled in parser config and add --discord flag
         try:
-            from src.config.manager import ConfigManager
-            parser_config_manager = ConfigManager('parser')
-            discord_enabled = parser_config_manager.get_config_value('discord', 'enabled', default=True)
+            import yaml
+            parser_config_path = project_root / "config" / "parser.yaml"
+            with open(parser_config_path, 'r') as f:
+                parser_config = yaml.safe_load(f)
+            
+            discord_enabled = parser_config.get('parser', {}).get('discord', {}).get('enabled', True)
+            logger.debug(f"Parser:   Discord config check: enabled={discord_enabled}")
             if discord_enabled:
                 scraper_cmd.append('--discord')
-                logger.info("Discord enabled: scraper will save copy to discord directory")
+                logger.info("Parser:   Discord enabled: scraper will save copy to discord directory")
+            else:
+                logger.info("Parser:   Discord disabled in parser config")
         except Exception as e:
             # If config check fails, default to enabling Discord
             scraper_cmd.append('--discord')
-            logger.info("Discord enabled by default (config check failed)")
-            logger.debug(f"Config check error: {e}")
+            logger.info("Parser:   Discord enabled by default (config check failed)")
+            logger.debug(f"Parser:   Config check error: {e}")
         
         # Run the scraper
-        logger.info(f"Running: {' '.join(scraper_cmd)}")
+        logger.info(f"Parser:   Running: {' '.join(scraper_cmd)}")
         try:
             result = subprocess.run(
                 scraper_cmd,
@@ -439,14 +478,14 @@ def main():
             )
             
             if result.returncode != 0:
-                logger.error(f"Scraper failed with exit code {result.returncode}")
+                logger.error(f"Parser:   Scraper failed with exit code {result.returncode}")
                 if result.stderr:
-                    logger.error(f"Scraper error: {result.stderr}")
+                    logger.error(f"Parser:   Scraper error: {result.stderr}")
                 if result.stdout:
-                    logger.info(f"Scraper output: {result.stdout}")
+                    logger.info(f"Parser:   Scraper output: {result.stdout}")
                 sys.exit(1)
             else:
-                logger.info("Scraper completed successfully")
+                logger.info("Parser:   Scraper completed successfully")
                 if result.stdout:
                     # Show scraper output for transparency
                     for line in result.stdout.strip().split('\n'):
@@ -454,10 +493,10 @@ def main():
                             logger.info(f"Scraper: {line.strip()}")
                             
         except subprocess.TimeoutExpired:
-            logger.error("Scraper timed out after 2 minutes")
+            logger.error("Parser:   Scraper timed out after 2 minutes")
             sys.exit(1)
         except Exception as e:
-            logger.error(f"Failed to run scraper: {e}")
+            logger.error(f"Parser:   Failed to run scraper: {e}")
             sys.exit(1)
         
         # Step 2: Read the scraped data from scraper directory
@@ -468,17 +507,26 @@ def main():
         json_files = list(scraper_data_dir.glob(pattern))
         
         if not json_files:
-            logger.error(f"No JSON files found in scraper directory for character ID {character_id}")
-            logger.info(f"Looking in: {scraper_data_dir}")
+            logger.error(f"Parser:   No JSON files found in scraper directory for character ID {character_id}")
+            logger.info(f"Parser:   Looking in: {scraper_data_dir}")
             sys.exit(1)
         
         # Use the most recent file (should be the one just created by scraper)
         json_file = str(max(json_files, key=lambda f: f.stat().st_mtime))
-        logger.info(f"Using scraped character file: {Path(json_file).name}")
+        logger.info(f"Parser:   Using scraped character file: {Path(json_file).name}")
         
         # Load character data
         with open(json_file, 'r', encoding='utf-8') as f:
             character_data = json.load(f)
+        
+        # Set default output path using character name if none provided
+        if not args.output_path:
+            character_info = character_data.get('character_info', {})
+            character_name = character_info.get('name', f'character_{args.character_id}')
+            # Clean the character name for use as filename
+            safe_name = "".join(c for c in character_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            safe_name = safe_name.replace(' ', '_')
+            args.output_path = f"{safe_name}.md"
         
         # Handle spell enhancement logic
         # Default is to use enhanced spells unless explicitly disabled
@@ -537,16 +585,16 @@ def main():
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
         
-        logger.info(f"✅ Character markdown saved to: {output_path.absolute()}")
+        logger.info(f"Parser:   ✅ Character markdown saved to: {output_path.absolute()}")
         
         # Trigger Discord monitor to check for changes and send notifications
         try:
-            trigger_discord_monitor(args.character_id, parser_config_manager=None)
+            trigger_discord_monitor(args.character_id, parser_config_manager=None, verbose=args.verbose)
         except Exception as e:
-            logger.warning(f"Failed to trigger Discord monitor: {e}")
+            logger.warning(f"Parser:   Failed to trigger Discord monitor: {e}")
         
     except Exception as e:
-        logger.error(f"Error processing character: {e}")
+        logger.error(f"Parser:   Error processing character: {e}")
         sys.exit(1)
 
 

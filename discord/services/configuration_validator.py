@@ -410,7 +410,7 @@ class ConfigurationValidator:
             result.suggestions.extend([f"  - {suggestion}" for suggestion in env_suggestions])
         
         # Performance suggestions
-        check_interval = config.get('check_interval', 600)
+        check_interval = config.get('check_interval_seconds', config.get('check_interval', 600))
         if check_interval < 300:
             result.suggestions.append("Consider increasing check_interval to reduce API calls (minimum recommended: 300 seconds)")
         

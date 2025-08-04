@@ -92,17 +92,21 @@ class CharacterInfoFormatter(BaseFormatter):
             character_id = meta.get('character_id', '0')
         character_id = str(character_id)
         
+        
+        # Get the project root directory at generation time
+        import os
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        
         return f"""```run-python
-import os, sys, subprocess, pathlib
+import os, sys, subprocess
 
-# Dynamic path detection - find project root from script location
-script_dir = pathlib.Path(__file__).parent.absolute()
-project_root = script_dir
-while project_root.parent != project_root:
-    if (project_root / 'parser').exists() and (project_root / 'scraper').exists():
-        break
-    project_root = project_root.parent
-os.chdir(str(project_root))
+# Set to project root (hardcoded at generation time)
+os.chdir(r'{project_root}')
+
+# Get paths from Obsidian context
+vault_path = @vault_path
+note_path = @note_path
+full_path = os.path.join(vault_path, note_path)
 
 # Configure Windows-1252 encoding for console output compatibility
 os.environ['PYTHONIOENCODING'] = 'windows-1252'
@@ -116,9 +120,6 @@ except AttributeError:
     # Fallback for older Python versions
     pass
 
-vault_path = @vault_path
-note_path = @note_path
-full_path = os.path.join(vault_path, note_path)
 cmd = ['python', 'parser/dnd_json_to_markdown.py', '{character_id}', full_path]
 result = subprocess.run(cmd, capture_output=True, text=True, encoding='windows-1252', errors='replace')
 
@@ -320,14 +321,40 @@ else:
         ac_data = combat_data.get('armor_class', {})
         if isinstance(ac_data, dict) and 'total' in ac_data:
             armor_class = ac_data['total']  # Use scraper's calculated value directly
-            # TODO: Get AC method and details from scraper breakdown when enhanced
-            ac_method = 'Unarmored'
-            ac_details = f'(10 + Dex)'
+            
+            # Use enhanced AC breakdown from scraper
+            if 'breakdown' in ac_data:
+                # Extract method and details from breakdown
+                breakdown = ac_data['breakdown']
+                if ac_data.get('has_armor', False):
+                    # Armored character
+                    armor_type = ac_data.get('armor_type', 'unknown').title()
+                    if ac_data.get('has_shield', False):
+                        ac_method = f'{armor_type} + Shield'
+                    else:
+                        ac_method = f'{armor_type} Armor'
+                    # Use the detailed breakdown as details
+                    ac_details = f'({breakdown.split(": ", 1)[-1]})'
+                else:
+                    # Unarmored character - check for unarmored defense
+                    if 'Barbarian' in breakdown:
+                        ac_method = 'Unarmored Defense (Barbarian)'  
+                        ac_details = '(10 + Dex + Con)'
+                    elif 'Monk' in breakdown:
+                        ac_method = 'Unarmored Defense (Monk)'
+                        ac_details = '(10 + Dex + Wis)'
+                    else:
+                        ac_method = 'Unarmored'
+                        ac_details = '(10 + Dex)'
+            else:
+                # Fallback if no breakdown available
+                ac_method = 'Unarmored'
+                ac_details = '(10 + Dex)'
         else:
             # Fallback only if scraper data is missing
             armor_class = 10 + dex_mod
             ac_method = 'Unarmored'
-            ac_details = f'(10 + Dex)'
+            ac_details = '(10 + Dex)'
         
         # Hit points and hit dice
         hp_data = combat_data.get('hit_points', {})

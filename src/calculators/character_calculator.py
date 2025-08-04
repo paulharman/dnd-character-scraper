@@ -768,13 +768,18 @@ class CharacterCalculator(RuleAwareCalculator):
             self.logger.debug(f"Enhanced {len(enhanced_attacks)} weapon attacks with breakdowns")
         
         # Ensure armor class has breakdown
-        if 'armor_class' in combat_data and isinstance(combat_data['armor_class'], int):
-            ac_value = combat_data['armor_class']
-            combat_data['armor_class'] = {
-                'total': ac_value,
-                'base': 10,
-                'breakdown': f"AC: {ac_value}"
-            }
+        if 'armor_class' in combat_data:
+            ac_data = combat_data['armor_class']
+            if isinstance(ac_data, int):
+                # Fallback for integer AC values (should not happen with new structure)
+                combat_data['armor_class'] = {
+                    'total': ac_data,
+                    'base': 10,
+                    'breakdown': f"AC: {ac_data}"
+                }
+            elif isinstance(ac_data, dict) and 'total' in ac_data:
+                # AC data is already structured, no changes needed
+                pass
         
         # Ensure hit points have proper structure
         if 'hit_points' in combat_data and isinstance(combat_data['hit_points'], dict):

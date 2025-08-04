@@ -3,7 +3,7 @@
 
 # API settings for production (only overrides)
 api:
-  retry_delay: 2.0  # Faster retries for production vs 30s default
+  retry_delay: 30.0  # Respectful API usage for production
   
 # Production logging (environment-specific)
 logging:

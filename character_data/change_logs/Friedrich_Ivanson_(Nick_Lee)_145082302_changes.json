@@ -1,0 +1,123 @@
+{
+  "character_id": 145082302,
+  "character_name": "Friedrich Ivanson (Nick Lee)",
+  "log_version": "1.0",
+  "created_at": "2025-08-04T11:51:48.353125",
+  "last_updated": "2025-08-04T11:51:50.274023",
+  "total_entries": 2,
+  "log_file_size": 0,
+  "rotation_count": 0,
+  "retention_policy_days": 365,
+  "discord_notifications_sent": 0,
+  "change_categories": {
+    "inventory": 1,
+    "combat": 1
+  },
+  "entries": [
+    {
+      "character_id": 145082302,
+      "character_name": "Friedrich Ivanson (Nick Lee)",
+      "timestamp": "2025-08-04T11:51:46.694807",
+      "change_type": "removed",
+      "category": "inventory",
+      "field_path": "equipment.enhanced_equipment.1719036634",
+      "old_value": {
+        "id": 1719036634,
+        "name": "Captains Hat",
+        "item_type": null,
+        "subtype": null,
+        "quantity": 1,
+        "weight": 1.0,
+        "cost": null,
+        "rarity": null,
+        "equipped": false,
+        "attuned": false,
+        "requires_attunement": false,
+        "description": "It's a very fancy hat once owned by a pirate captain.",
+        "snippet": null,
+        "is_magic": false,
+        "is_custom": true,
+        "container_entity_id": 1669698468,
+        "is_container": false,
+        "capacity_weight": 0.0,
+        "weapon_properties": [],
+        "damage_dice": null,
+        "damage_type": null,
+        "attack_type": null,
+        "weapon_category": null,
+        "range_normal": null,
+        "range_long": null,
+        "is_monk_weapon": false,
+        "armor_class": null,
+        "armor_type": null,
+        "strength_requirement": null,
+        "stealth_disadvantage": false,
+        "granted_modifiers": [],
+        "charges_used": 0,
+        "source_id": null,
+        "source_page_number": null,
+        "definition_key": "988229960:30305034"
+      },
+      "new_value": null,
+      "description": "Removed Captains Hat from inventory",
+      "detailed_description": "Removed Captains Hat from inventory",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "removed",
+        "item_name": "Captains Hat",
+        "equipment_section": "enhanced_equipment",
+        "container": "1669698468",
+        "causation_trigger": "item_removal"
+      }
+    },
+    {
+      "character_id": 145082302,
+      "character_name": "Friedrich Ivanson (Nick Lee)",
+      "timestamp": "2025-08-04T11:51:46.694997",
+      "change_type": "incremented",
+      "category": "combat",
+      "field_path": "character.hit_points.maximum",
+      "old_value": 17,
+      "new_value": 25,
+      "description": "Maximum HP changed from 17 to 25 (+8)",
+      "detailed_description": "Maximum HP changed from 17 to 25 (+8)",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "MaxHPChangeDetector",
+        "enhanced_change_type": "incremented",
+        "hp_change": 8,
+        "causation_analysis": {
+          "primary_causes": [],
+          "contributing_factors": [],
+          "detailed_breakdown": {
+            "base_hp_calculation": {
+              "base_hp": 0,
+              "constitution_modifier": 0,
+              "level_breakdown": []
+            },
+            "modifiers": [],
+            "total_breakdown": "Base HP: 0"
+          },
+          "confidence": 0.0
+        },
+        "causation_confidence": 0.0,
+        "primary_causes": [],
+        "contributing_factors": [],
+        "detailed_breakdown": {
+          "base_hp_calculation": {
+            "base_hp": 0,
+            "constitution_modifier": 0,
+            "level_breakdown": []
+          },
+          "modifiers": [],
+          "total_breakdown": "Base HP: 0"
+        }
+      }
+    }
+  ]
+}

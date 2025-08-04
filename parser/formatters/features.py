@@ -46,7 +46,7 @@ class FeaturesFormatter(BaseFormatter):
         
         # Check for character level - this is informational, not a blocker
         if not character_info.get('level'):
-            self.logger.debug("Character level not found in character_info")
+            self.logger.debug("Parser:   Character level not found in character_info")
         
         return True
     

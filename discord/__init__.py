@@ -10,7 +10,8 @@ This package provides comprehensive Discord integration for character change not
 """
 
 from .services.discord_service import DiscordService, EmbedColor
-from .services.change_detection_service import ChangeDetectionService, ChangePriority
+from src.services.enhanced_change_detection_service import EnhancedChangeDetectionService as ChangeDetectionService
+from src.models.change_detection import ChangePriority
 from .services.notification_manager import NotificationManager, NotificationConfig
 from .formatters.discord_formatter import DiscordFormatter
 

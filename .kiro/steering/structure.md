@@ -22,6 +22,9 @@
   - `base.py`: ExtensibleModel base class for unknown field handling
   - `character.py`: Character-specific models (AbilityScores, HitPoints, etc.)
   - `storage.py`: Storage metadata and configuration models
+  - `change_detection.py`: Core change detection models and enums
+  - `enhanced_change_detection.py`: Enhanced change detection configuration and mappings
+  - `change_log.py`: Change logging models with causation and attribution
 
 - **`storage/`**: Multiple storage backend implementations
   - `file_json.py`: JSON file storage
@@ -30,6 +33,11 @@
   - `factory.py`: Storage factory pattern implementation
 
 - **`services/`**: High-level business logic services
+  - `enhanced_change_detection_service.py`: Primary change detection service (consolidated)
+  - `enhanced_change_detectors.py`: Specialized detectors for different change types
+  - `change_log_service.py`: Persistent change logging with causation analysis
+  - `causation_analyzer.py`: Change causation and attribution analysis
+  - `error_handler.py`: Comprehensive error handling and recovery
 - **`validators/`**: Data validation and regression testing
 - **`utils/`**: Utility classes (HTMLCleaner, etc.)
 - **`interfaces/`**: Abstract base classes and protocols
@@ -61,9 +69,18 @@
 ### Data Flow
 1. **Scraper** → Fetches raw data from D&D Beyond API
 2. **Storage** → Saves/retrieves character data with versioning
-3. **Parser** → Converts data to formatted markdown
-4. **Discord** → Monitors changes and sends notifications
-5. **Validators** → Ensures data integrity and regression testing
+3. **Enhanced Change Detection** → Detects and analyzes character changes with causation
+4. **Change Logging** → Persists changes with detailed attribution and causation analysis
+5. **Parser** → Converts data to formatted markdown
+6. **Discord** → Monitors changes and sends notifications using enhanced detection
+7. **Validators** → Ensures data integrity and regression testing
+
+### Change Detection Architecture
+- **Single Enhanced System**: Consolidated change detection using specialized detectors
+- **Causation Analysis**: Automatic detection of what caused each change
+- **Change Logging**: Persistent storage of all changes with detailed context
+- **Priority Classification**: Intelligent prioritization of changes for notifications
+- **Field Mapping**: Comprehensive mapping of D&D Beyond API fields to logical categories
 
 ### Configuration Management
 - YAML-based configuration with environment overrides

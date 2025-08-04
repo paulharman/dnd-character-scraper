@@ -50,7 +50,7 @@ class SpellcastingFormatter(BaseFormatter):
         
         # Check if character has spells
         if not spells:
-            self.logger.info("No spells found for character")
+            self.logger.info("Parser:   No spells found for character")
             return False
         
         # Validate spell structure
@@ -510,7 +510,12 @@ return <SpellQuery characterName="{character_name}" />;
         meta_info = character_data.get('meta', {})
         feats = character_data.get('feats', [])
         
-        rule_version = meta_info.get('rule_version', '2014')
+        # Fix rule_version detection by checking multiple sources (same as metadata.py fix)
+        rule_version = (
+            character_data.get('rule_version') or 
+            character_info.get('rule_version') or 
+            meta_info.get('rule_version', '2014')
+        )
         
         # Get spells path from config if available
         spells_path = None

@@ -1,0 +1,1315 @@
+{
+  "character_id": 143359582,
+  "character_name": "Rekor",
+  "log_version": "1.0",
+  "created_at": "2025-07-27T17:12:07.802532",
+  "last_updated": "2025-07-27T17:12:09.373854",
+  "total_entries": 23,
+  "log_file_size": 0,
+  "rotation_count": 0,
+  "retention_policy_days": 365,
+  "discord_notifications_sent": 0,
+  "change_categories": {
+    "basic_info": 1,
+    "spells": 10,
+    "inventory": 8,
+    "combat": 1,
+    "abilities": 3
+  },
+  "entries": [
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.768999",
+      "change_type": "incremented",
+      "category": "basic_info",
+      "field_path": "character_info.level",
+      "old_value": 7,
+      "new_value": 9,
+      "description": "Rekor advanced from level 7 to level 9 (gained 2 levels)",
+      "detailed_description": "Rekor advanced from level 7 to level 9 (gained 2 levels)",
+      "priority": 3,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "LevelProgressionDetector",
+        "enhanced_change_type": "incremented",
+        "old_level": 7,
+        "new_level": 9,
+        "levels_gained": 2,
+        "character_name": "Rekor",
+        "causation_trigger": "level_progression",
+        "advancement_type": "level_up",
+        "proficiency_bonus_old": 3,
+        "proficiency_bonus_new": 4,
+        "proficiency_bonus_increased": true
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771055",
+      "change_type": "added",
+      "category": "spells",
+      "field_path": "spells.Wizard.burning_hands",
+      "old_value": null,
+      "new_value": {
+        "name": "Burning Hands",
+        "level": 1,
+        "school": "Evocation",
+        "source": "Wizard",
+        "description": "<p>A thin sheet of flames shoots forth from you. Each creature in a 15-foot Cone makes a Dexterity saving throw, taking 3d6 Fire damage on a failed save or half as much damage on a successful one.</p>\r\n<p>Flammable objects in the Cone that aren’t being worn or carried start burning.</p>\r\n<p><strong><em>Using a Higher-Level Spell Slot.</em></strong> The damage increases by 1d6 for each spell slot level above 1.</p>",
+        "isLegacy": false,
+        "is_prepared": false,
+        "always_prepared": false,
+        "ritual": false,
+        "concentration": false
+      },
+      "description": "Learned level 1 spell: Burning Hands (from Wizard)",
+      "detailed_description": "Learned level 1 spell: Burning Hands (from Wizard). Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "added"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771114",
+      "change_type": "added",
+      "category": "spells",
+      "field_path": "spells.Wizard.magic_circle",
+      "old_value": null,
+      "new_value": {
+        "name": "Magic Circle",
+        "level": 3,
+        "school": "Abjuration",
+        "source": "Wizard",
+        "description": "<p>You create a 10-foot-radius, 20-foot-tall Cylinder of magical energy centered on a point on the ground that you can see within range. Glowing runes appear wherever the Cylinder intersects with the floor or other surface.</p>\r\n<p>Choose one or more of the following types of creatures: Celestials, Elementals, Fey, Fiends, or Undead. The circle affects a creature of the chosen type in the following ways:</p>\r\n<ul>\r\n<li>The creature can’t willingly enter the Cylinder by nonmagical means. If the creature tries to use teleportation or interplanar travel to do so, it must first succeed on a Charisma saving throw.</li>\r\n<li>The creature has Disadvantage on attack rolls against targets within the Cylinder.</li>\r\n<li>Targets within the Cylinder can’t be possessed by or gain the Charmed or Frightened condition from the creature.</li>\r\n</ul>\r\n<p>Each time you cast this spell, you can cause its magic to operate in the reverse direction, preventing a creature of the specified type from leaving the Cylinder and protecting targets outside it.</p>\r\n<p><strong><em>Using a Higher-Level Spell Slot.</em></strong> The duration increases by 1 hour for each spell slot level above 3.</p>",
+        "isLegacy": false,
+        "is_prepared": false,
+        "always_prepared": false,
+        "ritual": false,
+        "concentration": false
+      },
+      "description": "Learned level 3 spell: Magic Circle (from Wizard)",
+      "detailed_description": "Learned level 3 spell: Magic Circle (from Wizard). Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "added"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771148",
+      "change_type": "added",
+      "category": "spells",
+      "field_path": "spells.Wizard.vampiric_touch",
+      "old_value": null,
+      "new_value": {
+        "name": "Vampiric Touch",
+        "level": 3,
+        "school": "Necromancy",
+        "source": "Wizard",
+        "description": "<p>The touch of your shadow-wreathed hand can siphon life force from others to heal your wounds. Make a melee spell attack against one creature within reach. On a hit, the target takes 3d6 Necrotic damage, and you regain Hit Points equal to half the amount of Necrotic damage dealt.</p>\r\n<p>Until the spell ends, you can make the attack again on each of your turns as a Magic action, targeting the same creature or a different one.</p>\r\n<p><strong><em>Using a Higher-Level Spell Slot.</em></strong> The damage increases by 1d6 for each spell slot level above 3.</p>",
+        "isLegacy": false,
+        "is_prepared": false,
+        "always_prepared": false,
+        "ritual": false,
+        "concentration": false
+      },
+      "description": "Learned level 3 spell: Vampiric Touch (from Wizard)",
+      "detailed_description": "Learned level 3 spell: Vampiric Touch (from Wizard). Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "added"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771194",
+      "change_type": "added",
+      "category": "spells",
+      "field_path": "spells.Wizard.speak_with_dead",
+      "old_value": null,
+      "new_value": {
+        "name": "Speak with Dead",
+        "level": 3,
+        "school": "Necromancy",
+        "source": "Wizard",
+        "description": "<p>You grant the semblance of life to a corpse of your choice within range, allowing it to answer questions you pose. The corpse must have a mouth, and this spell fails if the deceased creature was Undead when it died. The spell also fails if the corpse was the target of this spell within the past 10 days.</p>\r\n<p>Until the spell ends, you can ask the corpse up to five questions. The corpse knows only what it knew in life, including the languages it knew. Answers are usually brief, cryptic, or repetitive, and the corpse is under no compulsion to offer a truthful answer if you are antagonistic toward it or it recognizes you as an enemy. This spell doesn’t return the creature’s soul to its body, only its animating spirit. Thus, the corpse can’t learn new information, doesn’t comprehend anything that has happened since it died, and can’t speculate about future events.</p>",
+        "isLegacy": false,
+        "is_prepared": false,
+        "always_prepared": false,
+        "ritual": false,
+        "concentration": false
+      },
+      "description": "Learned level 3 spell: Speak with Dead (from Wizard)",
+      "detailed_description": "Learned level 3 spell: Speak with Dead (from Wizard). Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "added"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771229",
+      "change_type": "added",
+      "category": "spells",
+      "field_path": "spells.Wizard.fire_shield",
+      "old_value": null,
+      "new_value": {
+        "name": "Fire Shield",
+        "level": 4,
+        "school": "Evocation",
+        "source": "Wizard",
+        "description": "<p>Wispy flames wreathe your body for the duration, shedding Bright Light in a 10-foot radius and Dim Light for an additional 10 feet.</p>\r\n<p>The flames provide you with a warm shield or a chill shield, as you choose. The warm shield grants you Resistance to Cold damage, and the chill shield grants you Resistance to Fire damage.</p>\r\n<p>In addition, whenever a creature within 5 feet of you hits you with a melee attack roll, the shield erupts with flame. The attacker takes 2d8 Fire damage from a warm shield or 2d8 Cold damage from a chill shield.</p>",
+        "isLegacy": false,
+        "is_prepared": false,
+        "always_prepared": false,
+        "ritual": false,
+        "concentration": false
+      },
+      "description": "Learned level 4 spell: Fire Shield (from Wizard)",
+      "detailed_description": "Learned level 4 spell: Fire Shield (from Wizard). Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "added"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771262",
+      "change_type": "added",
+      "category": "spells",
+      "field_path": "spells.Wizard.otiluke's_resilient_sphere",
+      "old_value": null,
+      "new_value": {
+        "name": "Otiluke's Resilient Sphere",
+        "level": 4,
+        "school": "Abjuration",
+        "source": "Wizard",
+        "description": "<p>A shimmering sphere encloses a Large or smaller creature or object within range. An unwilling creature must succeed on a Dexterity saving throw or be enclosed for the duration.</p>\r\n<p>Nothing&mdash;not physical objects, energy, or other spell effects&mdash;can pass through the barrier, in or out, though a creature in the sphere can breathe there. The sphere is immune to all damage, and a creature or object inside can’t be damaged by attacks or effects originating from outside, nor can a creature inside the sphere damage anything outside it.</p>\r\n<p>The sphere is weightless and just large enough to contain the creature or object inside. An enclosed creature can take an action to push against the sphere’s walls and thus roll the sphere at up to half the creature’s Speed. Similarly, the globe can be picked up and moved by other creatures.</p>\r\n<p>A Disintegrate spell targeting the globe destroys it without harming anything inside.</p>",
+        "isLegacy": false,
+        "is_prepared": false,
+        "always_prepared": false,
+        "ritual": false,
+        "concentration": false
+      },
+      "description": "Learned level 4 spell: Otiluke's Resilient Sphere (from Wizard)",
+      "detailed_description": "Learned level 4 spell: Otiluke's Resilient Sphere (from Wizard). Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "added"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771301",
+      "change_type": "incremented",
+      "category": "spells",
+      "field_path": "character.spellcasting.spell_slots.level_4",
+      "old_value": 1,
+      "new_value": 3,
+      "description": "Level 4 spell slots: 1 → 3",
+      "detailed_description": "Level 4 spell slots: 1 → 3. Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "incremented"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771308",
+      "change_type": "incremented",
+      "category": "spells",
+      "field_path": "character.spellcasting.spell_slots.level_5",
+      "old_value": 0,
+      "new_value": 1,
+      "description": "Level 5 spell slots: 0 → 1",
+      "detailed_description": "Level 5 spell slots: 0 → 1. Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "incremented"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771322",
+      "change_type": "incremented",
+      "category": "spells",
+      "field_path": "character.spellcasting.spell_attack_bonus",
+      "old_value": 6,
+      "new_value": 7,
+      "description": "Spell attack bonus: +6 → +7",
+      "detailed_description": "Spell attack bonus: +6 → +7. Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "incremented"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771323",
+      "change_type": "incremented",
+      "category": "spells",
+      "field_path": "character.spellcasting.spell_save_dc",
+      "old_value": 14,
+      "new_value": 15,
+      "description": "Spell save DC: 14 → 15",
+      "detailed_description": "Spell save DC: 14 → 15. Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedSpellsChangeDetector",
+        "enhanced_change_type": "incremented"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771713",
+      "change_type": "added",
+      "category": "inventory",
+      "field_path": "equipment.enhanced_equipment.1729160356",
+      "old_value": null,
+      "new_value": {
+        "id": 1729160356,
+        "name": "Bag of Holding",
+        "item_type": "Wondrous item",
+        "subtype": null,
+        "quantity": 1,
+        "weight": 5.0,
+        "cost": null,
+        "rarity": "Uncommon",
+        "equipped": false,
+        "attuned": false,
+        "requires_attunement": false,
+        "description": "<p>This bag has an interior space considerably larger than its outside dimensions&mdash;roughly 2 feet square and 4 feet deep on the inside. The bag can hold up to 500 pounds, not exceeding a volume of 64 cubic feet. The bag weighs 5 pounds, regardless of its contents. Retrieving an item from the bag requires a Utilize action.</p>\r\n<p>If the bag is overloaded, pierced, or torn, it is destroyed, and its contents are scattered in the Astral Plane. If the bag is turned inside out, its contents spill forth unharmed, but the bag must be put right before it can be used again. The bag holds enough air for 10 minutes of breathing, divided by the number of breathing creatures inside.</p>\r\n<p>Placing a <em>Bag of Holding</em> inside an extradimensional space created by a Heward’s Handy Haversack, Portable Hole, or similar item instantly destroys both items and opens a gate to the Astral Plane. The gate originates where the one item was placed inside the other. Any creature within a 10-foot-radius Sphere centered on the gate is sucked through it to a random location on the Astral Plane. The gate then closes. The gate is one-way and can’t be reopened.</p>",
+        "snippet": "",
+        "is_magic": true,
+        "is_custom": false,
+        "container_entity_id": 143359582,
+        "is_container": true,
+        "capacity_weight": 500.0,
+        "weapon_properties": [],
+        "damage_dice": null,
+        "damage_type": null,
+        "attack_type": null,
+        "weapon_category": null,
+        "range_normal": null,
+        "range_long": null,
+        "is_monk_weapon": false,
+        "armor_class": null,
+        "armor_type": null,
+        "strength_requirement": null,
+        "stealth_disadvantage": false,
+        "granted_modifiers": [],
+        "charges_used": 0,
+        "source_id": null,
+        "source_page_number": null,
+        "definition_key": "112130694:9228356"
+      },
+      "description": "Added Bag of Holding to inventory",
+      "detailed_description": "Added Bag of Holding to inventory",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "added",
+        "item_name": "Bag of Holding",
+        "equipment_section": "enhanced_equipment",
+        "container": "143359582",
+        "causation_trigger": "new_item_acquisition"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771752",
+      "change_type": "added",
+      "category": "inventory",
+      "field_path": "equipment.enhanced_equipment.1729160273",
+      "old_value": null,
+      "new_value": {
+        "id": 1729160273,
+        "name": "Antimatter Rifle",
+        "item_type": "Antimatter Rifle",
+        "subtype": null,
+        "quantity": 1,
+        "weight": 10.0,
+        "cost": 0.0,
+        "rarity": "Common",
+        "equipped": false,
+        "attuned": false,
+        "requires_attunement": false,
+        "description": "<p>It’s up to you to decide whether a character has proficiency with a firearm. Characters in most D&amp;D worlds wouldn’t have such proficiency. During their downtime, characters can use the training rules in the <em>Player’s Handbook</em> to acquire proficiency, assuming that they have enough ammunition to keep the weapons working while mastering their use.</p>\r\n<div class=\"mastery-container\"><hr />\r\n<p>This weapon has the following mastery property. To use this property, you must have a feature that lets you use it.</p>\r\n<p><em><strong>Sap.</strong></em> If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.</p>\r\n</div>",
+        "snippet": null,
+        "is_magic": false,
+        "is_custom": false,
+        "container_entity_id": 143359582,
+        "is_container": false,
+        "capacity_weight": 0.0,
+        "weapon_properties": [
+          {
+            "id": 13,
+            "name": "Ammunition (Firearms)",
+            "description": "<p>Firearm Bullets are destroyed upon use in a modern firearm. Futuristic firearms use Energy Cells that become depleted but could possibly be recharged with the proper equipment, at your discretion. An Energy Cell weighs 1/2 lb.</p>",
+            "damage_value": null,
+            "range_normal": null,
+            "range_long": null
+          },
+          {
+            "id": 7,
+            "name": "Range",
+            "description": "<p>A Range weapon has a range in parentheses after the [wprop]Ammunition[/wprop] or [wprop]Thrown[/wprop] property. The range lists two numbers. The first is the weapon’s normal range in feet, and the second is the weapon’s long range. When attacking a target beyond normal range, you have [rules]Disadvantage[/rules] on the attack roll. You can’t attack a target beyond the long range.</p>",
+            "damage_value": null,
+            "range_normal": null,
+            "range_long": null
+          },
+          {
+            "id": 15,
+            "name": "Reload",
+            "description": "You can make a limited number of shots with a Reload weapon. You must then reload the weapon as an action or a Bonus Action.",
+            "damage_value": null,
+            "range_normal": null,
+            "range_long": null
+          },
+          {
+            "id": 11,
+            "name": "Two-Handed",
+            "description": "<p>A Two-Handed weapon requires two hands when you attack with it.</p>",
+            "damage_value": null,
+            "range_normal": null,
+            "range_long": null
+          },
+          {
+            "id": 22,
+            "name": "Sap",
+            "description": "<p>If you hit a creature with this weapon, that creature has Disadvantage on its next attack roll before the start of your next turn.</p>",
+            "damage_value": null,
+            "range_normal": null,
+            "range_long": null
+          }
+        ],
+        "damage_dice": "6d8",
+        "damage_type": "Necrotic",
+        "attack_type": "ranged",
+        "weapon_category": "martial",
+        "range_normal": 120,
+        "range_long": 360,
+        "is_monk_weapon": false,
+        "armor_class": null,
+        "armor_type": null,
+        "strength_requirement": null,
+        "stealth_disadvantage": false,
+        "granted_modifiers": [],
+        "charges_used": 0,
+        "source_id": null,
+        "source_page_number": null,
+        "definition_key": "1782728300:50"
+      },
+      "description": "Added Antimatter Rifle to inventory",
+      "detailed_description": "Added Antimatter Rifle to inventory",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "added",
+        "item_name": "Antimatter Rifle",
+        "equipment_section": "enhanced_equipment",
+        "container": "143359582",
+        "causation_trigger": "new_item_acquisition"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771787",
+      "change_type": "added",
+      "category": "inventory",
+      "field_path": "equipment.enhanced_equipment.1729160244",
+      "old_value": null,
+      "new_value": {
+        "id": 1729160244,
+        "name": "Alchemist's Supplies",
+        "item_type": "Gear",
+        "subtype": null,
+        "quantity": 1,
+        "weight": 8.0,
+        "cost": 50.0,
+        "rarity": "Common",
+        "equipped": false,
+        "attuned": false,
+        "requires_attunement": false,
+        "description": "<p><strong>Ability:</strong> Intelligence<br /><strong>Utilize:</strong> Identify a substance (DC 15), or start a fire (DC 15)<br /><strong>Craft:</strong> Acid, Alchemist’s Fire, Component Pouch, Oil, Paper, Perfume</p>\r\n<hr />\r\n<p>If you have proficiency with a tool, add your Proficiency Bonus to any ability check you make that uses the tool. If you have proficiency in a skill that’s used with that check, you have Advantage on the check too.</p>",
+        "snippet": null,
+        "is_magic": false,
+        "is_custom": false,
+        "container_entity_id": 143359582,
+        "is_container": false,
+        "capacity_weight": 0.0,
+        "weapon_properties": [],
+        "damage_dice": null,
+        "damage_type": null,
+        "attack_type": null,
+        "weapon_category": null,
+        "range_normal": null,
+        "range_long": null,
+        "is_monk_weapon": false,
+        "armor_class": null,
+        "armor_type": null,
+        "strength_requirement": null,
+        "stealth_disadvantage": false,
+        "granted_modifiers": [],
+        "charges_used": 0,
+        "source_id": null,
+        "source_page_number": null,
+        "definition_key": "2103445194:397"
+      },
+      "description": "Added Alchemist's Supplies to inventory",
+      "detailed_description": "Added Alchemist's Supplies to inventory",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "added",
+        "item_name": "Alchemist's Supplies",
+        "equipment_section": "enhanced_equipment",
+        "container": "143359582",
+        "causation_trigger": "new_item_acquisition"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771822",
+      "change_type": "added",
+      "category": "inventory",
+      "field_path": "equipment.enhanced_equipment.1729160195",
+      "old_value": null,
+      "new_value": {
+        "id": 1729160195,
+        "name": "Acid",
+        "item_type": "Gear",
+        "subtype": "Adventuring Gear",
+        "quantity": 1,
+        "weight": 1.0,
+        "cost": 25.0,
+        "rarity": "Common",
+        "equipped": false,
+        "attuned": false,
+        "requires_attunement": false,
+        "description": "<p>When you take the Attack action, you can replace one of your attacks with throwing a vial of Acid. Target one creature or object you can see within 20 feet of yourself. The target must succeed on a Dexterity saving throw (DC 8 plus your Dexterity modifier and Proficiency Bonus) or take 2d6 Acid damage.</p>",
+        "snippet": null,
+        "is_magic": false,
+        "is_custom": false,
+        "container_entity_id": 143359582,
+        "is_container": false,
+        "capacity_weight": 0.0,
+        "weapon_properties": [],
+        "damage_dice": null,
+        "damage_type": null,
+        "attack_type": null,
+        "weapon_category": null,
+        "range_normal": null,
+        "range_long": null,
+        "is_monk_weapon": false,
+        "armor_class": null,
+        "armor_type": null,
+        "strength_requirement": null,
+        "stealth_disadvantage": false,
+        "granted_modifiers": [],
+        "charges_used": 0,
+        "source_id": null,
+        "source_page_number": null,
+        "definition_key": "2103445194:500"
+      },
+      "description": "Added Acid to inventory",
+      "detailed_description": "Added Acid to inventory",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "added",
+        "item_name": "Acid",
+        "equipment_section": "enhanced_equipment",
+        "container": "143359582",
+        "causation_trigger": "new_item_acquisition"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771857",
+      "change_type": "added",
+      "category": "inventory",
+      "field_path": "equipment.enhanced_equipment.1729160525",
+      "old_value": null,
+      "new_value": {
+        "id": 1729160525,
+        "name": "Arrows",
+        "item_type": "Gear",
+        "subtype": "Ammunition",
+        "quantity": 20,
+        "weight": 1.0,
+        "cost": 1.0,
+        "rarity": "Common",
+        "equipped": false,
+        "attuned": false,
+        "requires_attunement": false,
+        "description": "<p>Arrows are used with a weapon that has the ammunition property to make a ranged attack. Each time you attack with the weapon, you expend one piece of ammunition. Drawing the ammunition from a quiver, case, or other container is part of the attack (you need a free hand to load a one-handed weapon). At the end of the battle, you can recover half your expended ammunition by taking a minute to search the battlefield.</p>",
+        "snippet": null,
+        "is_magic": false,
+        "is_custom": false,
+        "container_entity_id": 143359582,
+        "is_container": false,
+        "capacity_weight": 0.0,
+        "weapon_properties": [],
+        "damage_dice": null,
+        "damage_type": null,
+        "attack_type": null,
+        "weapon_category": null,
+        "range_normal": null,
+        "range_long": null,
+        "is_monk_weapon": false,
+        "armor_class": null,
+        "armor_type": null,
+        "strength_requirement": null,
+        "stealth_disadvantage": false,
+        "granted_modifiers": [],
+        "charges_used": 0,
+        "source_id": null,
+        "source_page_number": null,
+        "definition_key": "2103445194:508"
+      },
+      "description": "Added Arrows to inventory",
+      "detailed_description": "Added Arrows to inventory",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "added",
+        "item_name": "Arrows",
+        "equipment_section": "enhanced_equipment",
+        "container": "143359582",
+        "causation_trigger": "new_item_acquisition"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.771891",
+      "change_type": "added",
+      "category": "inventory",
+      "field_path": "equipment.enhanced_equipment.1729160586",
+      "old_value": null,
+      "new_value": {
+        "id": 1729160586,
+        "name": "Assassin’s Blood",
+        "item_type": "Gear",
+        "subtype": null,
+        "quantity": 0,
+        "weight": 0.0,
+        "cost": 150.0,
+        "rarity": "Common",
+        "equipped": false,
+        "attuned": false,
+        "requires_attunement": false,
+        "description": "<p><em>Ingested Poison</em></p>\r\n<p>A creature subjected to Assassin’s Blood makes a DC 10 Constitution saving throw. On a failed save, the creature takes 6 (1d12) Poison damage and has the Poisoned condition for 24 hours. On a successful save, the creature takes half as much damage only.</p>",
+        "snippet": null,
+        "is_magic": false,
+        "is_custom": false,
+        "container_entity_id": 143359582,
+        "is_container": false,
+        "capacity_weight": 0.0,
+        "weapon_properties": [],
+        "damage_dice": null,
+        "damage_type": null,
+        "attack_type": null,
+        "weapon_category": null,
+        "range_normal": null,
+        "range_long": null,
+        "is_monk_weapon": false,
+        "armor_class": null,
+        "armor_type": null,
+        "strength_requirement": null,
+        "stealth_disadvantage": false,
+        "granted_modifiers": [],
+        "charges_used": 0,
+        "source_id": null,
+        "source_page_number": null,
+        "definition_key": "2103445194:553"
+      },
+      "description": "Added Assassin’s Blood to inventory",
+      "detailed_description": "Added Assassin’s Blood to inventory",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "added",
+        "item_name": "Assassin’s Blood",
+        "equipment_section": "enhanced_equipment",
+        "container": "143359582",
+        "causation_trigger": "new_item_acquisition"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.772141",
+      "change_type": "moved",
+      "category": "inventory",
+      "field_path": "equipment.1716304261.location",
+      "old_value": {
+        "section": "enhanced_equipment",
+        "container": "1668970725"
+      },
+      "new_value": {
+        "section": "enhanced_equipment",
+        "container": "1729160356"
+      },
+      "description": "Moved Bedroll from Backpack to Bag of Holding",
+      "detailed_description": "Moved Bedroll from Backpack to Bag of Holding",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "moved",
+        "item_name": "Bedroll",
+        "old_container": "1668970725",
+        "new_container": "1729160356",
+        "old_section": "enhanced_equipment",
+        "new_section": "enhanced_equipment",
+        "causation_trigger": "inventory_reorganization"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.772243",
+      "change_type": "moved",
+      "category": "inventory",
+      "field_path": "equipment.1715343131.location",
+      "old_value": {
+        "section": "enhanced_equipment",
+        "container": "1668970725"
+      },
+      "new_value": {
+        "section": "enhanced_equipment",
+        "container": "1729160356"
+      },
+      "description": "Moved Potion of Climbing from Backpack to Bag of Holding",
+      "detailed_description": "Moved Potion of Climbing from Backpack to Bag of Holding",
+      "priority": 2,
+      "causation": null,
+      "attribution": null,
+      "metadata": {
+        "detector": "EnhancedInventoryChangeDetector",
+        "enhanced_change_type": "moved",
+        "item_name": "Potion of Climbing",
+        "old_container": "1668970725",
+        "new_container": "1729160356",
+        "old_section": "enhanced_equipment",
+        "new_section": "enhanced_equipment",
+        "causation_trigger": "inventory_reorganization"
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.772606",
+      "change_type": "incremented",
+      "category": "combat",
+      "field_path": "character.hit_points.maximum",
+      "old_value": 51,
+      "new_value": 65,
+      "description": "Maximum HP changed from 51 to 65 (+14)",
+      "detailed_description": "Maximum HP changed from 51 to 65 (+14). Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "MaxHPChangeDetector",
+        "enhanced_change_type": "incremented",
+        "hp_change": 14,
+        "causation_analysis": {
+          "primary_causes": [],
+          "contributing_factors": [],
+          "detailed_breakdown": {
+            "base_hp_calculation": {
+              "base_hp": 0,
+              "constitution_modifier": 0,
+              "level_breakdown": []
+            },
+            "modifiers": [],
+            "total_breakdown": "Base HP: 0"
+          },
+          "confidence": 0.0
+        },
+        "causation_confidence": 0.0,
+        "primary_causes": [],
+        "contributing_factors": [],
+        "detailed_breakdown": {
+          "base_hp_calculation": {
+            "base_hp": 0,
+            "constitution_modifier": 0,
+            "level_breakdown": []
+          },
+          "modifiers": [],
+          "total_breakdown": "Base HP: 0"
+        }
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.772754",
+      "change_type": "incremented",
+      "category": "abilities",
+      "field_path": "character.proficiency_bonus",
+      "old_value": 3,
+      "new_value": 4,
+      "description": "Proficiency bonus changed from +3 to +4",
+      "detailed_description": "Proficiency bonus changed from +3 to +4. Level progression to level 9",
+      "priority": 2,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "ProficienciesChangeDetector",
+        "enhanced_change_type": "incremented",
+        "proficiency_type": "proficiency_bonus",
+        "old_level": 1,
+        "new_level": 1,
+        "level_progression": false
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.772791",
+      "change_type": "incremented",
+      "category": "abilities",
+      "field_path": "character.abilityScores.constitution",
+      "old_value": 16,
+      "new_value": 17,
+      "description": "Constitution increased from 16 to 17 (from Level 8 ASI)",
+      "detailed_description": "Constitution increased from 16 to 17 (from Level 8 ASI). Level progression to level 9",
+      "priority": 3,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedAbilityScoreDetector",
+        "enhanced_change_type": "incremented",
+        "ability_name": "constitution",
+        "score_change": 1,
+        "old_modifier": 3,
+        "new_modifier": 3,
+        "modifier_change": 0,
+        "detailed_description": "Constitution increased by 1 points (from 16 to 17). Source: Level 8 ASI - Ability Score Improvement gained at level 8",
+        "attribution": {
+          "source": "ability_score_improvement",
+          "source_name": "Level 8 ASI",
+          "source_type": "class_feature",
+          "impact_summary": "Ability Score Improvement gained at level 8"
+        },
+        "cascading_effects_expected": true
+      }
+    },
+    {
+      "character_id": 143359582,
+      "character_name": "Rekor",
+      "timestamp": "2025-07-27T17:12:06.772816",
+      "change_type": "incremented",
+      "category": "abilities",
+      "field_path": "character.abilityScores.intelligence",
+      "old_value": 16,
+      "new_value": 17,
+      "description": "Intelligence increased from 16 to 17 (from Level 8 ASI)",
+      "detailed_description": "Intelligence increased from 16 to 17 (from Level 8 ASI). Level progression to level 9",
+      "priority": 3,
+      "causation": {
+        "trigger": "level_progression",
+        "trigger_details": {
+          "level_gained": 9,
+          "class": null,
+          "old_level": 7,
+          "new_level": 9
+        },
+        "related_changes": [
+          "spells.Wizard.burning_hands",
+          "spells.Wizard.magic_circle",
+          "spells.Wizard.vampiric_touch",
+          "spells.Wizard.speak_with_dead",
+          "spells.Wizard.fire_shield",
+          "spells.Wizard.otiluke's_resilient_sphere",
+          "character.spellcasting.spell_attack_bonus",
+          "character.spellcasting.spell_save_dc",
+          "character.hit_points.maximum",
+          "character.proficiency_bonus",
+          "character.spellcasting.spell_slots.level_4",
+          "character.spellcasting.spell_slots.level_5",
+          "character.abilityScores.constitution",
+          "character.abilityScores.intelligence"
+        ],
+        "cascade_depth": 0
+      },
+      "attribution": {
+        "source": "level_progression",
+        "source_name": "Level 9",
+        "source_type": "class_feature",
+        "impact_summary": "Level progression to level 9"
+      },
+      "metadata": {
+        "detector": "EnhancedAbilityScoreDetector",
+        "enhanced_change_type": "incremented",
+        "ability_name": "intelligence",
+        "score_change": 1,
+        "old_modifier": 3,
+        "new_modifier": 3,
+        "modifier_change": 0,
+        "detailed_description": "Intelligence increased by 1 points (from 16 to 17). Source: Level 8 ASI - Ability Score Improvement gained at level 8",
+        "attribution": {
+          "source": "ability_score_improvement",
+          "source_name": "Level 8 ASI",
+          "source_type": "class_feature",
+          "impact_summary": "Ability Score Improvement gained at level 8"
+        },
+        "cascading_effects_expected": true
+      }
+    }
+  ]
+}

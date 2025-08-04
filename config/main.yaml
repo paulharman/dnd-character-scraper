@@ -1,56 +1,94 @@
-# Main Project Configuration
-# Project-wide settings, paths, and environment configuration
+# ===================================================================
+# MAIN PROJECT CONFIGURATION
+# ===================================================================
+# This is the primary configuration file for the D&D Beyond Character Scraper.
+# It contains project-wide settings, paths, and environment configuration.
+# 
+# For specific feature configuration, see:
+# - config/discord.yaml    - Discord notifications and change detection
+# - config/parser.yaml     - Markdown generation settings  
+# - config/scraper.yaml    - API scraping configuration
+# ===================================================================
 
+# ===================================================================
+# PROJECT METADATA
+# ===================================================================
 project:
-  name: "DnD Beyond Character Scraper"
-  version: "6.0.0"
+  name: "DnD Beyond Character Scraper"           # Display name for the application
+  version: "6.0.0"                              # Current version (semantic versioning)
   description: "Enhanced D&D Beyond character scraper with 2024 rules support"
 
-# Environment Configuration
-environment: "production"
-debug: false
+# ===================================================================
+# ENVIRONMENT CONFIGURATION
+# ===================================================================
+# Controls application behavior across different deployment environments
+environment: "production"                       # Current environment: development, testing, production
+debug: false                                   # Enable debug mode (verbose logging, error details)
 
-# Global Paths (relative to project root)
+# ===================================================================
+# GLOBAL PATHS
+# ===================================================================
+# All paths are relative to the project root directory
+# These paths are used throughout the application for data storage and processing
 paths:
-  character_data: "character_data"
-  data_folder: "data"
-  baseline: "data/baseline"
-  spells_folder: "obsidian/spells"
-  config_dir: "config"
+  character_data: "character_data"             # Primary storage for character JSON files and snapshots
+  data_folder: "data"                          # General data directory for rules, constants, and reference files
+  baseline: "data/baseline"                    # Baseline character data for validation and testing
+  spells_folder: "obsidian/spells"             # Enhanced spell descriptions for markdown generation
+  config_dir: "config"                         # Configuration files directory
 
-# Global Logging Configuration
+# ===================================================================
+# GLOBAL LOGGING CONFIGURATION
+# ===================================================================
+# Controls application-wide logging behavior
+# Environment-specific overrides are defined in the environments section below
 logging:
-  level: "INFO"
-  include_timestamps: true
-  include_traceback: false
-  log_to_file: false
-  log_file_path: null
+  level: "INFO"                                # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  # Note: Additional logging settings (file output, formatting) are handled
+  # in environment-specific configurations to avoid cluttering the main config
 
-# Global Feature Flags
-features:
-  html_cleaning: true
-  rule_detection: true
-  enhanced_spells: true
-  caching: false
-
-# Performance Settings
+# ===================================================================
+# PERFORMANCE SETTINGS
+# ===================================================================
+# Global performance optimization settings
 performance:
-  memory_optimization: true
-  cleanup_temp_files: true
-  enable_caching: false
+  memory_optimization: true                    # Enable memory usage optimizations (recommended: true)
+  enable_caching: false                        # Enable calculation result caching (can improve performance but uses more memory)
 
-# Environment-specific overrides
+# ===================================================================
+# ENVIRONMENT-SPECIFIC OVERRIDES
+# ===================================================================
+# These settings override the defaults above based on the current environment
+# The active environment is determined by the 'environment' setting above
 environments:
+  # Development environment - for local development and debugging
   development:
-    debug: true
+    debug: true                                # Enable debug mode for detailed error information
     logging:
-      level: "DEBUG"
+      level: "DEBUG"                           # Verbose logging for development troubleshooting
+  
+  # Testing environment - for automated testing and CI/CD
   testing:
-    features:
-      caching: false
     logging:
-      level: "WARNING"
+      level: "WARNING"                         # Reduced logging to focus on issues during testing
+  
+  # Production environment - for live deployment
   production:
-    debug: false
+    debug: false                               # Disable debug mode for security and performance
     logging:
-      level: "INFO"
+      level: "INFO"                            # Standard logging level for production monitoring
+
+# ===================================================================
+# CONFIGURATION NOTES
+# ===================================================================
+# 1. Feature-specific settings have been moved to dedicated config files:
+#    - Discord notifications: config/discord.yaml
+#    - Parser settings: config/parser.yaml  
+#    - API scraping: config/scraper.yaml
+#
+# 2. Unused configuration items have been removed to reduce confusion.
+#    See config_audit_report.json for details on what was removed.
+#
+# 3. All configuration keys follow snake_case naming conventions.
+#    See docs/configuration_naming_standards.md for full guidelines.
+# ===================================================================

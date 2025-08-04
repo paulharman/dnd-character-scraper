@@ -14,6 +14,7 @@ from ..utils.performance import monitor_performance
 from ..services.interfaces import CalculationContext, CalculationResult, CalculationStatus
 from ..services.spell_service import SpellProcessingService
 from ..enhanced_weapon_attacks import EnhancedWeaponAttackCalculator
+from ..armor_class import ArmorClassCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,9 @@ class CombatCoordinator(ICoordinator):
         
         # Initialize enhanced weapon attack calculator
         self.weapon_attack_calculator = EnhancedWeaponAttackCalculator()
+        
+        # Initialize armor class calculator
+        self.armor_class_calculator = ArmorClassCalculator(config_manager)
         
         # Ability mappings for D&D Beyond
         self.ability_names = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
@@ -265,48 +269,268 @@ class CombatCoordinator(ICoordinator):
         total_level = sum(cls.get('level', 0) for cls in classes)
         return max(1, total_level)
     
-    def _get_armor_class(self, raw_data: Dict[str, Any], context: CalculationContext) -> int:
-        """Get armor class from context or calculate basic fallback."""
-        # Try to get from context (would be calculated by AC coordinator)
-        if context and hasattr(context, 'metadata') and context.metadata:
-            combat_data = context.metadata.get('combat', {})
-            if 'armor_class' in combat_data:
-                return combat_data['armor_class']
+    def _get_armor_class(self, raw_data: Dict[str, Any], context: CalculationContext) -> Dict[str, Any]:
+        """Get armor class from context or calculate using proper AC calculator."""
+        # Skip context AC for now since it may contain old buggy values
+        # TODO: Re-enable context AC once we ensure it's calculated correctly
+        # if context and hasattr(context, 'metadata') and context.metadata:
+        #     combat_data = context.metadata.get('combat', {})
+        #     if 'armor_class' in combat_data:
+        #         return combat_data['armor_class']
         
-        # Fallback: basic AC calculation with unarmored defense consideration
-        ability_modifiers = self._get_ability_modifiers(raw_data, context)
+        # Use the proper ArmorClassCalculator for accurate AC calculation
+        try:
+            # Create a minimal Character object for the AC calculator
+            # The AC calculator needs the character structure but we'll pass raw_data
+            from src.models.character import Character
+            
+            # Create a character object with minimal required data
+            character_info = raw_data.get('character_info', {})
+            character = Character(
+                id=character_info.get('character_id', 0),
+                name=character_info.get('name', 'Unknown'),
+                level=character_info.get('level', 1),
+                classes=character_info.get('classes', []),
+                race=character_info.get('species', {}),
+                background=character_info.get('background', {}),
+                abilities={},  # Not needed for AC calculation
+                proficiencies={},  # Not needed for AC calculation
+                spells={},  # Not needed for AC calculation
+                equipment={},  # Not needed for AC calculation
+                combat_stats={},  # Not needed for AC calculation
+                features=[]  # Not needed for AC calculation
+            )
+            
+            # Calculate AC using the proper calculator
+            ac_result = self.armor_class_calculator.calculate_ac(character, raw_data)
+            self.logger.debug(f"AC calculated using ArmorClassCalculator: {ac_result}")
+            
+            # If the AC calculator returns an integer, wrap it in a structure
+            if isinstance(ac_result, int):
+                return {
+                    'total': ac_result,
+                    'base': 10,  # Default base, may not be accurate for armored characters
+                    'breakdown': f"AC: {ac_result}",
+                    'armor_type': 'calculated',
+                    'has_armor': True,  # Assume armor if calculated by AC calculator
+                    'has_shield': False  # Unknown from basic calculation
+                }
+            else:
+                return ac_result  # Already structured
+            
+        except Exception as e:
+            self.logger.error(f"Error using ArmorClassCalculator: {e}")
+            # Fallback to improved but simpler calculation
+            return self._calculate_ac_fallback(raw_data)
+    
+    def _calculate_ac_fallback(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Fallback AC calculation with proper armor, shield, and dex cap handling."""
+        self.logger.debug("Using fallback AC calculation")
+        
+        # Get ability modifiers
+        ability_modifiers = self._get_ability_modifiers(raw_data, None)
         dex_mod = ability_modifiers.get('dexterity', 0) or 0
         con_mod = ability_modifiers.get('constitution', 0) or 0
         wis_mod = ability_modifiers.get('wisdom', 0) or 0
         
-        # Check for equipped armor first
+        # Check equipment for armor and shields - try multiple data paths
         inventory = raw_data.get('inventory', [])
-        has_armor = False
+        if not inventory:
+            # Try alternative equipment structure
+            equipment = raw_data.get('equipment', {})
+            inventory = equipment.get('basic_equipment', [])
         
+        # Also check if there's pre-calculated combat equipment data we can use
+        combat_data = raw_data.get('combat', {})
+        combat_equipment = combat_data.get('equipment', [])
+        if combat_equipment and not inventory:
+            inventory = combat_equipment
+            self.logger.debug("Using combat equipment data for AC calculation")
+        
+        armor_ac = 0
+        armor_type = None
+        shield_ac = 0
+        
+        # Scan equipped items
+        self.logger.debug(f"Scanning {len(inventory)} items for armor and shields")
         for item in inventory:
-            if item.get('equipped', False):
+            if not item.get('equipped', False):
+                continue
+                
+            # Get item name from either direct property or nested definition
+            item_name = item.get('name', '')
+            if not item_name:
+                # Try nested definition structure (raw D&D Beyond API format)
                 item_def = item.get('definition', {})
-                if item_def.get('filterType', '').lower() == 'armor':
-                    armor_class = item_def.get('armorClass', 0)
-                    if armor_class > 0:
-                        has_armor = True
-                        return armor_class + dex_mod  # Simplified armor + dex
+                item_name = item_def.get('name', '')
+            
+            item_name = item_name.lower()
+            self.logger.debug(f"Checking equipped item: {item_name}")
+            
+            # Check for armor (not shields)
+            if 'shield' not in item_name:
+                # Try to get AC from multiple possible locations
+                ac_value = None
+                
+                # Method 1: Check item definition
+                item_def = item.get('definition', {})
+                ac_value = item_def.get('armorClass') or item_def.get('armor_class')
+                self.logger.debug(f"Method 1 (definition): {ac_value}")
+                
+                # Method 2: Check direct on item
+                if ac_value is None:
+                    ac_value = item.get('armorClass') or item.get('armor_class')
+                    self.logger.debug(f"Method 2 (direct): {ac_value}")
+                
+                # Method 3: Standard armor lookup
+                if ac_value is None:
+                    ac_value = self._get_standard_armor_ac(item_name)
+                    self.logger.debug(f"Method 3 (standard lookup for '{item_name}'): {ac_value}")
+                
+                if ac_value and ac_value > armor_ac:
+                    armor_ac = ac_value
+                    armor_type = self._get_armor_type(item_name)
+                    self.logger.debug(f"Found armor: {item_name} AC {ac_value} type {armor_type}")
+            
+            # Check for shields
+            elif 'shield' in item_name:
+                # Try to get shield AC
+                shield_value = None
+                
+                # Method 1: Check item definition  
+                item_def = item.get('definition', {})
+                shield_value = item_def.get('armorClass') or item_def.get('armor_class')
+                
+                # Method 2: Check direct on item
+                if shield_value is None:
+                    shield_value = item.get('armorClass') or item.get('armor_class')
+                
+                # Method 3: Default shield AC
+                if shield_value is None:
+                    shield_value = 2  # Standard shield AC
+                
+                shield_ac += shield_value
+                self.logger.debug(f"Found shield: {item_name} AC +{shield_value}")
         
-        # If no armor equipped, check for unarmored defense
-        if not has_armor:
+        self.logger.debug(f"Final equipment scan results: armor_ac={armor_ac}, armor_type={armor_type}, shield_ac={shield_ac}")
+        
+        # Calculate final AC
+        if armor_ac > 0:
+            # Wearing armor: apply dex cap based on armor type
+            max_dex = self._get_armor_dex_cap(armor_type)
+            capped_dex = min(dex_mod, max_dex) if max_dex is not None else dex_mod
+            final_ac = armor_ac + capped_dex + shield_ac
+            self.logger.debug(f"Armored AC: {armor_ac} (armor) + {capped_dex} (dex, capped at {max_dex}) + {shield_ac} (shield) = {final_ac}")
+            
+            # Create structured result for armored AC - format without double signs
+            breakdown_parts = [f"{armor_ac} (armor)"]
+            if capped_dex > 0:
+                breakdown_parts.append(f"{capped_dex} (dex)")
+            elif capped_dex < 0:
+                breakdown_parts.append(f"{capped_dex} (dex)")  # Already has negative sign
+            if shield_ac > 0:
+                breakdown_parts.append(f"{shield_ac} (shield)")
+            
+            return {
+                'total': final_ac,
+                'base': armor_ac,  # Base armor AC instead of 10
+                'breakdown': f"AC: {' + '.join(breakdown_parts)} = {final_ac}",
+                'armor_type': armor_type or 'unknown',
+                'has_armor': True,
+                'has_shield': shield_ac > 0
+            }
+        else:
+            # Unarmored: check for unarmored defense
+            base_ac = 10 + dex_mod
+            unarmored_bonus = 0
+            unarmored_type = "Unarmored"
+            
             classes = raw_data.get('classes', [])
             class_names = [cls.get('definition', {}).get('name', '').lower() for cls in classes]
             
             # Barbarian Unarmored Defense: 10 + Dex + Con
             if 'barbarian' in class_names:
-                return 10 + dex_mod + con_mod
+                unarmored_bonus = con_mod
+                unarmored_type = "Unarmored Defense (Barbarian)"
+                self.logger.debug(f"Barbarian unarmored defense: +{con_mod} CON")
             
-            # Monk Unarmored Defense: 10 + Dex + Wis
-            if 'monk' in class_names:
-                return 10 + dex_mod + wis_mod
+            # Monk Unarmored Defense: 10 + Dex + Wis (no shield)
+            elif 'monk' in class_names and shield_ac == 0:
+                unarmored_bonus = wis_mod
+                unarmored_type = "Unarmored Defense (Monk)"
+                self.logger.debug(f"Monk unarmored defense: +{wis_mod} WIS")
+            
+            final_ac = base_ac + unarmored_bonus + shield_ac
+            self.logger.debug(f"Unarmored AC: {base_ac} (base+dex) + {unarmored_bonus} (unarmored) + {shield_ac} (shield) = {final_ac}")
+            
+            # Create structured result for unarmored AC - format without double signs
+            breakdown_parts = ["10 (base)"]
+            
+            # Add dex without double signs
+            if dex_mod > 0:
+                breakdown_parts.append(f"{dex_mod} (dex)")
+            elif dex_mod < 0:
+                breakdown_parts.append(f"{dex_mod} (dex)")  # Already has negative sign
+            else:
+                breakdown_parts.append("0 (dex)")
+                
+            # Add unarmored bonus without double signs  
+            if unarmored_bonus != 0:
+                ability_name = "con" if 'barbarian' in class_names else "wis" if 'monk' in class_names else "special"
+                if unarmored_bonus > 0:
+                    breakdown_parts.append(f"{unarmored_bonus} ({ability_name})")
+                else:
+                    breakdown_parts.append(f"{unarmored_bonus} ({ability_name})")  # Already has negative sign
+                    
+            # Add shield without double signs
+            if shield_ac > 0:
+                breakdown_parts.append(f"{shield_ac} (shield)")
+            
+            return {
+                'total': final_ac,
+                'base': 10,
+                'breakdown': f"{unarmored_type}: {' + '.join(breakdown_parts)} = {final_ac}",
+                'armor_type': 'unarmored',
+                'has_armor': False,
+                'has_shield': shield_ac > 0
+            }
+    
+    def _get_standard_armor_ac(self, armor_name: str) -> Optional[int]:
+        """Get AC for standard D&D armor by name."""
+        armor_ac_table = {
+            # Light Armor
+            'padded': 11, 'leather': 11, 'studded leather': 12,
+            # Medium Armor  
+            'hide': 12, 'chain shirt': 13, 'scale mail': 14, 'breastplate': 14, 'half plate': 15,
+            # Heavy Armor
+            'ring mail': 14, 'chain mail': 16, 'splint': 17, 'plate': 18
+        }
+        return armor_ac_table.get(armor_name, None)
+    
+    def _get_armor_type(self, armor_name: str) -> str:
+        """Get armor type (light/medium/heavy) by name."""
+        light_armor = ['padded', 'leather', 'studded leather']
+        medium_armor = ['hide', 'chain shirt', 'scale mail', 'breastplate', 'half plate']
+        heavy_armor = ['ring mail', 'chain mail', 'splint', 'plate']
         
-        # Standard AC: 10 + Dex
-        return 10 + dex_mod
+        if armor_name in light_armor:
+            return 'light'
+        elif armor_name in medium_armor:
+            return 'medium'
+        elif armor_name in heavy_armor:
+            return 'heavy'
+        else:
+            return 'unknown'
+    
+    def _get_armor_dex_cap(self, armor_type: str) -> Optional[int]:
+        """Get dexterity modifier cap for armor type."""
+        caps = {
+            'light': None,    # No cap
+            'medium': 2,      # +2 max
+            'heavy': 0,       # +0 max
+            'unknown': None   # No cap for unknown
+        }
+        return caps.get(armor_type)
     
     def _get_hit_points(self, raw_data: Dict[str, Any], context: CalculationContext) -> Dict[str, Any]:
         """Get hit points from context or pre-calculated data using backup original logic."""
@@ -353,29 +577,38 @@ class CombatCoordinator(ICoordinator):
         
         # Fallback: basic HP calculation (original v6.0.0 logic preserved as last resort)
         base_hp = raw_data.get('baseHitPoints', 0) or 0
-        bonus_hp = raw_data.get('bonusHitPoints', 0) or raw_data.get('overrideHitPoints', 0) or 0
         temp_hp = raw_data.get('temporaryHitPoints', 0) or 0
         removed_hp = raw_data.get('removedHitPoints', 0) or 0
         
-        self.logger.debug(f"HP components: base={base_hp} (type: {type(base_hp)}), bonus={bonus_hp} (type: {type(bonus_hp)})")
-        
-        # Add constitution modifier per level (D&D rule) - scraper should calculate this
-        classes = raw_data.get('classes', [])
-        total_level = sum(cls.get('level', 0) for cls in classes)
-        
-        # Get constitution modifier from context
-        con_modifier = 0
-        if context and hasattr(context, 'metadata') and context.metadata:
-            abilities_data = context.metadata.get('abilities', {})
-            ability_modifiers = abilities_data.get('ability_modifiers', {})
-            con_modifier = ability_modifiers.get('constitution', 0) or 0
-        
-        constitution_hp = con_modifier * total_level
-        
-        # Note: D&D Beyond's baseHitPoints excludes constitution modifier
-        # We need to add it back to get the correct total HP
-        max_hp = base_hp + bonus_hp + constitution_hp
-        self.logger.debug(f"HP calculation: {base_hp} (base) + {bonus_hp} (bonus) + {constitution_hp} (con * level) = {max_hp}")
+        # Check for override HP first (D&D Beyond manual override)
+        override_hp = raw_data.get('overrideHitPoints')
+        if override_hp is not None:
+            # Use override as total HP - no additional calculation needed
+            max_hp = override_hp
+            self.logger.debug(f"Using overrideHitPoints: {max_hp}")
+        else:
+            # Calculate HP from base + bonuses + constitution
+            bonus_hp = raw_data.get('bonusHitPoints', 0) or 0
+            
+            self.logger.debug(f"HP components: base={base_hp} (type: {type(base_hp)}), bonus={bonus_hp} (type: {type(bonus_hp)})")
+            
+            # Add constitution modifier per level (D&D rule) - scraper should calculate this
+            classes = raw_data.get('classes', [])
+            total_level = sum(cls.get('level', 0) for cls in classes)
+            
+            # Get constitution modifier from context
+            con_modifier = 0
+            if context and hasattr(context, 'metadata') and context.metadata:
+                abilities_data = context.metadata.get('abilities', {})
+                ability_modifiers = abilities_data.get('ability_modifiers', {})
+                con_modifier = ability_modifiers.get('constitution', 0) or 0
+            
+            constitution_hp = con_modifier * total_level
+            
+            # Note: D&D Beyond's baseHitPoints excludes constitution modifier
+            # We need to add it back to get the correct total HP
+            max_hp = base_hp + bonus_hp + constitution_hp
+            self.logger.debug(f"HP calculation: {base_hp} (base) + {bonus_hp} (bonus) + {constitution_hp} (con * level) = {max_hp}")
         
         # For malformed characters, ensure minimum HP
         if max_hp <= 0:

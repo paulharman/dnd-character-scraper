@@ -1,0 +1,63 @@
+# Change Log Service Configuration Example
+# Copy this file to change_log.yaml and customize as needed
+
+change_log:
+  # Storage configuration
+  storage_dir: "character_data/change_logs"
+  
+  # Log rotation settings
+  log_rotation_size_mb: 10  # Rotate when file exceeds this size
+  
+  # Retention policy
+  log_retention_days: 365  # Keep logs for 1 year
+  backup_old_logs: true    # Archive old logs instead of deleting
+  
+  # Feature toggles
+  enable_causation_analysis: true      # Analyze what caused changes
+  enable_detailed_descriptions: true   # Generate comprehensive descriptions
+  
+  # Performance settings
+  max_entries_per_batch: 100  # Maximum entries to process at once
+  
+  # Maintenance settings
+  maintenance:
+    # Automatic maintenance schedule
+    enable_scheduled_maintenance: true   # Enable automatic maintenance
+    maintenance_interval_hours: 24       # Run maintenance every 24 hours
+    
+    # Health monitoring
+    enable_health_monitoring: true       # Monitor storage health
+    health_check_interval_minutes: 60    # Check health every hour
+    
+    # Rotation thresholds
+    rotation_warning_threshold: 0.8      # Warn when file is 80% of rotation size
+    max_rotated_files_per_character: 50  # Maximum rotated files to keep
+    
+    # Cleanup settings
+    cleanup_empty_directories: true      # Remove empty directories during maintenance
+    consolidate_small_files: true        # Consolidate small rotated files
+    
+    # Validation settings
+    validate_on_startup: true            # Validate log files on service startup
+    repair_corrupted_files: true         # Attempt to repair corrupted files
+    
+    # Reporting
+    generate_maintenance_reports: true   # Generate maintenance reports
+    report_retention_days: 90           # Keep maintenance reports for 90 days
+  
+# Example usage in Discord configuration
+discord:
+  change_log:
+    enabled: true
+    
+    # Detail levels for different outputs
+    discord_detail_level: "summary"      # brief, summary, detailed
+    log_detail_level: "comprehensive"    # summary, detailed, comprehensive
+    
+    # Notification settings
+    notify_on_causation_detected: true   # Send notification when causation is found
+    include_attribution_in_discord: true # Include attribution in Discord messages
+    
+    # Filtering
+    min_priority_for_logging: "LOW"      # Log all changes
+    min_priority_for_discord: "MEDIUM"  # Only notify on medium+ priority changes

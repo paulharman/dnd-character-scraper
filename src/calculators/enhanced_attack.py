@@ -90,7 +90,8 @@ class EnhancedAttackCalculator(RuleAwareCalculator, ICachedCalculator):
             rule_manager: Rule version manager instance
         """
         super().__init__(config_manager, rule_manager)
-        self.config = CalculatorConfig()
+        # Load configuration from main config system (uses performance.enable_caching)
+        self.config = self.create_calculator_config_from_main(config_manager)
         self.validator = CharacterDataValidator()
         self.cache = {}
         self.cache_stats = {'hits': 0, 'misses': 0}

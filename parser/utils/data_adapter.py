@@ -36,17 +36,17 @@ class V6ToV5Adapter:
         # Check if data is current v6.0.0 format (has character_info and abilities sections)
         # v6.0.0 doesn't always have combat section, so we check for the key identifying fields
         if 'character_info' in v6_data and 'abilities' in v6_data and 'scraper_version' in v6_data:
-            self.logger.debug("Adapting v6.0.0 structure to backup-compatible format")
+            self.logger.debug("Parser:   Adapting v6.0.0 structure to backup-compatible format")
             return self._transform_v6_to_backup_format(v6_data)
         
         # Check if data is already in backup format (has basic_info at top level)
         elif 'basic_info' in v6_data:
-            self.logger.debug("Data already in backup-compatible format")
+            self.logger.debug("Parser:   Data already in backup-compatible format")
             return v6_data.copy()
         
         # Fallback: assume it's some other format and pass through
         else:
-            self.logger.warning("Unknown data format, passing through unchanged")
+            self.logger.warning("Parser:   Unknown data format, passing through unchanged")
             return v6_data.copy()
     
     def _transform_v6_to_backup_format(self, v6_data: Dict[str, Any]) -> Dict[str, Any]:

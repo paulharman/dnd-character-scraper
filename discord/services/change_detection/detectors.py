@@ -580,26 +580,25 @@ class SpellDetector(DetectorBase):
         old_slots = old_spellcasting.get('spell_slots', [])
         new_slots = new_spellcasting.get('spell_slots', [])
         
-        for level in range(len(max(old_slots, new_slots, key=len))):
-            # Skip level 0 (cantrips) - they don't have spell slots, they're cast at will
-            if level == 0:
-                continue
+        for array_index in range(len(max(old_slots, new_slots, key=len))):
+            # Array index 0 = Level 1 spell slots, index 1 = Level 2 spell slots, etc.
+            spell_level = array_index + 1
                 
-            old_slot_count = old_slots[level] if level < len(old_slots) else 0
-            new_slot_count = new_slots[level] if level < len(new_slots) else 0
+            old_slot_count = old_slots[array_index] if array_index < len(old_slots) else 0
+            new_slot_count = new_slots[array_index] if array_index < len(new_slots) else 0
             
             if old_slot_count != new_slot_count:
                 change_type = ChangeType.INCREMENTED if new_slot_count > old_slot_count else ChangeType.DECREMENTED
-                priority = ChangePriority.HIGH if level <= 2 else ChangePriority.MEDIUM  # Low level slots are high priority
+                priority = ChangePriority.HIGH if spell_level <= 2 else ChangePriority.MEDIUM  # Low level slots are high priority
                 
                 changes.append(FieldChange(
-                    field_path=f'spellcasting.spell_slots.{level}',
+                    field_path=f'spellcasting.spell_slots.{spell_level:02d}',  # Zero-pad for correct sorting
                     old_value=old_slot_count,
                     new_value=new_slot_count,
                     change_type=change_type,
                     priority=priority,
                     category=ChangeCategory.SPELLS,
-                    description=f"Level {level} spell slots changed from {old_slot_count} to {new_slot_count}"
+                    description=f"Level {spell_level} spell slots changed from {old_slot_count} to {new_slot_count}"
                 ))
         
         # Check known spells - handle new data structure with spells organized by source

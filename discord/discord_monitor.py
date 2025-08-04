@@ -98,7 +98,7 @@ if str(discord_root) not in sys.path:
 
 from services.notification_manager import NotificationManager, NotificationConfig
 from services.discord_service import DiscordService
-from services.change_detection_service import ChangePriority
+from src.models.change_detection import ChangePriority
 from services.webhook_manager import WebhookManager
 from services.configuration_validator import ConfigurationValidator, SecurityLevel
 from services.discord_logger import DiscordLogger, OperationType, LogLevel, log_configuration_event
@@ -184,6 +184,9 @@ class DiscordMonitor:
         """
         processed_config = config.copy()
         
+        # Track which values came from environment variables
+        env_sourced_keys = set()
+        
         # Environment variable mappings (prioritized over config file)
         env_mappings = {
             'webhook_url': ['DISCORD_WEBHOOK_URL', 'WEBHOOK_URL'],
@@ -197,6 +200,7 @@ class DiscordMonitor:
                 env_value = os.getenv(env_var)
                 if env_value:
                     processed_config[config_key] = env_value
+                    env_sourced_keys.add(config_key)
                     logger.info(f"Using environment variable {env_var} for {config_key}")
                     break
         
@@ -204,7 +208,7 @@ class DiscordMonitor:
         processed_config = self._interpolate_env_vars(processed_config)
         
         # Security warnings for hardcoded sensitive values
-        self._check_config_security_warnings(processed_config)
+        self._check_config_security_warnings(processed_config, env_sourced_keys)
         
         return processed_config
     
@@ -244,38 +248,51 @@ class DiscordMonitor:
         
         return process_dict(config)
     
-    def _check_config_security_warnings(self, config: Dict[str, Any]):
+    def _check_config_security_warnings(self, config: Dict[str, Any], env_sourced_keys: set = None):
         """Check for security issues in configuration and log warnings."""
+        if env_sourced_keys is None:
+            env_sourced_keys = set()
+            
         webhook_url = config.get('webhook_url', '')
         session_cookie = config.get('session_cookie', '')
         
-        # Check for hardcoded webhook URLs
+        # Check for hardcoded webhook URLs (but skip if it came from environment variables)
         if webhook_url and isinstance(webhook_url, str):
             if webhook_url.startswith('https://discord') and 'webhooks' in webhook_url:
-                logger.warning("⚠️  SECURITY WARNING: Hardcoded webhook URL detected in configuration!")
-                logger.warning("   Recommendation: Use environment variable DISCORD_WEBHOOK_URL instead")
-                logger.warning("   Example: export DISCORD_WEBHOOK_URL='your-webhook-url'")
-                
-                # Enhanced logging for security events
-                self.discord_logger.log_configuration_event(
-                    "security_warning",
-                    "Hardcoded webhook URL detected in configuration",
-                    security_level="HIGH"
-                )
+                # Only warn if this URL was NOT loaded from an environment variable
+                if 'webhook_url' not in env_sourced_keys:
+                    logger.warning("⚠️  SECURITY WARNING: Hardcoded webhook URL detected in configuration!")
+                    logger.warning("   Recommendation: Use environment variable DISCORD_WEBHOOK_URL instead")
+                    logger.warning("   Example: export DISCORD_WEBHOOK_URL='your-webhook-url'")
+                    
+                    # Enhanced logging for security events
+                    self.discord_logger.log_configuration_event(
+                        "security_warning",
+                        "Hardcoded webhook URL detected in configuration",
+                        security_level="HIGH"
+                    )
+                else:
+                    # URL came from environment variable - this is good practice
+                    logger.debug("✅ Webhook URL loaded from environment variable (secure)")
         
-        # Check for hardcoded session cookies
+        # Check for hardcoded session cookies (but skip if it came from environment variables)
         if session_cookie and isinstance(session_cookie, str):
             if len(session_cookie) > 20 and not session_cookie.startswith('${') and not session_cookie.startswith('%'):
-                logger.warning("⚠️  SECURITY WARNING: Hardcoded session cookie detected in configuration!")
-                logger.warning("   Recommendation: Use environment variable DND_SESSION_COOKIE instead")
-                logger.warning("   Example: export DND_SESSION_COOKIE='your-session-cookie'")
-                
-                # Enhanced logging for security events
-                self.discord_logger.log_configuration_event(
-                    "security_warning",
-                    "Hardcoded session cookie detected in configuration",
-                    security_level="HIGH"
-                )
+                # Only warn if this cookie was NOT loaded from an environment variable
+                if 'session_cookie' not in env_sourced_keys:
+                    logger.warning("⚠️  SECURITY WARNING: Hardcoded session cookie detected in configuration!")
+                    logger.warning("   Recommendation: Use environment variable DND_SESSION_COOKIE instead")
+                    logger.warning("   Example: export DND_SESSION_COOKIE='your-session-cookie'")
+                    
+                    # Enhanced logging for security events
+                    self.discord_logger.log_configuration_event(
+                        "security_warning",
+                        "Hardcoded session cookie detected in configuration",
+                        security_level="HIGH"
+                    )
+                else:
+                    # Cookie came from environment variable - this is good practice
+                    logger.debug("✅ Session cookie loaded from environment variable (secure)")
     
     async def initialize(self, skip_webhook_test=False):
         """Initialize all services and connections."""
@@ -284,7 +301,7 @@ class DiscordMonitor:
         logging.getLogger().setLevel(getattr(logging, log_level.upper()))
         
         # Configure storage directory - use character_data/discord for new architecture
-        configured_storage_dir = self.config.get('storage_dir', '../character_data')
+        configured_storage_dir = self.config.get('storage_directory', self.config.get('storage_dir', '../character_data'))
         if Path(configured_storage_dir).is_absolute():
             # Absolute path - use discord subdirectory within it
             base_storage_dir = Path(configured_storage_dir)
@@ -357,9 +374,15 @@ class DiscordMonitor:
         # Parse format type
         
         
-        # Parse minimum priority
-        min_priority_name = self.config.get('min_priority', 'LOW')
-        min_priority = ChangePriority[min_priority_name.upper()]
+        # Parse minimum priority from YAML configuration
+        min_priority_name = self.config.get('discord', {}).get('min_priority', 'MEDIUM')
+        
+        try:
+            min_priority = ChangePriority[min_priority_name.upper()]
+            logger.info(f"Using minimum priority for Discord: {min_priority_name.upper()}")
+        except KeyError:
+            logger.warning(f"Invalid priority '{min_priority_name}', using MEDIUM")
+            min_priority = ChangePriority.MEDIUM
         
         # Parse filtering configuration - support both new and legacy formats
         include_groups = None
@@ -401,24 +424,23 @@ class DiscordMonitor:
         if include_groups is None and exclude_groups is None:
             logger.info("No filtering configured - all change types will be included")
         
-        # Parse notifications settings
-        notifications = self.config.get('notifications', {})
-        advanced = self.config.get('advanced', {})
-        rate_limit = advanced.get('rate_limit', {})
+        # Parse Discord settings
+        discord_config = self.config.get('discord', {})
+        rate_limit = discord_config.get('rate_limit', {})
         
         return NotificationConfig(
             webhook_url=self.config['webhook_url'],
-            username=notifications.get('username', 'D&D Beyond Monitor'),
-            avatar_url=notifications.get('avatar_url'),
-            max_changes_per_notification=advanced.get('max_changes_per_notification', 20),
+            username=discord_config.get('username', 'D&D Beyond Monitor'),
+            avatar_url=discord_config.get('avatar_url'),
+            max_changes_per_notification=discord_config.get('maximum_changes_per_notification', discord_config.get('max_changes_per_notification', 20)),
             min_priority=min_priority,
             include_groups=include_groups,
             exclude_groups=exclude_groups,
             rate_limit_requests_per_minute=rate_limit.get('requests_per_minute', 3),
-            rate_limit_burst=rate_limit.get('burst_limit', 1),
-            timezone=notifications.get('timezone', 'UTC'),
+            rate_limit_burst=rate_limit.get('maximum_burst_requests', rate_limit.get('burst_limit', 1)),
+            timezone=discord_config.get('timezone', 'UTC'),
             send_summary_for_multiple=len(self.character_ids) > 1,
-            delay_between_messages=advanced.get('delay_between_messages', 2.0)
+            delay_between_messages=discord_config.get('delay_between_messages', 2.0)
         )
     
     def _get_all_change_types(self) -> List[str]:
@@ -449,17 +471,30 @@ class DiscordMonitor:
             'level': ['basic'],
             'experience': ['basic'],
             'hit_points': ['combat'],
+            'max_hp': ['combat'],  # Maximum hit points
             'armor_class': ['combat'],
             'ability_scores': ['abilities'],
             'spells_known': ['spells'],
+            'spells': ['spells'],  # General spells category
             'spell_slots': ['spells'],
+            'spellcasting_stats': ['spells'],  # Spell attack bonuses, spell save DC
             'inventory_items': ['inventory'],
+            'inventory': ['inventory'],  # General inventory category
             'equipment': ['inventory'],
             'currency': ['inventory'],
             'skills': ['skills'],
+            'passive_skills': ['skills'],  # Passive perception, investigation, etc.
             'proficiencies': ['skills'],
             'feats': ['skills'],
             'class_features': ['basic'],
+            'subclass': ['basic'],  # Subclass selection/changes
+            'multiclass': ['basic'],  # Multiclassing changes
+            'race_species': ['basic'],  # Race/species changes
+            'initiative': ['combat'],  # Initiative modifier
+            'movement_speed': ['basic'],  # Speed changes
+            'size': ['basic'],  # Character size
+            'alignment': ['appearance'],  # Character alignment
+            'personality': ['appearance'],  # Personality traits
             'appearance': ['appearance'],
             'background': ['backstory'],
             'meta': ['meta']
@@ -550,7 +585,7 @@ class DiscordMonitor:
     
     async def monitor_loop(self):
         """Main monitoring loop."""
-        check_interval = self.config.get('check_interval', 600)
+        check_interval = self.config.get('check_interval_seconds', self.config.get('check_interval', 600))
         min_change_interval = timedelta(minutes=check_interval // 60)
         
         logger.info(f"Starting monitoring loop with {check_interval}s interval")
@@ -990,8 +1025,12 @@ class DiscordMonitor:
         if not self.character_ids:
             issues.append("No character IDs configured")
         
-        # Check change types
+        # Check change types - check both top level and filtering section
         change_types = self.config.get('change_types', [])
+        if not change_types and 'filtering' in self.config:
+            filtering = self.config.get('filtering', {})
+            change_types = filtering.get('change_types', [])
+        
         if not change_types:
             logger.warning("No change types configured - all changes will be ignored")
         
@@ -1144,6 +1183,14 @@ async def main():
         
         if args.check_only:
             success = await monitor.run_once(skip_scraping=True)
+            
+            # Wait for any pending background tasks (like change logging) to complete
+            loop = asyncio.get_running_loop()
+            if hasattr(loop, '_change_log_tasks') and loop._change_log_tasks:
+                logger.info(f"Waiting for {len(loop._change_log_tasks)} background change logging tasks to complete...")
+                await asyncio.gather(*loop._change_log_tasks, return_exceptions=True)
+                logger.info("All background tasks completed")
+            
             sys.exit(0 if success else 1)
         
         # Determine run mode: CLI args override config setting

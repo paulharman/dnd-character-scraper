@@ -87,6 +87,16 @@ bandit -r src/
 
 - **Factory Pattern**: Used for storage backends and service creation
 - **Strategy Pattern**: Different storage implementations (JSON, SQLite, PostgreSQL)
+- **Enhanced Detector Pattern**: Specialized detectors for different change types
 - **Observer Pattern**: Change detection and notification system
 - **Pydantic Models**: Extensive use of data validation and serialization
 - **Async/Await**: Asynchronous operations for I/O bound tasks
+
+## Change Detection Architecture
+
+- **Single Enhanced System**: Consolidated change detection using `EnhancedChangeDetectionService`
+- **Specialized Detectors**: Individual detectors for feats, spells, subclass, HP, etc.
+- **Causation Analysis**: Automatic detection of change relationships and causes
+- **Change Logging**: Persistent storage with detailed attribution
+- **Priority Classification**: Intelligent change prioritization for notifications
+- **Field Mapping**: Comprehensive D&D Beyond API field mapping

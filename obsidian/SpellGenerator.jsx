@@ -80,7 +80,7 @@ function SpellQuerySettings({ children }) {
     <div
       style="
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1.5em;
         margin-top: 1em;
         align-items: stretch;
@@ -91,7 +91,8 @@ function SpellQuerySettings({ children }) {
     </div>
   );
 }
-function SpellQuerySetting({ title, icon, children }) {
+
+function SpellQuerySetting({ title, icon, children, onToggle, onClear }) {
   return (
     <div
       style="
@@ -115,11 +116,31 @@ function SpellQuerySetting({ title, icon, children }) {
           margin-bottom: 0.5em;
           display: flex;
           justify-content: center;
+          align-items: center;
           gap: 0.5em;
         "
       >
         <dc.Icon icon={icon} />
-        <span>{title}</span>
+        <span style="flex-grow: 1; text-align: center;">{title}</span>
+        {(onToggle || onClear) && <span style="color: var(--text-muted);">|</span>}
+        {onToggle && (
+          <span 
+            onclick={onToggle} 
+            style="cursor: pointer; opacity: 0.7; hover: opacity: 1;" 
+            title="Toggle selection"
+          >
+            <dc.Icon icon="toggle-left" />
+          </span>
+        )}
+        {onClear && (
+          <span 
+            onclick={onClear} 
+            style="cursor: pointer; opacity: 0.7; hover: opacity: 1;" 
+            title="Clear all"
+          >
+            <dc.Icon icon="list-restart" />
+          </span>
+        )}
       </div>
       <div style="display: flex; flex-direction: column; gap: 0.4em; overflow-y: auto;">
         {children}
@@ -138,6 +159,9 @@ function SpellQuery({ showFilters = true, paging = 30 }) {
   const [filterSearch, setFilterSearch] = dc.useState('');
   const [filterClass, setFilterClass] = dc.useState([]);
   const [filterLevel, setFilterLevel] = dc.useState('');
+  const [filterLevelMin, setFilterLevelMin] = dc.useState('');
+  const [filterLevelMax, setFilterLevelMax] = dc.useState('');
+  const [useLevelRange, setUseLevelRange] = dc.useState(false);
   const [filterSchool, setFilterSchool] = dc.useState([]);
   const [filterComponents, setFilterComponents] = dc.useState([]);
   const [filtersShown, setFiltersShown] = dc.useState(false);
@@ -166,6 +190,16 @@ function SpellQuery({ showFilters = true, paging = 30 }) {
     )
   ).sort();
 
+  // Clear and toggle functions for enhanced filter controls
+  const clearFilterClass = () => setFilterClass([]);
+  const toggleFilterClass = () => setFilterClass(allClasses.filter(c => !filterClass.includes(c)));
+  
+  const clearFilterSchool = () => setFilterSchool([]);
+  const toggleFilterSchool = () => setFilterSchool(allSchools.filter(s => !filterSchool.includes(s)));
+  
+  const clearFilterComponents = () => setFilterComponents([]);
+  const toggleFilterComponents = () => setFilterComponents(allComponents.filter(c => !filterComponents.includes(c)));
+
   const filteredPages = allPages.filter(page => {
     const fm = page.$frontmatter || {};
 
@@ -180,11 +214,21 @@ function SpellQuery({ showFilters = true, paging = 30 }) {
       !filterClass.some(cls => Array.isArray(spellClasses) ? spellClasses.includes(cls) : spellClasses === cls)
     )
       return false;
-    if (
-      filterLevel &&
-      Number(getFMVal(fm, 'levelint')) !== Number(filterLevel)
-    )
-      return false;
+    // Handle level filtering - either exact level or range
+    const spellLevel = Number(getFMVal(fm, 'levelint'));
+    if (useLevelRange) {
+      // Range filtering
+      const minLevel = filterLevelMin !== '' ? Number(filterLevelMin) : 0;
+      const maxLevel = filterLevelMax !== '' ? Number(filterLevelMax) : 9;
+      if (spellLevel < minLevel || spellLevel > maxLevel) {
+        return false;
+      }
+    } else {
+      // Exact level filtering
+      if (filterLevel && spellLevel !== Number(filterLevel)) {
+        return false;
+      }
+    }
     if (
       filterConcentration &&
       String(getFMVal(fm, 'concentration')) !== filterConcentration
@@ -323,11 +367,14 @@ if (sortByLevel) {
         {showFilters && (
           <button
             onclick={() => {
-              setFilterClass([]);
+              clearFilterClass();
               setFilterLevel('');
+              setFilterLevelMin('');
+              setFilterLevelMax('');
+              setUseLevelRange(false);
               setFilterSearch('');
-              setFilterSchool([]);
-              setFilterComponents([]);
+              clearFilterSchool();
+              clearFilterComponents();
               setFilterClassSearch('');
               setFilterConcentration('');
               setFilterRitual('');
@@ -341,7 +388,12 @@ if (sortByLevel) {
 
       {filtersShown && (
         <SpellQuerySettings>
-          <SpellQuerySetting title="Class" icon="lucide-users">
+          <SpellQuerySetting 
+            title="Class" 
+            icon="lucide-users"
+            onToggle={toggleFilterClass}
+            onClear={clearFilterClass}
+          >
             <input
               type="search"
               placeholder="Type to filter classes..."
@@ -370,81 +422,207 @@ if (sortByLevel) {
                 ))}
             </div>
           </SpellQuerySetting>
-          <SpellQuerySetting title="School & Components" icon="lucide-folder">
-            <div style="margin-bottom: 1em;">
-              <div style="font-weight: 500; margin-bottom: 0.25em;">School</div>
-              {allSchools.map(s => (
-                <label style="display: block" key={s}>
-                  <input
-                    type="checkbox"
-                    checked={filterSchool.includes(s)}
-                    onchange={e =>
-                      setFilterSchool(
-                        e.target.checked
-                          ? [...filterSchool, s]
-                          : filterSchool.filter(x => x !== s)
-                      )
-                    }
-                  />{' '}
-                  {s}
-                </label>
-              ))}
-            </div>
-            <div>
-              <div style="font-weight: 500; margin-bottom: 0.25em;">Components</div>
-              {allComponents.map(comp => (
-                <label style="display: block" key={comp}>
-                  <input
-                    type="checkbox"
-                    checked={filterComponents.includes(comp)}
-                    onchange={e =>
-                      setFilterComponents(
-                        e.target.checked
-                          ? [...filterComponents, comp]
-                          : filterComponents.filter(x => x !== comp)
-                      )
-                    }
-                  />{' '}
-                  {componentNames[comp]}
-                </label>
-              ))}
-            </div>
+          <SpellQuerySetting 
+            title="School" 
+            icon="lucide-folder"
+            onToggle={toggleFilterSchool}
+            onClear={clearFilterSchool}
+          >
+            {allSchools.map(s => (
+              <label style="display: block" key={s}>
+                <input
+                  type="checkbox"
+                  checked={filterSchool.includes(s)}
+                  onchange={e =>
+                    setFilterSchool(
+                      e.target.checked
+                        ? [...filterSchool, s]
+                        : filterSchool.filter(x => x !== s)
+                    )
+                  }
+                />{' '}
+                {s}
+              </label>
+            ))}
+          </SpellQuerySetting>
+          <SpellQuerySetting 
+            title="Components" 
+            icon="lucide-puzzle"
+            onToggle={toggleFilterComponents}
+            onClear={clearFilterComponents}
+          >
+            {allComponents.map(comp => (
+              <label style="display: block" key={comp}>
+                <input
+                  type="checkbox"
+                  checked={filterComponents.includes(comp)}
+                  onchange={e =>
+                    setFilterComponents(
+                      e.target.checked
+                        ? [...filterComponents, comp]
+                        : filterComponents.filter(x => x !== comp)
+                    )
+                  }
+                />{' '}
+                {componentNames[comp]}
+              </label>
+            ))}
           </SpellQuerySetting>
           <SpellQuerySetting title="Level, Concentration & Ritual" icon="lucide-hash">
             <div style="margin-bottom: 1em;">
-              <div style="font-weight: 500; margin-bottom: 0.25em;">Level</div>
-              <input
-                type="number"
-                min="0"
-                max="9"
-                value={filterLevel}
-                onchange={e => setFilterLevel(e.target.value)}
-                style="max-width: 75px;"
-              />
+              <div style="font-weight: 500; margin-bottom: 0.25em; display: flex; align-items: center; gap: 0.5em;">
+                Level
+                <label style="font-weight: normal; font-size: 0.9em; display: flex; align-items: center; gap: 0.25em;">
+                  <input
+                    type="checkbox"
+                    checked={useLevelRange}
+                    onchange={e => {
+                      setUseLevelRange(e.target.checked);
+                      if (e.target.checked) {
+                        setFilterLevel(''); // Clear exact level when switching to range
+                      } else {
+                        setFilterLevelMin(''); // Clear range when switching to exact
+                        setFilterLevelMax('');
+                      }
+                    }}
+                    style="transform: scale(0.9);"
+                  />
+                  Range
+                </label>
+              </div>
+              {useLevelRange ? (
+                <div style="display: flex; gap: 0.5em; align-items: center;">
+                  <input
+                    type="number"
+                    min="0"
+                    max="9"
+                    value={filterLevelMin}
+                    onchange={e => setFilterLevelMin(e.target.value)}
+                    placeholder="Min"
+                    style="max-width: 60px;"
+                  />
+                  <span style="font-size: 0.9em; color: var(--text-muted);">to</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="9"
+                    value={filterLevelMax}
+                    onchange={e => setFilterLevelMax(e.target.value)}
+                    placeholder="Max"
+                    style="max-width: 60px;"
+                  />
+                </div>
+              ) : (
+                <input
+                  type="number"
+                  min="0"
+                  max="9"
+                  value={filterLevel}
+                  onchange={e => setFilterLevel(e.target.value)}
+                  placeholder="Exact level"
+                  style="max-width: 75px;"
+                />
+              )}
             </div>
             <div style="margin-bottom: 1em;">
-              <div style="font-weight: 500; margin-bottom: 0.25em;">Concentration</div>
-              <select
-                value={filterConcentration}
-                onchange={e => setFilterConcentration(e.target.value)}
-                style="max-width: 120px;"
-              >
-                <option value="">---</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
+              <div style="font-weight: 500; margin-bottom: 0.5em;">Concentration</div>
+              <div style="display: flex; flex-direction: column; gap: 0.25em;">
+                <button
+                  onclick={() => setFilterConcentration('')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterConcentration === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterConcentration === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterConcentration === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  All Spells
+                </button>
+                <button
+                  onclick={() => setFilterConcentration('true')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterConcentration === 'true' ? '#4caf50' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterConcentration === 'true' ? 'rgba(76, 175, 80, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterConcentration === 'true' ? '#4caf50' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  🔮 Concentration Only
+                </button>
+                <button
+                  onclick={() => setFilterConcentration('false')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterConcentration === 'false' ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterConcentration === 'false' ? 'rgba(255, 152, 0, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterConcentration === 'false' ? '#ff9800' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  ⚡ No Concentration
+                </button>
+              </div>
             </div>
             <div style="margin-bottom: 1em;">
-              <div style="font-weight: 500; margin-bottom: 0.25em;">Ritual</div>
-              <select
-                value={filterRitual}
-                onchange={e => setFilterRitual(e.target.value)}
-                style="max-width: 120px;"
-              >
-                <option value="">---</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
-              </select>
+              <div style="font-weight: 500; margin-bottom: 0.5em;">Ritual</div>
+              <div style="display: flex; flex-direction: column; gap: 0.25em;">
+                <button
+                  onclick={() => setFilterRitual('')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterRitual === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterRitual === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterRitual === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  All Spells
+                </button>
+                <button
+                  onclick={() => setFilterRitual('true')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterRitual === 'true' ? '#9c27b0' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterRitual === 'true' ? 'rgba(156, 39, 176, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterRitual === 'true' ? '#9c27b0' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  🕯️ Ritual Only
+                </button>
+                <button
+                  onclick={() => setFilterRitual('false')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterRitual === 'false' ? '#607d8b' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterRitual === 'false' ? 'rgba(96, 125, 139, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterRitual === 'false' ? '#607d8b' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  ⚔️ No Ritual
+                </button>
+              </div>
             </div>
 			
 

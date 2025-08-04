@@ -89,8 +89,9 @@ class RuleVersionManager:
                 self.version_cache[character_id] = result
             return result
         
-        # Run detection methods
+        # Run detection methods (in order of priority)
         detection_methods = [
+            self._detect_by_features,
             self._detect_by_primary_class,
             self._detect_by_source_ids,
             self._detect_by_terminology,
@@ -114,6 +115,73 @@ class RuleVersionManager:
             self.version_cache[character_id] = final_result
         
         return final_result
+    
+    def _detect_by_features(self, character_data: Dict[str, Any]) -> Optional[DetectionResult]:
+        """Detect rule version based on feature descriptions with 2024-specific patterns."""
+        evidence = []
+        
+        # Check features for 2024-specific content patterns
+        features = character_data.get('features', {})
+        
+        # Handle features structure - features is a dict with categories (v6.0.0 format)
+        if isinstance(features, dict):
+            for category, feature_list in features.items():
+                if isinstance(feature_list, list):
+                    for feature in feature_list:
+                        if not isinstance(feature, dict):
+                            continue
+                            
+                        description = feature.get('description', '').lower()
+                        feature_name = feature.get('name', 'Unknown Feature')
+                        
+                        # Look for 2024-specific language patterns
+                        patterns_2024 = [
+                            'you gain a wizard subclass of your choice',  # 2024 wizard language
+                            'specialization that grants you features',     # 2024 subclass language
+                            'for the rest of your career',                # 2024 feature language
+                            'expertise in two skills',                    # 2024 rogue feature
+                            'channel divinity',                           # 2024 cleric changes
+                        ]
+                        
+                        for pattern in patterns_2024:
+                            if pattern in description:
+                                evidence.append(f"Found 2024-specific pattern '{pattern}' in {category} feature '{feature_name}'")
+                                return DetectionResult(
+                                    version=RuleVersion.RULES_2024,
+                                    confidence=0.9,
+                                    detection_method="feature_analysis",
+                                    evidence=evidence,
+                                    warnings=[]
+                                )
+        
+        # Handle features list (legacy format)
+        elif isinstance(features, list):
+            for feature in features:
+                if not isinstance(feature, dict):
+                    continue
+                    
+                description = feature.get('description', '').lower()
+                feature_name = feature.get('name', 'Unknown Feature')
+                
+                # Look for 2024-specific language patterns
+                patterns_2024 = [
+                    'you gain a wizard subclass of your choice',  # 2024 wizard language
+                    'specialization that grants you features',     # 2024 subclass language
+                    'for the rest of your career',                # 2024 feature language
+                ]
+                
+                for pattern in patterns_2024:
+                    if pattern in description:
+                        evidence.append(f"Found 2024-specific pattern '{pattern}' in feature '{feature_name}'")
+                        return DetectionResult(
+                            version=RuleVersion.RULES_2024,
+                            confidence=0.9,
+                            detection_method="feature_analysis",
+                            evidence=evidence,
+                            warnings=[]
+                        )
+        
+        return None
     
     def _detect_by_primary_class(self, character_data: Dict[str, Any]) -> Optional[DetectionResult]:
         """Detect rule version based on primary class source."""

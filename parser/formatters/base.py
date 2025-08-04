@@ -69,7 +69,7 @@ class BaseFormatter(IFormatter, ABC):
             # End performance monitoring if available
             if self.performance_monitor:
                 duration = self.performance_monitor.end_timing(f"{self.__class__.__name__}.format")
-                self.logger.debug(f"Formatting completed in {duration:.3f}s")
+                self.logger.debug(f"Parser:   Formatting completed in {duration:.3f}s")
     
     @abstractmethod
     def _format_internal(self, character_data: Dict[str, Any]) -> str:

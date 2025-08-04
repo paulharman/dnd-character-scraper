@@ -20,9 +20,11 @@ if str(discord_path) not in sys.path:
     sys.path.insert(0, str(discord_path))
 
 try:
-    from services.change_detection_service import (
-        ChangeDetectionService, CharacterSnapshot, ChangePriority
+    from src.services.enhanced_change_detection_service import (
+        EnhancedChangeDetectionService as ChangeDetectionService
     )
+    from src.models.change_detection import ChangePriority
+    from discord.services.change_detection.models import CharacterSnapshot
     from services.notification_manager import NotificationManager, NotificationConfig
 except ImportError as e:
     logging.warning(f"Discord services not available: {e}")

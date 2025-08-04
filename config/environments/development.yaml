@@ -5,7 +5,7 @@
 api:
   timeout: 60  # Longer timeout for debugging
   max_retries: 1  # Fewer retries for faster feedback
-  retry_delay: 1.0  # Shorter delay for development
+  retry_delay: 30.0  # Respectful API usage even in development
   
 # Enhanced output for development  
 output:

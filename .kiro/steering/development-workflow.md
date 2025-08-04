@@ -15,6 +15,23 @@ python test.py --setup-check
 python test.py --quick
 ```
 
+### Enhanced Change Detection Development
+When working on change detection features:
+
+```bash
+# Test individual detectors
+python test.py --pattern "test_*_detector"
+
+# Test causation analysis
+python test.py --pattern "test_causation"
+
+# Test change logging
+python test.py --pattern "test_change_log"
+
+# Test Discord integration
+python test.py --pattern "test_discord_formatter"
+```
+
 ### 2. Test-Driven Development
 ```bash
 # Write failing test first
@@ -36,6 +53,7 @@ python test.py --quick
 python test.py --spell          # For spell-related features
 python test.py --calculator     # For calculation features
 python test.py --integration    # For workflow features
+python test.py --change-detection # For enhanced change detection features
 ```
 
 ### 4. Pre-commit Validation
@@ -225,5 +243,24 @@ python test.py -k "spell and not integration"
 - **Coverage must not decrease** below 80%
 - **No temporary files** in repository
 - **Documentation must be current**
+
+## Enhanced Change Detection Development Patterns
+
+### Working with Detectors
+- **Single Responsibility**: Each detector handles one type of change (feats, spells, etc.)
+- **Consistent Interface**: All detectors extend `BaseEnhancedDetector`
+- **Field Path Conventions**: Use `character.{category}.{field}` format
+- **Priority Classification**: Use HIGH/MEDIUM/LOW based on user impact
+
+### Change Logging Integration
+- **Automatic Logging**: Changes are automatically logged when detected
+- **Causation Analysis**: Include attribution for why changes occurred
+- **Error Handling**: Graceful degradation if logging fails
+- **Performance**: Async logging to avoid blocking notifications
+
+### Configuration Management
+- **Field Patterns**: Use `config/discord.yaml` field patterns for priority overrides
+- **Detector Settings**: Configure individual detectors through enhanced config
+- **Priority Overrides**: Override default priorities for specific field paths
 
 This workflow ensures consistent, high-quality development practices across the entire project.

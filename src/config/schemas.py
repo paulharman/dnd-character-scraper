@@ -34,7 +34,7 @@ class APIConfig(BaseModel):
     user_agent: str = Field(default="DnDBeyond-Enhanced-Scraper/6.0.0")
     timeout: int = Field(default=30, ge=1, le=300)
     max_retries: int = Field(default=3, ge=0, le=10)
-    retry_delay: float = Field(default=2.0, ge=0.1, le=10.0)
+    retry_delay: float = Field(default=30.0, ge=30.0)
     
     # HTTP Headers
     headers: Dict[str, str] = Field(default_factory=lambda: {
@@ -80,12 +80,30 @@ class ProjectConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     """Logging configuration."""
-    level: str = Field(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
-    include_timestamps: bool = Field(default=True)
-    include_traceback: bool = Field(default=False)
-    log_to_file: bool = Field(default=False)
-    log_file_path: Optional[str] = Field(default=None)
-    capture_for_analysis: bool = Field(default=False)
+    level: str = Field(
+        default="INFO", 
+        pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$",
+        description="Logging level - controls verbosity of log output",
+        examples=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    )
+    capture_for_analysis: bool = Field(
+        default=False,
+        description="Capture logs for analysis and debugging purposes"
+    )
+    # Note: log_to_file and log_file_path are handled in environment-specific configs
+    # Note: include_timestamps and include_traceback were unused and removed
+    
+    @field_validator('level')
+    @classmethod
+    def validate_level(cls, v):
+        valid_levels = {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}
+        if v not in valid_levels:
+            raise ValueError(
+                f'Invalid logging level: {v}. '
+                f'Valid options are: {", ".join(sorted(valid_levels))}. '
+                f'Use DEBUG for development, INFO for production.'
+            )
+        return v
 
 
 class TestingConfig(BaseModel):
@@ -121,9 +139,17 @@ class BatchProcessingConfig(BaseModel):
 
 class PerformanceConfig(BaseModel):
     """Performance configuration."""
-    enable_caching: bool = Field(default=False)
-    memory_optimization: bool = Field(default=True)
-    cleanup_temp_files: bool = Field(default=True)
+    enable_caching: bool = Field(
+        default=False,
+        description="Enable calculation result caching for improved performance. "
+                   "Uses more memory but speeds up repeated calculations."
+    )
+    memory_optimization: bool = Field(
+        default=True,
+        description="Enable memory usage optimizations. "
+                   "Recommended to keep enabled unless debugging memory issues."
+    )
+    # Note: cleanup_temp_files was unused and removed
 
 
 class DiscordConfig(BaseModel):
@@ -148,7 +174,11 @@ class DiscordConfig(BaseModel):
     def validate_format_type(cls, v):
         valid_types = {'compact', 'detailed', 'json'}
         if v not in valid_types:
-            raise ValueError(f'Invalid format_type: {v}. Valid: {valid_types}')
+            raise ValueError(
+                f'Invalid format_type: {v}. '
+                f'Valid options are: {", ".join(sorted(valid_types))}. '
+                f'Use "detailed" for rich Discord embeds, "compact" for simple messages.'
+            )
         return v
     
     @field_validator('min_priority')
@@ -156,7 +186,11 @@ class DiscordConfig(BaseModel):
     def validate_min_priority(cls, v):
         valid_priorities = {'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'}
         if v not in valid_priorities:
-            raise ValueError(f'Invalid min_priority: {v}. Valid: {valid_priorities}')
+            raise ValueError(
+                f'Invalid min_priority: {v}. '
+                f'Valid options are: {", ".join(sorted(valid_priorities))}. '
+                f'Use LOW to see all changes, HIGH to see only important changes.'
+            )
         return v
 
 

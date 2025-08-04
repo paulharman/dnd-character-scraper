@@ -14,7 +14,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .discord_service import DiscordService, EmbedColor
-from .change_detection_service import ChangeDetectionService, CharacterChangeSet, ChangePriority, CharacterSnapshot
+from src.services.enhanced_change_detection_service import EnhancedChangeDetectionService as ChangeDetectionService
+from src.models.change_detection import ChangePriority, ChangeDetectionResult
+from discord.services.change_detection.models import CharacterChangeSet, CharacterSnapshot
 
 # Handle both relative and absolute imports
 try:
@@ -77,14 +79,118 @@ class NotificationManager:
             # Default to character_data/discord directory (where character files are stored)
             self.storage_dir = Path("../character_data/discord")
         
-        # Initialize services
-        self.change_detector = ChangeDetectionService()
-        self.formatter = DiscordFormatter()
+        # Initialize services - using enhanced change detection as primary service
+        enhanced_config = self._create_enhanced_change_detection_config()
+        self.change_detector = ChangeDetectionService(config=enhanced_config)
+        
+        # Load Discord configuration for formatter
+        discord_config = self._load_discord_config()
+        self.formatter = DiscordFormatter(config=discord_config)
         
         # Track last notification times to avoid spam
         self.last_notification_times: Dict[int, datetime] = {}
         
         logger.info("Notification manager initialized")
+    
+    def _load_discord_config(self) -> Dict[str, Any]:
+        """Load Discord configuration for formatter."""
+        import yaml
+        from pathlib import Path
+        
+        config_path = Path("config/discord.yaml")
+        if not config_path.exists():
+            logger.warning("discord.yaml not found, using default configuration")
+            return {}
+        
+        try:
+            with open(config_path, 'r') as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            logger.error(f"Error loading Discord configuration: {e}")
+            return {}
+    
+    def _create_enhanced_change_detection_config(self):
+        """Create enhanced change detection configuration from discord config."""
+        from src.models.enhanced_change_detection import ChangeDetectionConfig
+        
+        # Load the discord configuration to get enabled change types
+        import yaml
+        from pathlib import Path
+        
+        # Try to load discord.yaml configuration
+        config_path = Path("config/discord.yaml")
+        if not config_path.exists():
+            # Fallback to default configuration
+            logger.warning("discord.yaml not found, using default enhanced change detection config")
+            return ChangeDetectionConfig()
+        
+        try:
+            with open(config_path, 'r') as f:
+                discord_config = yaml.safe_load(f)
+            
+            # Extract enabled change types from configuration
+            enabled_change_types = set()
+            
+            # Check filtering.change_types (legacy format)
+            if 'filtering' in discord_config and 'change_types' in discord_config['filtering']:
+                change_types = discord_config['filtering']['change_types']
+                if isinstance(change_types, list):
+                    enabled_change_types.update(change_types)
+            
+            # Check enhanced_change_tracking.change_type_config (new format)
+            if 'enhanced_change_tracking' in discord_config:
+                enhanced_config = discord_config['enhanced_change_tracking']
+                if 'change_type_config' in enhanced_config:
+                    for change_type, type_config in enhanced_config['change_type_config'].items():
+                        if isinstance(type_config, dict) and type_config.get('enabled', True):
+                            enabled_change_types.add(change_type)
+            
+            # If no specific configuration found, use all available types
+            if not enabled_change_types:
+                logger.info("No change types configured, enabling all enhanced change types")
+                enabled_change_types = {
+                    'level', 'feats', 'subclass', 'spells', 'inventory', 'background',
+                    'max_hp', 'proficiencies', 'ability_scores', 'race_species',
+                    'multiclass', 'personality', 'spellcasting_stats', 'initiative',
+                    'passive_skills', 'alignment', 'size', 'movement_speed'
+                }
+            
+            # Load field patterns and priority overrides
+            field_patterns = discord_config.get('detection', {}).get('field_patterns', {})
+            priority_overrides = {}
+            
+            # Convert field patterns to priority overrides
+            for field_path, priority_str in field_patterns.items():
+                if priority_str != 'IGNORED':
+                    try:
+                        from src.models.change_detection import ChangePriority
+                        priority_overrides[field_path] = ChangePriority[priority_str]
+                    except KeyError:
+                        logger.warning(f"Invalid priority '{priority_str}' for field '{field_path}'")
+            
+            # Create configuration with loaded settings
+            config = ChangeDetectionConfig(
+                enabled_change_types=enabled_change_types,
+                enable_change_logging=discord_config.get('changelog', {}).get('enabled', True),
+                enable_causation_analysis=discord_config.get('causation', {}).get('enabled', True),
+                priority_overrides=priority_overrides
+            )
+            
+            logger.info(f"Enhanced change detection configured with {len(enabled_change_types)} change types: {sorted(enabled_change_types)}")
+            logger.info(f"Loaded {len(priority_overrides)} field pattern priority overrides")
+            
+            # Log configuration summary
+            changelog_enabled = discord_config.get('changelog', {}).get('enabled', True)
+            causation_enabled = discord_config.get('causation', {}).get('enabled', True)
+            logger.info(f"Change logging: {'ENABLED' if changelog_enabled else 'DISABLED'}")
+            logger.info(f"Causation analysis: {'ENABLED' if causation_enabled else 'DISABLED'}")
+            
+            return config
+            
+        except Exception as e:
+            logger.error(f"Error loading enhanced change detection config: {e}")
+            # Return default configuration on error
+            return ChangeDetectionConfig()
     
     async def check_and_notify_character_changes(
         self,
@@ -94,10 +200,12 @@ class NotificationManager:
     ) -> Union[bool, Tuple[bool, Optional[str]]]:
         """
         Check for changes to a single character and send notifications if needed.
+        Uses enhanced change detection with causation analysis and change logging.
         
         Args:
             character_id: ID of character to check
             min_change_interval: Minimum time between notifications for same character
+            return_message_content: Whether to return message content
             
         Returns:
             True if notifications were sent, False otherwise
@@ -130,7 +238,7 @@ class NotificationManager:
                     return True, "New character discovered notification sent"
                 return True
             
-            # We have 2+ snapshots, proceed with comparison
+            # We have 2+ snapshots, proceed with enhanced change detection
             
             # Load the two most recent snapshots
             try:
@@ -140,7 +248,19 @@ class NotificationManager:
                 with open(snapshot_files[-1], 'r', encoding='utf-8') as f:
                     new_data = json.load(f)
                 
-                # Create simple snapshot objects for comparison
+                logger.info(f"Comparing snapshots for character {character_id}")
+                logger.debug(f"Old snapshot: {snapshot_files[-2]}")
+                logger.debug(f"New snapshot: {snapshot_files[-1]}")
+                
+            except Exception as e:
+                logger.error(f"Failed to load snapshots for character {character_id}: {e}")
+                if return_message_content:
+                    return False, ""
+                return False
+            
+            # Use consolidated enhanced change detection system
+            try:
+                # Create snapshot objects for the enhanced service
                 class SimpleSnapshot:
                     def __init__(self, data, file_path, version):
                         self.character_data = data
@@ -148,18 +268,15 @@ class NotificationManager:
                         self.timestamp = datetime.fromtimestamp(file_path.stat().st_mtime)
                         self.version = version
                 
-                # Use timestamp-based version numbering
                 import re
                 from pathlib import Path
                 
                 def extract_timestamp_version(filepath):
-                    """Extract timestamp from filename for version numbering."""
                     filename = Path(filepath).stem
-                    # Extract timestamp from filename like "character_143359582_2025-07-04T00-07-38.244679"
                     timestamp_match = re.search(r'(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})', filename)
                     if timestamp_match:
                         return timestamp_match.group(1)
-                    return filename  # Fallback to filename
+                    return filename
                 
                 old_version = extract_timestamp_version(snapshot_files[-2])
                 new_version = extract_timestamp_version(snapshot_files[-1])
@@ -167,62 +284,98 @@ class NotificationManager:
                 old_snapshot = SimpleSnapshot(old_data, snapshot_files[-2], old_version)
                 new_snapshot = SimpleSnapshot(new_data, snapshot_files[-1], new_version)
                 
+                # Use enhanced change detection service (now the primary service)
+                change_set = self.change_detector.detect_changes_as_changeset(old_snapshot, new_snapshot)
+                
+                if not change_set.changes:
+                    logger.info(f"No changes detected for character {character_id}")
+                    if return_message_content:
+                        return False, ""
+                    return False
+                
+                logger.info(f"Enhanced change detection found {len(change_set.changes)} changes for character {character_id}")
+                
+                # Apply filtering using the enhanced service's filtering method
+                filtered_changes = self.change_detector.filter_changes_by_groups(
+                    change_set.changes,
+                    include_groups=self.config.include_groups,
+                    exclude_groups=self.config.exclude_groups
+                )
+                
+                if not filtered_changes:
+                    logger.info(f"All changes for character {character_id} were filtered out")
+                    if return_message_content:
+                        return False, ""
+                    return False
+                
+                # Update change set with filtered changes
+                change_set.changes = filtered_changes
+                
             except Exception as e:
-                logger.error(f"Failed to load snapshots for character {character_id}: {e}")
-                return False
-            
-            # Use the loaded snapshots
-            current_snapshot = new_snapshot
-            previous_snapshot = old_snapshot
-            
-            # Detect changes
-            change_set = self.change_detector.detect_changes(previous_snapshot, current_snapshot)
-            
-            if not change_set.changes:
-                logger.info(f"No changes detected for character {character_id}")
+                logger.error(f"Enhanced change detection failed: {e}", exc_info=True)
                 if return_message_content:
                     return False, ""
                 return False
             
-            # Apply filtering
-            filtered_changes = self.change_detector.filter_changes_by_groups(
-                change_set.changes,
-                include_groups=self.config.include_groups,
-                exclude_groups=self.config.exclude_groups
-            )
-            
-            if not filtered_changes:
-                logger.info(f"Detected 0 changes for character {character_id}")
-                logger.info(f"All changes for character {character_id} were filtered out")
-                if return_message_content:
-                    return False, ""
-                return False
-            
-            # Update change set with filtered changes
-            change_set.changes = filtered_changes
-            
-            # Check minimum priority
-            qualifying_changes = [change for change in filtered_changes 
-                                 if change.priority.value >= self.config.min_priority.value]
+            # Check minimum priority (handle both enhanced and basic changes)
+            qualifying_changes = []
+            for change in filtered_changes:
+                try:
+                    # Handle enhanced changes with priority enum
+                    if hasattr(change, 'priority') and hasattr(change.priority, 'value'):
+                        priority_value = change.priority.value
+                    # Handle basic changes with string priority
+                    elif hasattr(change, 'priority') and isinstance(change.priority, str):
+                        priority_map = {'low': 1, 'medium': 2, 'high': 3}
+                        priority_value = priority_map.get(change.priority.lower(), 2)
+                    else:
+                        priority_value = 2  # Default to medium
+                    
+                    # Compare with minimum priority
+                    min_priority_value = getattr(self.config.min_priority, 'value', 2)
+                    if priority_value >= min_priority_value:
+                        qualifying_changes.append(change)
+                except Exception as e:
+                    logger.debug(f"Priority check failed for change, including anyway: {e}")
+                    qualifying_changes.append(change)
             
             if not qualifying_changes:
                 logger.info(f"Detected 0 changes for character {character_id}")
-                logger.info(f"No changes meet minimum priority {self.config.min_priority.name}")
-                logger.info(f"Change priorities: {[f'{change.field_path}:{change.priority.name}' for change in filtered_changes]}")
+                min_priority_name = getattr(self.config.min_priority, 'name', 'medium')
+                logger.info(f"No changes meet minimum priority {min_priority_name}")
+                
+                # Safe priority logging
+                priority_info = []
+                for change in filtered_changes:
+                    try:
+                        field = getattr(change, 'field_path', getattr(change, 'field', 'unknown'))
+                        priority = getattr(change, 'priority', 'unknown')
+                        if hasattr(priority, 'name'):
+                            priority = priority.name
+                        priority_info.append(f'{field}:{priority}')
+                    except:
+                        priority_info.append('unknown:unknown')
+                
+                logger.info(f"Change priorities: {priority_info}")
                 if return_message_content:
                     return False, ""
                 return False
             
             # Log final count after all filtering is complete
             logger.info(f"Detected {len(qualifying_changes)} changes for character {character_id}")
-            logger.info(f"Sending notification for {len(qualifying_changes)} qualifying changes (min priority: {self.config.min_priority.name})")
+            min_priority_name = getattr(self.config.min_priority, 'name', 'medium')
+            logger.info(f"Sending notification for {len(qualifying_changes)} qualifying changes (min priority: {min_priority_name})")
             
             # Output change summaries for parser integration
             print(f"PARSER_CHANGES:{len(qualifying_changes)}")
             print("PARSER_NOTIFICATION:true")
             for change in qualifying_changes:  # Show all changes
                 # Get change description and make it Windows-compatible
-                desc = str(change.description)
+                try:
+                    desc = str(getattr(change, 'description', 'Change detected'))
+                except:
+                    desc = 'Change detected'
+                
                 # Replace Unicode characters with Windows-compatible equivalents
                 desc = desc.replace('→', ' -> ').replace('•', '-').replace('–', '-').replace('—', '-')
                 # Remove any remaining Unicode replacement characters
@@ -790,7 +943,8 @@ class NotificationManager:
     async def send_detailed_test(self) -> bool:
         """Send a detailed test notification showing the formatting."""
         try:
-            from .change_detection_service import FieldChange, ChangeType, ChangePriority, CharacterChangeSet
+            from src.models.change_detection import FieldChange, ChangeType, ChangePriority
+            from discord.services.change_detection.models import CharacterChangeSet
             from datetime import datetime
             
             # Create realistic mock changes based on actual system descriptions

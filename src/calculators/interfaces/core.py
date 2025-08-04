@@ -250,6 +250,46 @@ class ICalculator(ABC):
             Current configuration
         """
         return CalculatorConfig()
+    
+    def create_calculator_config_from_main(self, config_manager) -> CalculatorConfig:
+        """
+        Create CalculatorConfig from main configuration system.
+        
+        Args:
+            config_manager: Main configuration manager
+            
+        Returns:
+            CalculatorConfig with values from main configuration
+        """
+        if not config_manager:
+            return CalculatorConfig()
+        
+        try:
+            app_config = config_manager.get_app_config()
+            
+            # Load caching setting from performance.enable_caching (canonical source)
+            enable_caching = app_config.performance.enable_caching if app_config.performance else False
+            
+            # Load other settings with defaults
+            debug_mode = app_config.debug if hasattr(app_config, 'debug') else False
+            
+            return CalculatorConfig(
+                enable_caching=enable_caching,
+                debug_mode=debug_mode,
+                # Keep other defaults from CalculatorConfig
+                enable_validation=True,
+                enable_profiling=False,
+                rule_version="2014",
+                strict_mode=False,
+                performance_mode=False,
+                cache_ttl=3600,
+                timeout=30,
+                max_retries=3
+            )
+            
+        except Exception as e:
+            # Fall back to default configuration if loading fails
+            return CalculatorConfig()
 
 
 class IRuleAwareCalculator(ICalculator):

@@ -51,7 +51,7 @@ class InventoryFormatter(BaseFormatter):
         
         # Check for character name - this is informational, not a blocker
         if not character_info.get('name'):
-            self.logger.debug("Character name not found in character_info")
+            self.logger.debug("Parser:   Character name not found in character_info")
         
         return True
     
@@ -419,7 +419,7 @@ class InventoryFormatter(BaseFormatter):
                 'handy haversack', 'efficient quiver'
             ]):
                 extradimensional_containers.add(item.get('id'))
-                self.logger.debug(f"Identified extradimensional container: {item.get('name')} (ID: {item.get('id')})")
+                self.logger.debug(f"Parser:   Identified extradimensional container: {item.get('name')} (ID: {item.get('id')})")
         
         # Second pass: calculate weight, excluding items in extradimensional containers
         for item in basic_equipment:
@@ -433,6 +433,6 @@ class InventoryFormatter(BaseFormatter):
             if not is_in_extradimensional:
                 total_weight += item_weight
             else:
-                self.logger.debug(f"Excluding {item.get('name')} ({item_weight} lbs) - stored in extradimensional container")
+                self.logger.debug(f"Parser:   Excluding {item.get('name')} ({item_weight} lbs) - stored in extradimensional container")
         
         return total_weight

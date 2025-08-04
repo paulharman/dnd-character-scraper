@@ -27,7 +27,7 @@ function InventoryFilters({ children }) {
   );
 }
 
-function InventoryFilter({ title, icon, children }) {
+function InventoryFilter({ title, icon, children, onToggle, onClear }) {
   return (
     <div
       style="
@@ -50,7 +50,26 @@ function InventoryFilter({ title, icon, children }) {
         "
       >
         <dc.Icon icon={icon} />
-        <span>{title}</span>
+        <span style="flex-grow: 1;">{title}</span>
+        {(onToggle || onClear) && <span style="color: var(--text-muted);">|</span>}
+        {onToggle && (
+          <span 
+            onclick={onToggle} 
+            style="cursor: pointer; opacity: 0.7; hover: opacity: 1;" 
+            title="Toggle selection"
+          >
+            <dc.Icon icon="toggle-left" />
+          </span>
+        )}
+        {onClear && (
+          <span 
+            onclick={onClear} 
+            style="cursor: pointer; opacity: 0.7; hover: opacity: 1;" 
+            title="Clear all"
+          >
+            <dc.Icon icon="list-restart" />
+          </span>
+        )}
       </div>
       <div style="display: flex; flex-direction: column; gap: 0.4em;">
         {children}
@@ -193,6 +212,16 @@ function InventoryQuery({ characterName, paging = 50 }) {
   const allContainers = Array.from(new Set(inventoryItems.map(item => item.container).filter(Boolean))).sort();
   const allRarities = Array.from(new Set(inventoryItems.map(item => item.rarity).filter(x => x && x !== '—'))).sort();
   
+  // Clear and toggle functions for enhanced filter controls
+  const clearFilterCategory = () => setFilterCategory([]);
+  const toggleFilterCategory = () => setFilterCategory(allCategories.filter(c => !filterCategory.includes(c)));
+  
+  const clearFilterContainer = () => setFilterContainer([]);
+  const toggleFilterContainer = () => setFilterContainer(allContainers.filter(c => !filterContainer.includes(c)));
+  
+  const clearFilterRarity = () => setFilterRarity([]);
+  const toggleFilterRarity = () => setFilterRarity(allRarities.filter(r => !filterRarity.includes(r)));
+  
   // Apply filters
   const filteredItems = inventoryItems.filter(item => {
     if (filterSearch && !item?.item?.toLowerCase().includes(filterSearch.toLowerCase())) {
@@ -249,39 +278,24 @@ function InventoryQuery({ characterName, paging = 50 }) {
         const description = item?.description || '';
         
         // Enhanced custom item display with hover tooltips for descriptions/notes
-        // Custom items with descriptions or notes show an info icon and tooltip on hover
-        if (itemType === 'Custom') {
-          const notes = item?.notes || '';
-          const hasInfo = description || notes;
-          
-          if (hasInfo) {
-            // Create tooltip text combining description and notes
-            let tooltipText = '';
-            if (description) {
-              tooltipText += description;
-            }
-            if (notes) {
-              if (description) tooltipText += '\n\n';
-              tooltipText += 'Notes: ' + notes;
-            }
-            
-            return (
-              <span>
-                <span 
-                  title={tooltipText}
-                  style="cursor: help;"
-                >
-                  {itemType}
-                </span>
-                <span 
-                  title={tooltipText}
-                  style="font-size: 0.8em; opacity: 0.7; margin-left: 0.25em; cursor: help;"
-                >
-                  {notes ? '📝' : 'ℹ️'}
-                </span>
+        // Custom items with descriptions show an info icon and tooltip on hover
+        if (itemType === 'Custom' && description) {
+          return (
+            <span>
+              <span 
+                title={description}
+                style="cursor: help;"
+              >
+                {itemType}
               </span>
-            );
-          }
+              <span 
+                title={description}
+                style="font-size: 0.8em; opacity: 0.7; margin-left: 0.25em; cursor: help;"
+              >
+                ℹ️
+              </span>
+            </span>
+          );
         }
         
         return itemType;
@@ -361,10 +375,10 @@ function InventoryQuery({ characterName, paging = 50 }) {
         <button
           onclick={() => {
             setFilterSearch('');
-            setFilterCategory([]);
-            setFilterContainer([]);
+            clearFilterCategory();
+            clearFilterContainer();
             setFilterEquipped('');
-            setFilterRarity([]);
+            clearFilterRarity();
           }}
           title="Clear all filters"
         >
@@ -374,7 +388,12 @@ function InventoryQuery({ characterName, paging = 50 }) {
       
       {filtersShown && (
         <InventoryFilters>
-          <InventoryFilter title="Category" icon="lucide-package">
+          <InventoryFilter 
+            title="Category" 
+            icon="lucide-package"
+            onToggle={toggleFilterCategory}
+            onClear={clearFilterCategory}
+          >
             {allCategories.map(cat => (
               <label style="display: block" key={cat}>
                 <input
@@ -393,7 +412,12 @@ function InventoryQuery({ characterName, paging = 50 }) {
             ))}
           </InventoryFilter>
           
-          <InventoryFilter title="Container" icon="lucide-box">
+          <InventoryFilter 
+            title="Container" 
+            icon="lucide-box"
+            onToggle={toggleFilterContainer}
+            onClear={clearFilterContainer}
+          >
             {allContainers.map(cont => (
               <label style="display: block" key={cont}>
                 <input
@@ -413,7 +437,7 @@ function InventoryQuery({ characterName, paging = 50 }) {
           </InventoryFilter>
           
           <InventoryFilter title="Properties" icon="lucide-settings">
-            <div style="margin-bottom: 1em;">
+            <div>
               <div style="font-weight: 500; margin-bottom: 0.25em;">Equipped</div>
               <select
                 value={filterEquipped}
@@ -425,31 +449,35 @@ function InventoryQuery({ characterName, paging = 50 }) {
                 <option value="false">Unequipped Only</option>
               </select>
             </div>
-            
-            {allRarities.length > 0 && (
-              <div>
-                <div style="font-weight: 500; margin-bottom: 0.25em;">Rarity</div>
-                {allRarities.map(rarity => (
-                  <label style="display: block" key={rarity}>
-                    <input
-                      type="checkbox"
-                      checked={filterRarity.includes(rarity)}
-                      onchange={e =>
-                        setFilterRarity(
-                          e.target.checked
-                            ? [...filterRarity, rarity]
-                            : filterRarity.filter(x => x !== rarity)
-                        )
-                      }
-                    />{' '}
-                    <span style={`color: ${getRarityColor(rarity)};`}>
-                      {rarity}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
           </InventoryFilter>
+          
+          {allRarities.length > 0 && (
+            <InventoryFilter 
+              title="Rarity" 
+              icon="lucide-star"
+              onToggle={toggleFilterRarity}
+              onClear={clearFilterRarity}
+            >
+              {allRarities.map(rarity => (
+                <label style="display: block" key={rarity}>
+                  <input
+                    type="checkbox"
+                    checked={filterRarity.includes(rarity)}
+                    onchange={e =>
+                      setFilterRarity(
+                        e.target.checked
+                          ? [...filterRarity, rarity]
+                          : filterRarity.filter(x => x !== rarity)
+                      )
+                    }
+                  />{' '}
+                  <span style={`color: ${getRarityColor(rarity)};`}>
+                    {rarity}
+                  </span>
+                </label>
+              ))}
+            </InventoryFilter>
+          )}
         </InventoryFilters>
       )}
       

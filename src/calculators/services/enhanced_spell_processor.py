@@ -140,6 +140,8 @@ class EnhancedSpellProcessor:
     def _create_enhanced_spell_info(self, spell_data: Dict[str, Any], source_name: str, source_type: str) -> Optional[EnhancedSpellInfo]:
         """Create EnhancedSpellInfo from raw spell data with enhanced availability detection."""
         spell_def = spell_data.get('definition', {})
+        print(f"ENHANCED_PROCESSOR: Processing {spell_def.get('name', 'Unknown')} from {source_type}")
+        spell_def = spell_data.get('definition', {})
         if not spell_def:
             return None
         
@@ -156,7 +158,33 @@ class EnhancedSpellProcessor:
             school = str(school_data)
         
         description = spell_def.get('description', '')
-        is_legacy = spell_data.get('isLegacy', False)
+        
+        # Determine if spell is legacy based on spell definition ID
+        # Since sourceId is null in spell definitions, use known legacy spell IDs
+        spell_def_id = spell_def.get('id')
+        source_id = spell_def.get('sourceId')
+        
+        # Known legacy spell definition IDs (pre-2024 spells)
+        # These are spell IDs that are known to be from legacy sources
+        KNOWN_LEGACY_SPELL_IDS = {
+            2384,  # Ice Knife (legacy, sourceId 4)
+            # Add other known legacy spell IDs as needed
+        }
+        
+        # Try sourceId first, then fallback to known spell IDs
+        SOURCE_2024_IDS = {142, 143, 144, 145, 146, 147, 148, 149, 150}
+        if source_id is not None:
+            is_legacy = source_id not in SOURCE_2024_IDS
+        elif spell_def_id in KNOWN_LEGACY_SPELL_IDS:
+            is_legacy = True
+        else:
+            # For spells with high definition IDs (2619xxx range), they are likely 2024
+            # For spells with low definition IDs (under 1000000), they are likely legacy
+            is_legacy = spell_def_id is not None and spell_def_id < 1000000
+        
+        # Debug logging for legacy spell detection
+        if is_legacy:
+            self.logger.debug(f"Detected legacy spell: {name} (id={spell_def_id}, sourceId={source_id})")
         
         # Availability flags from raw data
         counts_as_known = spell_data.get('countsAsKnownSpell', False)
@@ -167,6 +195,17 @@ class EnhancedSpellProcessor:
         
         # Source metadata
         component_id = spell_data.get('componentId')
+        
+        # Fix D&D Beyond API bug: Detect feat-granted always-prepared spells
+        if source_type == 'feat' and not is_always_prepared:
+            detected_always_prepared = self._detect_feat_always_prepared_spell(
+                spell_data, component_id, level, limited_use
+            )
+            if detected_always_prepared:
+                is_always_prepared = True
+                print(f"MAGIC_INITIATE_FIX: Fixed always_prepared for {name} (Level {level})")
+                logger.info(f"Fixed always_prepared flag for feat spell: {name} (Level {level}) from component_id {component_id}")
+        
         component_type_id = spell_data.get('componentTypeId')
         
         # Enhanced availability detection
@@ -491,3 +530,64 @@ class EnhancedSpellProcessor:
             legacy_spells[source] = legacy_spell_list
         
         return legacy_spells
+    
+    def _detect_feat_always_prepared_spell(self, spell_data: Dict[str, Any], component_id: Optional[int], 
+                                         spell_level: int, limited_use: Optional[Dict[str, Any]]) -> bool:
+        """
+        Detect spells that should be always prepared from feats.
+        
+        D&D Beyond's API incorrectly sets alwaysPrepared=false for feat-granted spells
+        that should be always prepared according to the feat descriptions.
+        """
+        if not component_id:
+            return False
+            
+        # Known feat component IDs that grant always-prepared spells
+        FEAT_ALWAYS_PREPARED_IDS = {
+            1789165: "Magic Initiate",      # Magic Initiate feat
+            3026435: "Fey Touched",         # Fey Touched feat  
+            3026436: "Shadow Touched",      # Shadow Touched feat
+            2666608: "Aberrant Dragonmark" # Aberrant Dragonmark feat
+        }
+        
+        if component_id not in FEAT_ALWAYS_PREPARED_IDS:
+            return False
+            
+        feat_name = FEAT_ALWAYS_PREPARED_IDS[component_id]
+        
+        # Add debug output to see what we're checking
+        print(f"DEBUG: Checking {feat_name} spell - level:{spell_level}, limitedUse:{limited_use}")
+        
+        # Magic Initiate: Level 1 spell with once-per-long-rest usage
+        if feat_name == "Magic Initiate":
+            if spell_level == 1:
+                # Check if it has the right limited use pattern
+                if limited_use and isinstance(limited_use, dict):
+                    max_uses = limited_use.get('maxUses', 0)
+                    reset_type = limited_use.get('resetType', 0)  # 2 = long rest
+                    result = max_uses == 1 and reset_type == 2
+                    print(f"DEBUG: Magic Initiate L1 spell - maxUses:{max_uses}, resetType:{reset_type}, result:{result}")
+                    return result
+                
+        # Fey Touched: Both level 1 spells (Misty Step + chosen spell)
+        elif feat_name == "Fey Touched":
+            if spell_level == 1 and limited_use:
+                max_uses = limited_use.get('maxUses', 0) 
+                reset_type = limited_use.get('resetType', 0)
+                return max_uses == 1 and reset_type == 2
+                
+        # Shadow Touched: Both level 1 spells (Invisibility + chosen spell)
+        elif feat_name == "Shadow Touched":
+            if spell_level == 1 and limited_use:
+                max_uses = limited_use.get('maxUses', 0)
+                reset_type = limited_use.get('resetType', 0) 
+                return max_uses == 1 and reset_type == 2
+                
+        # Aberrant Dragonmark: Level 1 spell (cantrip is handled separately)
+        elif feat_name == "Aberrant Dragonmark":
+            if spell_level == 1 and limited_use:
+                max_uses = limited_use.get('maxUses', 0)
+                reset_type = limited_use.get('resetType', 0)
+                return max_uses == 1 and reset_type == 2
+        
+        return False

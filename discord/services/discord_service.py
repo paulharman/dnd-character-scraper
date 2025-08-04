@@ -20,12 +20,17 @@ from .discord_logger import DiscordLogger, OperationType, LogLevel, timed_operat
 
 logger = logging.getLogger(__name__)
 
-# Discord message limits
+# Discord message limits (from official API docs)
 DISCORD_MESSAGE_LIMIT = 2000        # Characters in message content
-DISCORD_EMBED_LIMIT = 6000          # Total characters per embed
+DISCORD_TOTAL_EMBED_LIMIT = 6000    # Total characters across ALL embeds in message
+DISCORD_EMBED_TITLE_LIMIT = 256     # Characters in embed title
 DISCORD_EMBED_DESC_LIMIT = 4096     # Characters in embed description
 DISCORD_EMBED_FIELD_LIMIT = 1024    # Characters per field value
+DISCORD_EMBED_FIELD_NAME_LIMIT = 256 # Characters per field name
 DISCORD_EMBED_FIELD_COUNT_LIMIT = 25 # Maximum fields per embed
+DISCORD_EMBED_FOOTER_LIMIT = 2048   # Characters in footer text
+DISCORD_EMBED_AUTHOR_LIMIT = 256    # Characters in author name
+DISCORD_EMBEDS_PER_MESSAGE = 10     # Maximum embeds per webhook message
 
 
 class EmbedColor(Enum):
@@ -38,6 +43,12 @@ class EmbedColor(Enum):
     INFO = 0x808080          # Gray
     SUCCESS = 0x00FF00       # Green
     WARNING = 0xFFFF00       # Yellow
+    
+    # Priority-based colors
+    PRIORITY_LOW = 0x36393F      # Dark gray (Discord's default embed color)
+    PRIORITY_MEDIUM = 0xFFA500   # Orange
+    PRIORITY_HIGH = 0xFF4500     # Red-orange  
+    PRIORITY_CRITICAL = 0xFF0000 # Red
 
 
 @dataclass

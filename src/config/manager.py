@@ -6,12 +6,15 @@ Handles loading, merging, and managing configuration from multiple sources:
 - Environment variables  
 - Command line arguments
 - Default values
+
+Includes comprehensive validation with user-friendly error messages.
 """
 
 import os
 import yaml
+import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass, field
 
 from .schemas import (
@@ -20,6 +23,7 @@ from .schemas import (
     RuleSpecificConfig,
     EnvironmentConfig
 )
+from .validation_helper import ConfigurationValidator, ConfigurationValidationError
 
 
 @dataclass
@@ -66,9 +70,11 @@ class ConfigManager:
     - Environment-specific configurations
     """
     
-    def __init__(self, environment: Optional[str] = None, config_dir: Optional[str] = None):
+    def __init__(self, environment: Optional[str] = None, config_dir: Optional[str] = None, 
+                 validate_on_startup: bool = True):
         self.environment = environment or os.getenv("DNDBS_ENVIRONMENT", "production")
         self.paths = ConfigPaths()
+        self.logger = logging.getLogger(__name__)
         
         if config_dir:
             self.paths.config_dir = Path(config_dir)
@@ -77,6 +83,10 @@ class ConfigManager:
         self._constants_config: Optional[GameConstantsConfig] = None
         self._rules_2014_config: Optional[RuleSpecificConfig] = None
         self._rules_2024_config: Optional[RuleSpecificConfig] = None
+        
+        # Validate configuration on startup if requested
+        if validate_on_startup:
+            self._validate_configuration()
         
     def load_yaml_file(self, file_path: Path) -> Dict[str, Any]:
         """Load and parse a YAML configuration file."""
@@ -362,6 +372,91 @@ class ConfigManager:
         self._constants_config = None
         self._rules_2014_config = None
         self._rules_2024_config = None
+    
+    def _validate_configuration(self) -> None:
+        """
+        Validate configuration files on startup and provide helpful error messages.
+        
+        Raises:
+            ConfigurationValidationError: If validation fails with user-friendly message
+        """
+        try:
+            validator = ConfigurationValidator()
+            results = validator.validate_all_configs(self.paths.config_dir)
+            
+            # Collect all errors
+            all_errors = []
+            for config_file, errors in results.items():
+                if errors:
+                    all_errors.extend([f"{config_file}: {error}" for error in errors])
+            
+            if all_errors:
+                error_message = "Configuration validation failed:\n\n"
+                for i, error in enumerate(all_errors, 1):
+                    error_message += f"{i}. {error}\n"
+                
+                error_message += "\n💡 Run 'python validate_config.py' for detailed help"
+                error_message += "\n📖 See docs/configuration_guide.md for configuration examples"
+                
+                raise ConfigurationValidationError(
+                    error_message,
+                    suggestions=[
+                        "Run 'python validate_config.py' for detailed validation",
+                        "Check docs/configuration_guide.md for examples",
+                        "Verify environment variables are set correctly",
+                        "Ensure all required configuration files exist"
+                    ]
+                )
+            
+            self.logger.info("Configuration validation passed")
+            
+        except ImportError:
+            # Validation helper not available, skip validation
+            self.logger.warning("Configuration validation skipped (validation helper not available)")
+        except Exception as e:
+            if isinstance(e, ConfigurationValidationError):
+                raise
+            else:
+                self.logger.error(f"Unexpected error during configuration validation: {e}")
+                # Don't fail startup for unexpected validation errors
+    
+    def validate_configuration(self, raise_on_error: bool = True) -> List[str]:
+        """
+        Manually validate configuration and return errors.
+        
+        Args:
+            raise_on_error: Whether to raise exception on validation errors
+            
+        Returns:
+            List of validation error messages
+            
+        Raises:
+            ConfigurationValidationError: If validation fails and raise_on_error is True
+        """
+        try:
+            validator = ConfigurationValidator()
+            results = validator.validate_all_configs(self.paths.config_dir)
+            
+            # Collect all errors
+            all_errors = []
+            for config_file, errors in results.items():
+                if errors:
+                    all_errors.extend([f"{config_file}: {error}" for error in errors])
+            
+            if all_errors and raise_on_error:
+                error_message = "Configuration validation failed:\n"
+                for error in all_errors:
+                    error_message += f"  - {error}\n"
+                
+                raise ConfigurationValidationError(error_message)
+            
+            return all_errors
+            
+        except ImportError:
+            error_msg = "Configuration validation not available (validation helper not found)"
+            if raise_on_error:
+                raise ConfigurationValidationError(error_msg)
+            return [error_msg]
     
     def get_config_summary(self) -> Dict[str, Any]:
         """Get a summary of current configuration."""

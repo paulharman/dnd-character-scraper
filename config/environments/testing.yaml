@@ -4,7 +4,7 @@
 # API settings for testing
 api:
   max_retries: 2  # Different from default 3
-  retry_delay: 0.5  # Faster retries for testing
+  retry_delay: 30.0  # Respectful API usage even in testing
   
   # Mock API responses for consistent testing
   mock_responses: true

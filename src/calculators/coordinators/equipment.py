@@ -158,10 +158,18 @@ class EquipmentCoordinator(ICoordinator):
         # Extract from inventory (preferred) or container_inventory (fallback)
         inventory = raw_data.get('inventory', [])
         
+        # Ensure inventory is not None
+        if inventory is None:
+            inventory = []
+        
         # If no basic inventory, try to extract from container_inventory
         if not inventory:
             container_inventory = raw_data.get('container_inventory', {})
             inventory = self._extract_inventory_from_containers(container_inventory)
+        
+        # Ensure inventory is iterable
+        if inventory is None:
+            inventory = []
         
         for item_data in inventory:
             try:
@@ -203,12 +211,16 @@ class EquipmentCoordinator(ICoordinator):
             
             # Process items from each container
             for container_name, items in container_organization.items():
+                # Ensure items is not None
+                if items is None:
+                    continue
+                
                 # Determine container ID for this container
                 container_id = None
                 if container_name != 'character':
                     # Find the container ID by matching name
                     for cid, container_data in containers.items():
-                        if container_data.get('name', '').lower().replace(' ', '_') == container_name:
+                        if (container_data.get('name') or '').lower().replace(' ', '_') == container_name:
                             container_id = cid
                             break
                 
@@ -251,10 +263,19 @@ class EquipmentCoordinator(ICoordinator):
         # Extract from inventory (preferred) or container_inventory (fallback)
         inventory = raw_data.get('inventory', [])
         
+        # Ensure inventory is not None
+        if inventory is None:
+            inventory = []
+        
         # If no basic inventory, try to extract from container_inventory
         if not inventory:
             container_inventory = raw_data.get('container_inventory', {})
             inventory = self._extract_inventory_from_containers(container_inventory)
+        
+        # Ensure inventory is iterable
+        if inventory is None:
+            inventory = []
+        
         for item_data in inventory:
             try:
                 definition = item_data.get('definition', {})
@@ -335,6 +356,10 @@ class EquipmentCoordinator(ICoordinator):
             
             # Find container items
             inventory = raw_data.get('inventory', [])
+            # Ensure inventory is not None
+            if inventory is None:
+                inventory = []
+            
             for item_data in inventory:
                 definition = item_data.get('definition', {})
                 if definition.get('isContainer', False):
@@ -349,6 +374,10 @@ class EquipmentCoordinator(ICoordinator):
             
             # Organize items by container
             container_organization = {}
+            # Ensure inventory is still not None for second iteration
+            if inventory is None:
+                inventory = []
+            
             for item_data in inventory:
                 definition = item_data.get('definition', {})
                 item_weight = (definition.get('weight', 0.0) or 0.0) * item_data.get('quantity', 1)
@@ -361,7 +390,7 @@ class EquipmentCoordinator(ICoordinator):
                 container['current_weight'] += item_weight
                 container['items'].append(item_data.get('id'))
                 
-                container_name = container['name'].lower().replace(' ', '_')
+                container_name = (container['name'] or 'unknown').lower().replace(' ', '_')
                 if container_name not in container_organization:
                     container_organization[container_name] = []
                 
@@ -383,7 +412,7 @@ class EquipmentCoordinator(ICoordinator):
             
             for container_id, container in containers.items():
                 weight_breakdown['total_weight'] += container['current_weight']
-                container_name = container['name'].lower().replace(' ', '_')
+                container_name = (container['name'] or 'unknown').lower().replace(' ', '_')
                 
                 utilization_percentage = 0.0
                 if container['capacity_weight'] > 0:
@@ -453,6 +482,10 @@ class EquipmentCoordinator(ICoordinator):
             # Calculate total weight from inventory
             total_weight = 0.0
             inventory = raw_data.get('inventory', [])
+            # Ensure inventory is not None
+            if inventory is None:
+                inventory = []
+            
             for item_data in inventory:
                 definition = item_data.get('definition', {})
                 item_weight = (definition.get('weight', 0.0) or 0.0) * item_data.get('quantity', 1)
@@ -537,7 +570,7 @@ class EquipmentCoordinator(ICoordinator):
                     'high_value_items': [e for e in enhanced_equipment 
                                        if e.get('cost') and e.get('cost') > 100],
                     'rare_items': [e for e in enhanced_equipment 
-                                 if e.get('rarity', 'common').lower() in ['rare', 'very rare', 'legendary']],
+                                 if (e.get('rarity') or 'common').lower() in ['rare', 'very rare', 'legendary']],
                     'requires_attunement': [e for e in enhanced_equipment 
                                           if e.get('requires_attunement', False)]
                 }
@@ -552,6 +585,10 @@ class EquipmentCoordinator(ICoordinator):
         properties = []
         
         weapon_properties = definition.get('properties', [])
+        # Ensure weapon_properties is not None
+        if weapon_properties is None:
+            weapon_properties = []
+        
         for prop_data in weapon_properties:
             try:
                 prop = {
@@ -564,9 +601,9 @@ class EquipmentCoordinator(ICoordinator):
                 }
                 
                 # Handle specific property types
-                if 'versatile' in prop['name'].lower() and 'damage' in prop_data:
+                if 'versatile' in (prop['name'] or '').lower() and 'damage' in prop_data:
                     prop['damage_value'] = prop_data.get('damage', {}).get('diceString')
-                elif 'range' in prop['name'].lower():
+                elif 'range' in (prop['name'] or '').lower():
                     prop['range_normal'] = prop_data.get('range')
                     prop['range_long'] = prop_data.get('longRange')
                 
@@ -615,13 +652,13 @@ class EquipmentCoordinator(ICoordinator):
     
     def _is_weapon(self, item: Dict[str, Any]) -> bool:
         """Check if an item is a weapon."""
-        item_type = item.get('item_type', '').lower()
+        item_type = (item.get('item_type') or '').lower()
         weapon_types = ['weapon', 'simple weapon', 'martial weapon']
         return any(wt in item_type for wt in weapon_types)
     
     def _is_armor(self, item: Dict[str, Any]) -> bool:
         """Check if an item is armor."""
-        item_type = item.get('item_type', '').lower()
+        item_type = (item.get('item_type') or '').lower()
         armor_types = ['armor', 'light armor', 'medium armor', 'heavy armor', 'shield']
         return any(at in item_type for at in armor_types)
     
@@ -639,6 +676,10 @@ class EquipmentCoordinator(ICoordinator):
         
         # Fallback: calculate from raw data
         stats = raw_data.get('stats', [])
+        # Ensure stats is not None
+        if stats is None:
+            stats = []
+        
         for stat in stats:
             if stat.get('id') == 1:  # Strength ID is 1
                 return stat.get('value', 10)

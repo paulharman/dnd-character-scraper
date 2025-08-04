@@ -1,38 +1,318 @@
-# Discord Configuration
-# User preferences for Discord integration and notifications
+# ===================================================================
+# DISCORD INTEGRATION CONFIGURATION
+# ===================================================================
+# This file configures Discord notifications, change detection, and monitoring
+# for D&D Beyond character updates. The system monitors characters for changes
+# and sends rich Discord notifications when updates are detected.
+# ===================================================================
 
-# Core Discord Settings (user preferences)
-enabled: true                     # Enable parser → Discord monitor integration
-webhook_url: "${DISCORD_WEBHOOK_URL}"
-username: "D&D Beyond Scraper"    # Discord bot username
-avatar_url: null                  # Discord bot avatar URL
-character_id: 143359582           # Character ID to monitor
+# ===================================================================
+# CORE MONITORING SETTINGS
+# ===================================================================
+# Discord webhook URL for sending notifications
+# SECURITY: Use environment variable ${DISCORD_WEBHOOK_URL} instead of hardcoding
+# Get webhook URL from Discord: Server Settings > Integrations > Webhooks
+webhook_url: ${DISCORD_WEBHOOK_URL}
 
-# Notification Settings (user preferences)
-format_type: "detailed"           # Notification format: compact, detailed, json
-min_priority: "LOW"               # Minimum change priority: LOW, MEDIUM, HIGH, CRITICAL
-max_changes_per_notification: 200 # Maximum changes per notification
-timezone: "UTC"                   # Timezone for timestamps
+# Primary character ID to monitor for changes (D&D Beyond character ID)
+# Find this in your D&D Beyond character URL: dndbeyond.com/characters/[ID]
+character_id: 145081718
 
-# Change Type Filtering (user configurable)
-# Remove types you don't want to monitor. See CONFIG_GUIDE.md for full descriptions.
-# Available types: level, experience, hit_points, armor_class, ability_scores, 
-# spells_known, spell_slots, inventory_items, equipment, currency, skills, 
-# proficiencies, feats, class_features, appearance, background
-change_types:
-  - "level"              # Character level changes
-  - "experience"         # Experience point changes
-  - "hit_points"         # HP/health changes
-  - "armor_class"        # AC changes
-  - "ability_scores"     # Strength, Dex, Con, Int, Wis, Cha changes
-  - "spells_known"       # New spells learned
-  - "spell_slots"        # Spell slot changes
-  - "inventory_items"    # Items added/removed from inventory
-  - "equipment"          # Equipment changes
-  - "currency"           # Gold/currency changes
-  - "skills"             # Skill proficiency changes
-  - "proficiencies"      # Other proficiency changes
-  - "feats"              # Feat changes
-  - "class_features"     # Class feature changes
-  - "appearance"         # Appearance/avatar changes
-  - "background"         # Background changes
+# Additional characters to monitor (party members)
+# Each character will be monitored independently
+party:
+- character_id: '145081718'
+
+# Monitoring behavior
+run_continuous: false                          # Run once vs continuous monitoring (false = run once)
+check_interval_seconds: 600                    # How often to check for changes (600 = 10 minutes)
+storage_directory: ../character_data           # Where to store character snapshots and change logs
+log_level: INFO                                # Logging level: DEBUG, INFO, WARNING, ERROR
+
+# ===================================================================
+# DISCORD NOTIFICATION SETTINGS
+# ===================================================================
+discord:
+  # ===================================================================
+  # MESSAGE APPEARANCE
+  # ===================================================================
+  username: D&D Beyond Monitor                # Bot username shown in Discord messages
+  avatar_url: null                            # Bot avatar URL (null = use character avatar dynamically)
+  timezone: UTC                               # Timezone for timestamps (UTC recommended)
+  
+  # ===================================================================
+  # CONTENT FILTERING AND FORMATTING
+  # ===================================================================
+  min_priority: LOW                           # Minimum change priority to notify about
+                                              # Options: LOW, MEDIUM, HIGH, CRITICAL
+                                              # LOW = all changes, CRITICAL = only critical changes
+  
+  include_attribution: true                   # Show what caused each change (e.g., "Level up", "Equipment change")
+  include_causation: true                     # Include detailed causation analysis in notifications
+  include_timestamps: true                    # Show when changes occurred
+  include_character_context: true             # Include character name and level in messages
+  
+  # ===================================================================
+  # VISUAL FORMATTING
+  # ===================================================================
+  use_embeds: true                            # Use Discord embeds for rich formatting (recommended: true)
+  color_code_by_priority: true                # Color embeds based on change priority
+                                              # HIGH/CRITICAL = red, MEDIUM = yellow, LOW = blue
+  group_related_changes: true                 # Group similar changes together (e.g., all spell changes)
+                                              # false = show each change individually
+
+  detail_level: summary                       # Level of detail: summary, detailed, comprehensive
+  
+  # ===================================================================
+  # PERFORMANCE AND RATE LIMITING
+  # ===================================================================
+  maximum_changes_per_notification: 200      # Maximum changes per Discord message
+                                              # Large change sets will be split across multiple messages
+  
+  delay_between_messages: 2.0                 # Seconds to wait between multiple Discord messages
+                                              # Prevents rate limiting and improves readability
+  
+  # Discord API rate limiting settings
+  rate_limit:
+    requests_per_minute: 3                    # Maximum Discord API requests per minute
+                                              # Discord allows 5/min, we use 3 for safety
+    maximum_burst_requests: 1                 # Maximum burst requests allowed
+                                              # Keep low to avoid rate limiting
+
+# ===================================================================
+# CHANGE LOGGING CONFIGURATION
+# ===================================================================
+# Persistent storage of all character changes for history tracking,
+# analysis, and debugging. Changes are stored in JSON format with
+# detailed metadata and causation information.
+changelog:
+  # ===================================================================
+  # BASIC LOGGING SETTINGS
+  # ===================================================================
+  enabled: true                               # Enable change logging (recommended: true)
+  storage_directory: character_data/change_logs  # Directory for storing change log files
+  retention_days: 365                         # How long to keep change logs (days)
+  rotation_size_mb: 10                        # Rotate log files when they exceed this size (MB)
+  backup_old_logs: true                       # Keep backup copies of rotated logs
+  
+  # ===================================================================
+  # LOGGING DETAIL LEVELS
+  # ===================================================================
+  detail_level: comprehensive                 # Detail level for stored logs
+                                              # Options: basic, summary, comprehensive
+                                              # comprehensive = full change details with context
+  
+  discord_detail_level: summary               # Detail level for Discord notifications
+                                              # Can be different from stored logs to reduce message size
+  
+  # ===================================================================
+  # PERFORMANCE SETTINGS
+  # ===================================================================
+  max_entries_per_batch: 100                  # Maximum log entries to process at once
+                                              # Prevents memory issues with large change sets
+  
+  enable_compression: false                   # FUTURE FEATURE: Compress old log files
+                                              # See compression_feature_plan.md for implementation timeline
+  
+  # ===================================================================
+  # FILTERING AND ATTRIBUTION
+  # ===================================================================
+  min_priority: LOW                           # Minimum priority to log (LOW = log everything)
+  include_attribution: true                   # Store what caused each change
+  include_causation: true                     # Store detailed causation analysis
+  notify_on_causation_detected: true          # Send notification when causation is detected
+  
+  # ===================================================================
+  # MAINTENANCE AND CLEANUP
+  # ===================================================================
+  maintenance:
+    enabled: true                             # Enable automatic maintenance tasks
+    interval_hours: 24                        # How often to run maintenance (hours)
+    health_check_interval_minutes: 60         # How often to check log file health (minutes)
+    maximum_rotated_files_per_character: 50   # Maximum old log files to keep per character
+    cleanup_empty_directories: true           # Remove empty log directories
+    validate_on_startup: true                 # Validate log files when starting up
+
+
+# ===================================================================
+# CAUSATION ANALYSIS CONFIGURATION
+# ===================================================================
+# Advanced analysis to determine what caused character changes.
+# For example: "Armor Class increased because new armor was equipped"
+# This helps users understand why their character stats changed.
+causation:
+  # ===================================================================
+  # ANALYSIS SETTINGS
+  # ===================================================================
+  enabled: true                               # Enable causation analysis (recommended: true)
+  confidence_threshold: 0.7                   # Minimum confidence to report causation (0.0-1.0)
+                                              # 0.7 = 70% confidence required
+  max_cascade_depth: 3                        # Maximum levels of causation to analyze
+                                              # Prevents infinite loops in complex changes
+  timeout_seconds: 30                         # Maximum time to spend on causation analysis
+                                              # Prevents hanging on complex character builds
+  cache_results: true                         # Cache analysis results for performance
+  
+  # ===================================================================
+  # DETECTION TYPES
+  # ===================================================================
+  # Enable/disable specific types of causation detection
+  detect_feat_causation: true                 # Detect changes caused by taking feats
+  detect_level_progression: true              # Detect changes caused by leveling up
+  detect_equipment_causation: true            # Detect changes caused by equipment changes
+  detect_ability_score_cascades: true         # Detect cascading effects from ability score changes
+
+# ===================================================================
+# CHANGE DETECTION CONFIGURATION
+# ===================================================================
+# Controls how character changes are detected and prioritized.
+# Field patterns determine the priority level of different types of changes,
+# which affects Discord notification colors and filtering.
+detection:
+  # ===================================================================
+  # AUTOMATIC FIELD DISCOVERY
+  # ===================================================================
+  auto_add_new_fields: true                   # Automatically detect new character fields
+                                              # When D&D Beyond adds new fields, they'll be detected
+  default_priority_for_new_fields: MEDIUM     # Default priority for newly discovered fields
+  
+  # ===================================================================
+  # FIELD PRIORITY PATTERNS
+  # ===================================================================
+  # Each pattern maps character data fields to priority levels:
+  # - HIGH: Critical changes (level ups, ability scores, race/species)
+  # - MEDIUM: Important changes (combat stats, spells, equipment)  
+  # - LOW: Minor changes (current HP, personality, appearance)
+  # - IGNORED: Changes to ignore (metadata, timestamps)
+  #
+  # Patterns use glob-style matching with * wildcards
+  # More specific patterns override general ones
+  field_patterns:
+    # ===================================================================
+    # HIGH PRIORITY - Critical character progression changes
+    # These changes are always important and get red Discord embeds
+    # ===================================================================
+    character_info.level: HIGH                 # Character level changes (level ups)
+    character.abilityScores.*: HIGH            # Ability score changes (STR, DEX, CON, etc.)
+    character.ability_scores.*: HIGH           # Alternative ability score field format
+    character.species: HIGH                    # Species/race changes (2024 rules)
+    character.race: HIGH                       # Race changes (2014 rules)
+    
+    # ===================================================================
+    # MEDIUM PRIORITY - Important gameplay changes  
+    # These changes affect gameplay and get yellow Discord embeds
+    # ===================================================================
+    
+    # Combat and spellcasting statistics
+    character.hit_points.maximum: MEDIUM       # Maximum HP changes
+    combat.hit_points.*: IGNORED                # Combat-related HP changes
+    abilities.proficiency_bonus: MEDIUM        # Proficiency bonus changes
+    character.spellcasting.spell_save_dc: MEDIUM      # Spell save DC changes
+    character.spellcasting.spell_attack_bonus: MEDIUM # Spell attack bonus changes
+    character.spellcasting.spell_slots.*: MEDIUM      # Spell slot changes
+    character.spellcastingInfo.*: MEDIUM       # General spellcasting info
+    character.combat.*: MEDIUM                 # Combat statistics
+    character.initiative.*: MEDIUM             # Initiative bonuses
+    
+    # Equipment and inventory changes
+    equipment.*.location: MEDIUM               # Item location changes (equipped/unequipped)
+    equipment.enhanced_equipment.*: MEDIUM     # Enhanced equipment data
+    equipment.basic_equipment.*: MEDIUM        # Basic equipment data
+    equipment.*.equipped: MEDIUM               # Equipment status changes
+    equipment.*.quantity: MEDIUM               # Item quantity changes
+    character.equipment.*: MEDIUM              # General equipment changes
+    character.inventory.*: MEDIUM              # Inventory changes
+    character.currencies.*: MEDIUM             # Currency changes (gold, silver, etc.)
+    
+    # Spells and magic
+    spells.*: MEDIUM                           # Spell-related changes
+    character.spells.*: MEDIUM                 # Character spell data
+    
+    # Character features and abilities
+    character.proficiencies.*: MEDIUM          # Skill and tool proficiencies
+    character.feats.*: MEDIUM                  # Feat changes
+    character.features.*: MEDIUM               # Class and racial features
+    character.classes.*: MEDIUM                # Class information
+    character.race.traits.*: MEDIUM            # Racial traits
+    character.race.bonuses.*: MEDIUM           # Racial bonuses
+    character.background: MEDIUM               # Background changes
+    character.background.traits.*: MEDIUM      # Background traits
+    character.background.features.*: MEDIUM    # Background features
+    
+    # ===================================================================
+    # LOW PRIORITY - Minor or cosmetic changes
+    # These changes are less important and get blue Discord embeds
+    # ===================================================================
+    character.hit_points.current: IGNORED      # Current HP changes (set to IGNORED per user request)
+    character.hit_points.temporary: LOW        # Temporary HP changes
+    character.proficiency_bonus: MEDIUM        # Proficiency bonus (actually medium priority)
+    character.speed.*: LOW                     # Movement speed changes
+    character.passive_skills.*: LOW            # Passive skill scores
+    character.passive_*: LOW                   # Other passive scores
+    character.skills.*: LOW                    # Individual skill bonuses
+    character.saving_throws.*: LOW             # Saving throw bonuses
+    character.personality.*: LOW               # Personality traits, ideals, bonds, flaws
+    character.alignment: LOW                   # Alignment changes
+    character.alignmentId: LOW                 # Alignment ID changes
+    character.size: LOW                        # Size category changes
+    character.sizeId: LOW                      # Size ID changes
+    
+    # ===================================================================
+    # IGNORED FIELDS - Changes to ignore completely
+    # These fields are ignored and won't trigger notifications
+    # ===================================================================
+    character.metadata.*: IGNORED              # Internal metadata (timestamps, IDs, etc.)
+    character.timestamps.*: IGNORED            # Timestamp fields
+
+    # ===================================================================
+    # AUTO-DISCOVERED PATTERNS
+    # ===================================================================
+    # New patterns discovered automatically will be added here
+    # with the default priority specified above
+
+# ===================================================================
+# CONFIGURATION NOTES AND TROUBLESHOOTING
+# ===================================================================
+# 
+# GETTING STARTED:
+# 1. Set up Discord webhook: Server Settings > Integrations > Webhooks
+# 2. Set DISCORD_WEBHOOK_URL environment variable
+# 3. Find your character ID from D&D Beyond URL
+# 4. Adjust check_interval_seconds based on your needs
+#
+# PRIORITY LEVELS EXPLAINED:
+# - HIGH (Red): Level ups, ability scores, race changes
+# - MEDIUM (Yellow): Combat stats, spells, equipment, features  
+# - LOW (Blue): Current HP, skills, personality, appearance
+# - IGNORED: Metadata and timestamps (no notifications)
+#
+# PERFORMANCE TUNING:
+# - Increase check_interval_seconds to reduce API calls
+# - Decrease maximum_changes_per_notification for smaller messages
+# - Set min_priority to MEDIUM or HIGH to reduce notification volume
+# - Disable causation analysis if experiencing performance issues
+#
+# TROUBLESHOOTING:
+# - Check DISCORD_WEBHOOK_URL environment variable is set
+# - Verify character_id is correct (from D&D Beyond URL)
+# - Check storage_directory exists and is writable
+# - Review logs for rate limiting or API errors
+# - Ensure Discord webhook URL is valid and accessible
+#
+# NAMING CONVENTIONS:
+# - All configuration keys use snake_case
+# - Time values include unit suffixes (_seconds, _minutes, _hours, _days)
+# - Directory paths use _directory suffix
+# - Limits use maximum_* prefix
+# - Boolean flags use enable_* prefix where applicable
+#
+# For more information, see:
+# - docs/configuration_naming_standards.md
+# - config_audit_report.json
+# - compression_feature_plan.md
+# ===================================================================
+
+    # === AUTO-DISCOVERED PATTERNS ===
+    character.feats: MEDIUM
+    character.metadata: MEDIUM
+    character.traits: MEDIUM

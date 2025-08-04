@@ -246,7 +246,7 @@ class MetadataFormatter(BaseFormatter):
         passive_insight = proficiencies_data.get('passive_insight', 8)
         
         # Debug logging to check values
-        self.logger.debug(f"Passive skills from proficiencies: perception={passive_perception}, investigation={passive_investigation}, insight={passive_insight}")
+        self.logger.debug(f"Parser:   Passive skills from proficiencies: perception={passive_perception}, investigation={passive_investigation}, insight={passive_insight}")
         
         # No character-specific hardcoding - calculate all values from data
         
@@ -256,11 +256,11 @@ class MetadataFormatter(BaseFormatter):
         containers_data = character_data.get('containers', {})
         
         # Debug logging to understand data structure
-        self.logger.debug(f"Character data keys: {list(character_data.keys())}")
-        self.logger.debug(f"Equipment keys: {list(equipment_data.keys())}")
-        self.logger.debug(f"Wealth data: {wealth_data}")
+        self.logger.debug(f"Parser:   Character data keys: {list(character_data.keys())}")
+        self.logger.debug(f"Parser:   Equipment keys: {list(equipment_data.keys())}")
+        self.logger.debug(f"Parser:   Wealth data: {wealth_data}")
         if 'equipment_summary' in equipment_data:
-            self.logger.debug(f"Equipment summary keys: {list(equipment_data['equipment_summary'].keys())}")
+            self.logger.debug(f"Parser:   Equipment summary keys: {list(equipment_data['equipment_summary'].keys())}")
         
         # Get wealth values from actual character data
         copper = wealth_data.get('copper', 0)
@@ -367,11 +367,9 @@ class MetadataFormatter(BaseFormatter):
         
         # Process inventory items to match backup original format
         inventory_yaml = []
-        equipment_data = character_data.get('equipment', {})
-        basic_equipment = equipment_data.get('basic_equipment', [])
         
-        if basic_equipment:
-            for item in basic_equipment[:10]:  # Limit to first 10 items for frontmatter
+        if inventory_items:
+            for item in inventory_items:  # Include all inventory items in frontmatter
                 item_yaml = f"""  - item: "{item.get('name', 'Unknown Item')}"
     type: "{item.get('item_type', 'Unknown')}"
     category: "{item.get('item_type', 'Unknown')}"
@@ -962,7 +960,12 @@ tags: {tags}"""
             meta_info = character_data.get('meta', {})
             feats = character_data.get('feats', [])
             
-            rule_version = meta_info.get('rule_version', '2014')
+            # Check for rule_version in multiple locations (top-level takes precedence)
+            rule_version = (
+                character_data.get('rule_version') or 
+                character_info.get('rule_version') or 
+                meta_info.get('rule_version', '2014')
+            )
             
             self.spell_extractor = SpellDataExtractor(
                 spells_path=None,
@@ -1156,7 +1159,7 @@ tags: {tags}"""
                 'handy haversack', 'efficient quiver'
             ]):
                 extradimensional_containers.add(item.get('id'))
-                self.logger.debug(f"Identified extradimensional container: {item.get('name')} (ID: {item.get('id')})")
+                self.logger.debug(f"Parser:   Identified extradimensional container: {item.get('name')} (ID: {item.get('id')})")
         
         # Second pass: calculate weight, excluding items in extradimensional containers
         for item in basic_equipment:
@@ -1169,11 +1172,11 @@ tags: {tags}"""
             # Only add to total weight if NOT in an extradimensional container
             if not is_in_extradimensional:
                 total_weight += item_weight
-                self.logger.debug(f"Including {item.get('name')} ({item_weight} lbs)")
+                self.logger.debug(f"Parser:   Including {item.get('name')} ({item_weight} lbs)")
             else:
-                self.logger.debug(f"Excluding {item.get('name')} ({item_weight} lbs) - stored in extradimensional container")
+                self.logger.debug(f"Parser:   Excluding {item.get('name')} ({item_weight} lbs) - stored in extradimensional container")
         
-        self.logger.debug(f"Corrected total weight: {total_weight} lbs")
+        self.logger.debug(f"Parser:   Corrected total weight: {total_weight} lbs")
         return total_weight
     
     def _extract_subclass(self, character_data: Dict[str, Any], primary_class: Dict[str, Any]) -> str:
@@ -1204,7 +1207,7 @@ tags: {tags}"""
                     if feature.get('is_subclass_feature', False):
                         source_name = feature.get('source_name', '')
                         if source_name and source_name != 'Unknown':
-                            self.logger.debug(f"Found subclass from class feature source_name: {source_name}")
+                            self.logger.debug(f"Parser:   Found subclass from class feature source_name: {source_name}")
                             return source_name
             
             # Check all feature categories
@@ -1214,7 +1217,7 @@ tags: {tags}"""
                         if feature.get('is_subclass_feature', False):
                             source_name = feature.get('source_name', '')
                             if source_name and source_name != 'Unknown':
-                                self.logger.debug(f"Found subclass from {category} feature source_name: {source_name}")
+                                self.logger.debug(f"Parser:   Found subclass from {category} feature source_name: {source_name}")
                                 return source_name
         
         # Check features list (old format)
@@ -1223,7 +1226,7 @@ tags: {tags}"""
                 if feature.get('is_subclass_feature', False):
                     source_name = feature.get('source_name', '')
                     if source_name and source_name != 'Unknown':
-                        self.logger.debug(f"Found subclass from feature source_name: {source_name}")
+                        self.logger.debug(f"Parser:   Found subclass from feature source_name: {source_name}")
                         return source_name
         
         # Check grouped features (legacy format)
@@ -1233,15 +1236,15 @@ tags: {tags}"""
                 if feature.get('is_subclass_feature', False):
                     source_name = feature.get('source_name', '')
                     if source_name and source_name != 'Unknown':
-                        self.logger.debug(f"Found subclass from grouped feature source_name: {source_name}")
+                        self.logger.debug(f"Parser:   Found subclass from grouped feature source_name: {source_name}")
                         return source_name
         
-        self.logger.debug("No subclass found in features")
+        self.logger.debug("Parser:   No subclass found in features")
         return ''
     
     def _detect_2024_rules(self, character_data: Dict[str, Any], rule_version: str) -> bool:
         """
-        Detect if character uses 2024 rules.
+        Detect if character uses 2024 rules (simplified - scraper now handles detection).
         
         Args:
             character_data: Complete character data
@@ -1250,62 +1253,9 @@ tags: {tags}"""
         Returns:
             True if 2024 rules, False otherwise
         """
-        # First check explicit rule version
+        # Trust the scraper's rule version detection
         if rule_version == '2024' or '2024' in str(rule_version):
             return True
         
-        # Check class is_2024 flag
-        character_info = self.get_character_info(character_data)
-        classes = character_info.get('classes', [])
-        if classes:
-            primary_class = classes[0]
-            if primary_class.get('is_2024', False):
-                self.logger.debug("Detected 2024 rules from class is_2024 flag")
-                return True
-        
-        # Check features for 2024-specific content patterns
-        features = character_data.get('features', {})
-        
-        # Handle new features structure - features is a dict with categories
-        if isinstance(features, dict):
-            for category, feature_list in features.items():
-                if isinstance(feature_list, list):
-                    for feature in feature_list:
-                        description = feature.get('description', '').lower()
-                        # Look for 2024-specific language patterns
-                        if any(pattern in description for pattern in [
-                            'you gain a wizard subclass of your choice',  # 2024 wizard language
-                            'specialization that grants you features',     # 2024 subclass language
-                            'for the rest of your career',                # 2024 feature language
-                        ]):
-                            self.logger.debug(f"Detected 2024 rules from {category} feature description: {feature.get('name')}")
-                            return True
-        
-        # Check features list (old format)
-        elif isinstance(features, list):
-            for feature in features:
-                description = feature.get('description', '').lower()
-                # Look for 2024-specific language patterns
-                if any(pattern in description for pattern in [
-                    'you gain a wizard subclass of your choice',  # 2024 wizard language
-                    'specialization that grants you features',     # 2024 subclass language
-                    'for the rest of your career',                # 2024 feature language
-                ]):
-                    self.logger.debug(f"Detected 2024 rules from feature description: {feature.get('name')}")
-                    return True
-        
-        # Check grouped features (legacy format)
-        grouped_features = character_data.get('grouped_features', {})
-        for source, feature_list in grouped_features.items():
-            for feature in feature_list:
-                description = feature.get('description', '').lower()
-                if any(pattern in description for pattern in [
-                    'you gain a wizard subclass of your choice',
-                    'specialization that grants you features',
-                    'for the rest of your career',
-                ]):
-                    self.logger.debug(f"Detected 2024 rules from grouped feature description: {feature.get('name')}")
-                    return True
-        
-        self.logger.debug("No 2024 rules indicators found, defaulting to 2014")
+        # Default to 2014 rules if not explicitly 2024
         return False

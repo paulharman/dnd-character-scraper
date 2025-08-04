@@ -50,6 +50,13 @@ tests/
 2. **Add tests for new interfaces** if structure changes
 3. **Update test fixtures** if data models change
 
+### For Enhanced Change Detection
+1. **Test individual detectors** in isolation with unit tests
+2. **Test causation analysis** with complex character progression scenarios
+3. **Test change logging** with comprehensive attribution validation
+4. **Test integration** with Discord notifications and formatting
+5. **Test error handling** and graceful degradation scenarios
+
 ## Test Categories and Requirements
 
 ### Unit Tests (`tests/unit/`)
@@ -88,6 +95,16 @@ class TestNewCalculator:
   - Validate D&D rule compliance
   - Test complex character builds
   - Performance testing for complex scenarios
+
+### Enhanced Change Detection Tests (`tests/change_detection/`)
+- **Purpose**: Test consolidated change detection system
+- **Requirements**:
+  - Test individual detector accuracy
+  - Test causation analysis correctness
+  - Test change logging and attribution
+  - Test priority classification
+  - Test field mapping accuracy
+  - Test error handling and recovery
 
 ### Integration Tests (`tests/integration/`)
 - **Purpose**: Test complete workflows end-to-end

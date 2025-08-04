@@ -137,7 +137,7 @@ class SpellDataExtractor:
                 return components_match.group(1).strip()
                 
         except Exception as e:
-            self.logger.debug(f"Failed to read enhanced spell file {spell_file}: {e}")
+            self.logger.debug(f"Parser:   Failed to read enhanced spell file {spell_file}: {e}")
         
         return ""
     
@@ -372,11 +372,25 @@ class SpellDataExtractor:
     def get_spell_description(self, spell: Dict[str, Any]) -> str:
         """Get spell description, using enhanced files if available."""
         if self.use_enhanced_spells:
-            # Check if character is using 2024 rules - only use enhanced files for 2024 characters
-            is_2024_character = self.rule_version == '2024'
-            if not is_2024_character:
-                self.logger.debug(f"Skipping enhanced spell data for {spell.get('name', '')} - character uses 2014 rules, enhanced files are 2024")
+            # Check spell-level rule version instead of character-level
+            # Individual spells can be 2024 (isLegacy: false) or 2014 (isLegacy: true)
+            spell_is_legacy = spell.get('isLegacy')
+            
+            if spell_is_legacy is True:
+                # This specific spell is a 2014 legacy spell - skip enhanced files
+                self.logger.debug(f"Parser:   Skipping enhanced spell data for {spell.get('name', '')} - spell is legacy (2014), enhanced files are 2024")
                 return spell.get('description', 'No description available.')
+            elif spell_is_legacy is False:
+                # This specific spell is a 2024 spell - use enhanced files
+                self.logger.debug(f"Parser:   Using enhanced spell data for {spell.get('name', '')} - spell is 2024 (isLegacy: false)")
+            else:
+                # isLegacy field missing - fallback to character-level rule version
+                is_2024_character = self.rule_version == '2024'
+                if not is_2024_character:
+                    self.logger.debug(f"Parser:   Skipping enhanced spell data for {spell.get('name', '')} - character uses 2014 rules, enhanced files are 2024, spell isLegacy field missing")
+                    return spell.get('description', 'No description available.')
+                else:
+                    self.logger.debug(f"Parser:   Using enhanced spell data for {spell.get('name', '')} - character uses 2024 rules, spell isLegacy field missing")
             
             # Try to load from enhanced spell file with proper naming
             if self.spells_path:
@@ -401,7 +415,7 @@ class SpellDataExtractor:
                         return content.strip()
                         
                     except Exception as e:
-                        self.logger.debug(f"Failed to read enhanced spell file {spell_file}: {e}")
+                        self.logger.debug(f"Parser:   Failed to read enhanced spell file {spell_file}: {e}")
         
         # Fall back to spell data description
         return spell.get('description', 'No description available.')

@@ -1,0 +1,235 @@
+# Enhanced Change Tracking Configuration Example
+# Copy this file to enhanced_change_tracking.yaml and customize as needed
+
+# Global settings
+enabled: true                    # Enable/disable entire enhanced change tracking system
+config_version: "1.0"           # Configuration version for migration
+migration_backup: true          # Create backup during configuration migration
+
+# Detection sensitivity
+detect_minor_changes: false     # Detect minor cosmetic changes
+detect_metadata_changes: false  # Detect metadata-only changes
+detect_cosmetic_changes: false  # Detect appearance/avatar changes
+
+# Change type configurations
+# Each change type can be individually configured
+change_types:
+  feats:
+    enabled: true               # Enable feat change detection
+    priority: HIGH              # Priority level (LOW, MEDIUM, HIGH)
+    discord_enabled: true       # Send Discord notifications for this type
+    log_enabled: true          # Log changes of this type
+    causation_analysis: true   # Analyze causation for this type
+  
+  subclass:
+    enabled: true
+    priority: HIGH
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  spells:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  inventory:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  background:
+    enabled: true
+    priority: HIGH
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  max_hp:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  proficiencies:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  ability_scores:
+    enabled: true
+    priority: HIGH
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  race_species:
+    enabled: true
+    priority: HIGH
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  multiclass:
+    enabled: true
+    priority: HIGH
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  personality:
+    enabled: false              # Personality changes are often minor
+    priority: LOW
+    discord_enabled: false
+    log_enabled: true
+    causation_analysis: false
+  
+  spellcasting_stats:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  initiative:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  passive_skills:
+    enabled: false              # Passive skills change frequently
+    priority: LOW
+    discord_enabled: false
+    log_enabled: true
+    causation_analysis: true
+  
+  alignment:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: false
+  
+  size:
+    enabled: true
+    priority: MEDIUM
+    discord_enabled: true
+    log_enabled: true
+    causation_analysis: true
+  
+  movement_speed:
+    enabled: false              # Speed changes are often temporary
+    priority: LOW
+    discord_enabled: false
+    log_enabled: true
+    causation_analysis: true
+
+# Change log configuration
+change_log:
+  enabled: true                           # Enable change logging
+  storage_dir: "character_data/change_logs"  # Directory for change logs
+  retention_days: 365                     # Keep logs for 1 year
+  rotation_size_mb: 10                    # Rotate when file exceeds this size
+  backup_old_logs: true                   # Archive old logs instead of deleting
+  detail_level: comprehensive             # Detail level (brief, summary, detailed, comprehensive)
+  
+  # Performance settings
+  max_entries_per_batch: 100              # Maximum entries to process at once
+  enable_compression: false               # Compress log files (future feature)
+  
+  # Feature toggles
+  enable_causation_analysis: true         # Analyze what caused changes
+  enable_detailed_descriptions: true      # Generate comprehensive descriptions
+
+# Discord notification configuration
+discord:
+  enabled: true                           # Enable Discord notifications
+  detail_level: summary                   # Detail level (brief, summary, detailed)
+  include_attribution: true               # Include what caused the change
+  include_causation: true                 # Include causation analysis
+  
+  # Priority filtering
+  min_priority: LOW                       # Minimum priority to notify (LOW, MEDIUM, HIGH)
+  max_changes_per_notification: 200       # Maximum changes per notification
+  
+  # Notification behavior
+  notify_on_causation_detected: true      # Send notification when causation is found
+  group_related_changes: true             # Group related changes together
+
+# Causation analysis configuration
+causation_analysis:
+  enabled: true                           # Enable causation analysis
+  confidence_threshold: 0.7               # Minimum confidence for causation (0.0-1.0)
+  max_cascade_depth: 3                    # Maximum depth for cascade detection
+  
+  # Analysis features
+  detect_feat_causation: true             # Detect changes caused by feats
+  detect_level_progression: true          # Detect changes from level progression
+  detect_equipment_causation: true        # Detect changes from equipment
+  detect_ability_score_cascades: true     # Detect cascading ability score effects
+  
+  # Performance settings
+  analysis_timeout_seconds: 30            # Timeout for causation analysis
+  cache_analysis_results: true            # Cache analysis results for performance
+
+# Configuration Examples and Use Cases:
+
+# Example 1: High-priority changes only for Discord
+# discord:
+#   min_priority: HIGH
+#   detail_level: brief
+
+# Example 2: Comprehensive logging with minimal Discord notifications
+# change_log:
+#   detail_level: comprehensive
+#   enable_causation_analysis: true
+# discord:
+#   detail_level: brief
+#   min_priority: HIGH
+
+# Example 3: Focus on character progression changes
+# change_types:
+#   feats:
+#     enabled: true
+#     priority: HIGH
+#   multiclass:
+#     enabled: true
+#     priority: HIGH
+#   ability_scores:
+#     enabled: true
+#     priority: HIGH
+#   personality:
+#     enabled: false
+#   passive_skills:
+#     enabled: false
+#   movement_speed:
+#     enabled: false
+
+# Example 4: Detailed causation analysis
+# causation_analysis:
+#   enabled: true
+#   confidence_threshold: 0.8
+#   max_cascade_depth: 5
+#   detect_feat_causation: true
+#   detect_level_progression: true
+#   detect_equipment_causation: true
+#   detect_ability_score_cascades: true
+
+# Example 5: Performance-optimized settings
+# change_log:
+#   max_entries_per_batch: 50
+#   rotation_size_mb: 5
+# causation_analysis:
+#   analysis_timeout_seconds: 15
+#   cache_analysis_results: true
+# discord:
+#   max_changes_per_notification: 100
