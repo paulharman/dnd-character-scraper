@@ -14,28 +14,60 @@ A comprehensive tool for scraping and parsing D&D Beyond character data into for
 
 ## 🚀 Quick Start
 
-### 1. Installation & Setup
+### 1. Download & Navigate
+
+**Example Setup:**
+1. Download the project as a ZIP from GitHub (green "Code" button → "Download ZIP")
+2. Extract to a folder like `C:\DndCharacterScraper\`
+3. Open Command Prompt (Windows Key + R, type `cmd`, press Enter)
+4. Navigate to your project folder:
+
 ```bash
-# Install dependencies
+# Navigate to your project directory (adjust path as needed)
+cd C:\DndCharacterScraper
+
+# Verify you're in the right place (should show README.md, config/, scraper/, etc.)
+dir
+```
+
+**For other locations, adjust the path:**
+```bash
+# If extracted to Documents folder:
+cd C:\Users\YourUsername\Documents\dnd-character-scraper
+
+# If extracted to Desktop:
+cd C:\Users\YourUsername\Desktop\dnd-character-scraper
+```
+
+### 2. Install Python
+
+**You need Python 3.8 or newer installed first:**
+- Download from: https://www.python.org/downloads/
+- ✅ **IMPORTANT**: Check "Add Python to PATH" during installation
+- Verify installation: open Command Prompt and type `python --version`
+
+### 3. Installation & Setup
+```bash
+# Install dependencies (make sure you're in the project directory!)
 pip install -r requirements.txt
 pip install -r requirements-dev.txt  # For development
 
 # Create environment file from template
-cp .env.example .env
+copy .env.example .env
 # Edit .env with your Discord webhook URL and other configuration
 ```
 
-### 2. Configuration
+### 4. Configuration
 ```bash
 # Configure Discord settings
-cp config/discord.yaml.example config/discord.yaml
+copy config\discord.yaml.example config\discord.yaml
 # Edit config/discord.yaml with your settings
 
 # Validate configuration (optional)
 python discord/discord_monitor.py --validate-config
 ```
 
-### 3. Character Setup
+### 5. Character Setup
 
 **⚠️ IMPORTANT**: Your D&D Beyond character must be set to **PUBLIC** for the scraper to access it.
 
@@ -44,7 +76,9 @@ python discord/discord_monitor.py --validate-config
 3. Set to **"Public"** (anyone can view)
 4. Note your character ID from the URL: `dndbeyond.com/characters/[CHARACTER_ID]`
 
-### 4. Usage
+### 6. Usage
+
+**⚠️ Make sure you're in the project directory** before running these commands!
 
 **Primary Workflow (Recommended)**:
 ```bash
