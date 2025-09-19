@@ -42,6 +42,10 @@ discord/discord_config.yml
 *.swp
 *.swo
 
+# Claude Code and development directories
+.claude/
+.kiro/
+
 # OS files
 .DS_Store
 Thumbs.db
