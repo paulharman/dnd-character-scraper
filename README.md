@@ -179,84 +179,57 @@ section_order:
   # ... and more
 ```
 
-## Usage Examples
+## Advanced Usage Examples
 
-### Basic Character Scraping
+### Character Scraping Options
 ```bash
-# Scrape a character and save JSON data
-python scraper/enhanced_dnd_scraper.py <character_id>
+# Basic scraping
+python scraper/enhanced_dnd_scraper.py 12345678
 
-# Scrape with Discord notifications
-python scraper/enhanced_dnd_scraper.py <character_id> --discord
+# With Discord notifications
+python scraper/enhanced_dnd_scraper.py 12345678 --discord
 
 # Force specific rule version
-python scraper/enhanced_dnd_scraper.py <character_id> --force-2024
+python scraper/enhanced_dnd_scraper.py 12345678 --force-2024
 
-# Keep HTML formatting in output
-python scraper/enhanced_dnd_scraper.py <character_id> --keep-html
+# Keep HTML formatting and verbose output
+python scraper/enhanced_dnd_scraper.py 12345678 --keep-html --verbose
+
+# Save raw API response for debugging
+python scraper/enhanced_dnd_scraper.py 12345678 --raw-output raw_data.json
 ```
 
-### Generate Character Sheet
+### Parser Options
 ```bash
-# Generate markdown character sheet
-python parser/dnd_json_to_markdown.py <character_id> <output_file>
-
 # Generate without enhanced spells (API only)
-python parser/dnd_json_to_markdown.py <character_id> <output_file> --no-enhance-spells
+python parser/dnd_json_to_markdown.py 12345678 "C:\MyVault\character.md" --no-enhance-spells
 
 # Force specific D&D rules version
-python parser/dnd_json_to_markdown.py <character_id> <output_file> --force-2024
-python parser/dnd_json_to_markdown.py <character_id> <output_file> --force-2014
+python parser/dnd_json_to_markdown.py 12345678 "C:\MyVault\character.md" --force-2024
 
 # Verbose output for debugging
-python parser/dnd_json_to_markdown.py <character_id> <output_file> --verbose
+python parser/dnd_json_to_markdown.py 12345678 "C:\MyVault\character.md" --verbose
+
+# Generate from existing data (no scraping)
+python parser/dnd_json_to_markdown.py 12345678 "C:\MyVault\character.md" --validate-only
 ```
 
 ### Discord Monitoring
 ```bash
-# Start Discord monitoring service
-python discord/discord_monitor.py --config config/discord.yaml
+# Test Discord webhook
+python discord/discord_monitor.py --test
 
-# Check for changes without monitoring
-python discord/discord_monitor.py --config config/discord.yaml --check-only
+# Monitor continuously (default behavior)
+python discord/discord_monitor.py
 
-# Monitor party characters instead of single character
-python discord/discord_monitor.py --config config/discord.yaml --party
+# Run once and exit
+python discord/discord_monitor.py --once
 
-# Run once and exit (no continuous monitoring)
-python discord/discord_monitor.py --config config/discord.yaml --once
-```
+# Check existing data without scraping
+python discord/discord_monitor.py --check-only
 
-### Advanced Usage
-```bash
-# Batch process multiple characters
-python scraper/enhanced_dnd_scraper.py --batch character_ids.txt
-
-# Quick validation against baseline
-python scraper/enhanced_dnd_scraper.py <character_id> --quick-compare validation.json
-
-# Save raw API response for debugging
-python scraper/enhanced_dnd_scraper.py <character_id> --raw-output raw_data.json
-```
-
-## Project Structure
-
-```
-├── config/                 # YAML configuration files
-├── scraper/               # Character data scraping tools
-│   └── core/             # Core scraper functionality
-├── parser/               # Markdown generation tools
-│   ├── formatters/      # Output format handlers
-│   └── templates/       # Output templates
-├── discord/              # Discord integration and notifications
-│   └── core/            # Core Discord functionality
-├── shared/               # Shared utilities and models
-├── character_data/       # Stored character data and snapshots
-│   ├── scraper/         # Raw scraped JSON data
-│   └── parser/          # Generated markdown files
-├── obsidian/            # Obsidian-specific components
-├── scripts/             # Utility scripts
-└── docs/                # Documentation
+# Monitor party characters
+python discord/discord_monitor.py --party
 ```
 
 ## Key Features Explained
