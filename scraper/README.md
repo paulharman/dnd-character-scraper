@@ -116,12 +116,9 @@ The scraper includes comprehensive error handling:
 
 ## 🧪 Testing
 
-The scraper includes validation tools:
+Test the scraper with a character:
 ```bash
-# Quick validation
-python validate.py
-
-# Test specific character
+# Test character scraping
 python scraper/enhanced_dnd_scraper.py CHARACTER_ID --validate
 ```
 

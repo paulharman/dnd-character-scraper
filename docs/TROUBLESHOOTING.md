@@ -123,10 +123,7 @@ python scripts/security_audit.py
 ### Validation Tools
 Test your setup:
 ```bash
-# Quick validation
-python validate.py
-
-# Discord configuration check  
+# Discord configuration check
 python discord/discord_monitor.py --validate-config
 
 # Test webhook connectivity
