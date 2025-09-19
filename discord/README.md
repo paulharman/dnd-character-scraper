@@ -48,9 +48,6 @@ python discord/discord_monitor.py --validate-config
 
 # Test webhook connectivity
 python discord/discord_monitor.py --validate-webhook
-
-# Security audit
-python discord/discord_monitor.py --security-audit
 ```
 
 ### Programmatic Usage
@@ -231,9 +228,6 @@ python discord/discord_monitor.py --validate-config
 
 # Webhook testing
 python discord/discord_monitor.py --validate-webhook
-
-# Security audit
-python scripts/security_audit.py
 ```
 
 ### Debugging
@@ -268,9 +262,6 @@ python discord/discord_monitor.py --validate-config
 
 # Test webhook without sending notifications
 python discord/discord_monitor.py --validate-webhook
-
-# Security audit
-python scripts/security_audit.py
 ```
 
 ## 📈 Future Enhancements

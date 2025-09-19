@@ -72,9 +72,9 @@
 
 **Solutions**:
 1. **Check YAML syntax**: Ensure proper indentation and syntax
-2. **Validate configuration**: Run the validation tools
+2. **Validate configuration**: Use the Discord configuration validator
    ```bash
-   python scripts/security_audit.py
+   python discord/discord_monitor.py --validate-config
    ```
 3. **Reset to defaults**: Compare with example configurations
 
@@ -113,12 +113,6 @@ logging:
 Check logs for detailed error information:
 - Console output for immediate errors
 - `custom_logs/error_log.json` for persistent error tracking
-
-### Security Audit
-Run comprehensive security and configuration audit:
-```bash
-python scripts/security_audit.py
-```
 
 ### Validation Tools
 Test your setup:
