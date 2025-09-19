@@ -174,7 +174,9 @@ function SessionTracker() {
 
       {/* Events list */}
       <div>
-        {events.map((event, i) => (
+        {events.slice().reverse().map((event, i) => {
+          const originalIndex = events.length - 1 - i; // Calculate original index for edit/delete operations
+          return (
           <div key={i} style={`
             margin-bottom: 0.75em; 
             padding: 0.5em; 
@@ -182,7 +184,7 @@ function SessionTracker() {
             border-radius: 4px;
             border-left: 4px solid ${getCategoryColor(event.category)};
           `}>
-            {editingIndex === i ? (
+            {editingIndex === originalIndex ? (
               // Edit mode
               <div>
                 <select 
@@ -195,7 +197,7 @@ function SessionTracker() {
                   ))}
                 </select>
                 <textarea
-                  data-edit-index={i}
+                  data-edit-index={originalIndex}
                   value={editText}
                   oninput={e => {
                     setEditText(e.target.value);
@@ -225,13 +227,13 @@ function SessionTracker() {
                   </span>
                   <div>
                     <button 
-                      onclick={() => startEdit(i)}
+                      onclick={() => startEdit(originalIndex)}
                       style="margin-right: 0.25em; font-size: 0.8em;"
                     >
                       ✏️ Edit
                     </button>
                     <button 
-                      onclick={() => deleteEvent(i)}
+                      onclick={() => deleteEvent(originalIndex)}
                       style="font-size: 0.8em;"
                     >
                       🗑️ Delete
@@ -245,7 +247,8 @@ function SessionTracker() {
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

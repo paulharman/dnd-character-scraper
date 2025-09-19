@@ -13,6 +13,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import datetime
 import logging
+import yaml
+from pathlib import Path
 
 from formatters.base import BaseFormatter
 from utils.text import TextProcessor
@@ -45,13 +47,20 @@ class MetadataFormatter(BaseFormatter):
         elif isinstance(value, list):
             if not value:
                 return "[]"
-            # Convert list to proper YAML array format with single quotes to match backup original
+            # Convert list to proper YAML array format with minimal escaping
             yaml_items = []
             for item in value:
                 if isinstance(item, str):
-                    # Escape single quotes by doubling them in YAML single-quoted strings
-                    escaped_item = item.replace("'", "''")
-                    yaml_items.append(f"'{escaped_item}'")
+                    # Replace curly quotes with straight quotes
+                    cleaned_item = item.replace(''', "'").replace(''', "'")
+                    # Only use double quotes if the string contains problematic characters
+                    if "'" in cleaned_item:
+                        # Use double quotes and escape any internal double quotes
+                        escaped_item = cleaned_item.replace('"', '\\"')
+                        yaml_items.append(f'"{escaped_item}"')
+                    else:
+                        # Use single quotes for simple strings (maintains compatibility)
+                        yaml_items.append(f"'{cleaned_item}'")
                 else:
                     yaml_items.append(str(item))
             return f"[{', '.join(yaml_items)}]"
@@ -69,7 +78,12 @@ class MetadataFormatter(BaseFormatter):
         """Escape a string for safe YAML output."""
         if not isinstance(value, str):
             return f'"{str(value)}"'
-        
+
+        # Replace newlines with spaces for cleaner single-line descriptions
+        value = value.replace('\n\n', ' ').replace('\n', ' ').replace('\r', ' ')
+        # Clean up multiple spaces
+        value = ' '.join(value.split())
+
         # If string contains apostrophes, use double quotes and escape any existing double quotes
         if "'" in value:
             escaped_value = value.replace('"', '\\"')
@@ -184,6 +198,9 @@ class MetadataFormatter(BaseFormatter):
         # Background
         background_name = self.get_background_name(character_data)
         
+        # Language proficiencies - extract from character data
+        languages = self._extract_languages(character_data)
+        
         # Ability scores and modifiers
         abilities = {}
         modifiers = {}
@@ -197,7 +214,7 @@ class MetadataFormatter(BaseFormatter):
         dex_mod = ability_scores.get('dexterity', {}).get('modifier', 0)
         armor_class = self._get_armor_class(character_data)
         con_mod = ability_scores.get('constitution', {}).get('modifier', 0)
-        max_hp, current_hp = self._get_hit_points(character_data)
+        max_hp, current_hp, temp_hp = self._get_hit_points(character_data)
         initiative_str = f"+{dex_mod}" if dex_mod >= 0 else str(dex_mod)
         
         # Spellcasting - check v6.0.0 structure first, then adapted structure
@@ -361,8 +378,16 @@ class MetadataFormatter(BaseFormatter):
     source: {source_yaml}"""
             spell_data_yaml.append(spell_yaml)
         
-        # Build inventory items from containers data - use base class method
-        inventory_items = self.get_inventory(character_data)
+        # Build inventory items from containers data - use base class container-aware method
+        raw_inventory_items = self.get_inventory_with_containers(character_data)
+        
+        # Process items for metadata-specific formatting
+        inventory_items = []
+        for item in raw_inventory_items:
+            # Apply metadata-specific processing (categorization, etc.)
+            processed_item = self._process_inventory_item_for_metadata(item)
+            inventory_items.append(processed_item)
+        
         containers_data = character_data.get('containers', {})
         
         # Process inventory items to match backup original format
@@ -371,9 +396,9 @@ class MetadataFormatter(BaseFormatter):
         if inventory_items:
             for item in inventory_items:  # Include all inventory items in frontmatter
                 item_yaml = f"""  - item: "{item.get('name', 'Unknown Item')}"
-    type: "{item.get('item_type', 'Unknown')}"
-    category: "{item.get('item_type', 'Unknown')}"
-    container: "Character"
+    type: "{item.get('type', 'Unknown')}"
+    category: "{item.get('category', 'Unknown')}"
+    container: "{item.get('container', 'Character')}"
     quantity: {item.get('quantity', 1)}
     equipped: {self._to_yaml_value(item.get('equipped', False))}
     weight: {item.get('weight', 0)}
@@ -388,6 +413,12 @@ class MetadataFormatter(BaseFormatter):
         
         # Generate tags to match backup original
         tags = self._generate_tags(character_data)
+
+        # Party inventory data for frontmatter
+        party_inventory_yaml = self._generate_party_inventory_yaml(character_data)
+
+        # Infusions data for frontmatter
+        infusions_yaml = self._generate_infusions_yaml(character_data)
         
         # Calculate missing fields
         total_caster_level = character_level if total_spells > 0 else 0
@@ -404,6 +435,89 @@ class MetadataFormatter(BaseFormatter):
         auto_generated = True
         manual_edits = False
         
+        # Get proficiency data for frontmatter
+        proficiencies_data = character_data.get('proficiencies', {})
+        
+        # Skill proficiencies and expertise
+        skill_proficiencies = []
+        skill_expertise = []
+        skills_data = proficiencies_data.get('skill_proficiencies', {})
+        
+        # Handle dict format (enhanced calculator v6.0.0 format)
+        if isinstance(skills_data, dict):
+            for skill_name, skill_data in skills_data.items():
+                if skill_data.get('proficient', False):
+                    skill_proficiencies.append(skill_name.title())
+                if skill_data.get('expertise', False):
+                    skill_expertise.append(skill_name.title())
+        # Handle list format (legacy format)
+        elif isinstance(skills_data, list):
+            for skill in skills_data:
+                if isinstance(skill, dict):
+                    skill_name = skill.get('name', '')
+                    if skill_name:
+                        if skill.get('expertise', False):
+                            skill_expertise.append(skill_name)
+                        if skill.get('proficient', True):  # Assume proficient if in list
+                            skill_proficiencies.append(skill_name)
+                elif isinstance(skill, str):
+                    skill_proficiencies.append(skill)
+        
+        # Saving throw proficiencies 
+        saving_throw_proficiencies = []
+        saves_data = proficiencies_data.get('saving_throw_proficiencies', {})
+        
+        # Handle dict format (enhanced calculator v6.0.0 format)  
+        if isinstance(saves_data, dict):
+            for save_name, save_data in saves_data.items():
+                if save_data.get('proficient', False):
+                    saving_throw_proficiencies.append(save_name.title())
+        # Handle list format (legacy format)
+        elif isinstance(saves_data, list):
+            for save in saves_data:
+                if isinstance(save, dict):
+                    save_name = save.get('name', '')
+                    if save_name:
+                        saving_throw_proficiencies.append(save_name)
+                elif isinstance(save, str):
+                    saving_throw_proficiencies.append(save)
+        
+        # Tool proficiencies
+        tool_proficiencies = []
+        tools_data = proficiencies_data.get('tool_proficiencies', [])
+        if isinstance(tools_data, list):
+            for tool in tools_data:
+                if isinstance(tool, dict):
+                    tool_name = tool.get('name', '')
+                    if tool_name:
+                        tool_proficiencies.append(tool_name)
+                elif isinstance(tool, str):
+                    tool_proficiencies.append(tool)
+        
+        # Weapon proficiencies
+        weapon_proficiencies = []
+        weapons_data = proficiencies_data.get('weapon_proficiencies', [])
+        if isinstance(weapons_data, list):
+            for weapon in weapons_data:
+                if isinstance(weapon, dict):
+                    weapon_name = weapon.get('name', '')
+                    if weapon_name:
+                        weapon_proficiencies.append(weapon_name)
+                elif isinstance(weapon, str):
+                    weapon_proficiencies.append(weapon)
+        
+        # Armor proficiencies
+        armor_proficiencies = []
+        armor_data = proficiencies_data.get('armor_proficiencies', [])
+        if isinstance(armor_data, list):
+            for armor in armor_data:
+                if isinstance(armor, dict):
+                    armor_name = armor.get('name', '')
+                    if armor_name:
+                        armor_proficiencies.append(armor_name)
+                elif isinstance(armor, str):
+                    armor_proficiencies.append(armor)
+
         # Build frontmatter in exact original order
         frontmatter = f"""avatar_url: {avatar_url}
 character_name: {character_name_yaml}
@@ -416,6 +530,13 @@ hit_die: {self._escape_yaml_string(hit_die)}
 is_2024_rules: {self._to_yaml_value(is_2024_rules)}
 {species_or_race}: {self._escape_yaml_string(species_name)}
 background: {self._escape_yaml_string(background_name)}
+languages: {self._to_yaml_value(languages)}
+skill_proficiencies: {self._to_yaml_value(skill_proficiencies)}
+skill_expertise: {self._to_yaml_value(skill_expertise)}
+saving_throw_proficiencies: {self._to_yaml_value(saving_throw_proficiencies)}
+tool_proficiencies: {self._to_yaml_value(tool_proficiencies)}
+weapon_proficiencies: {self._to_yaml_value(weapon_proficiencies)}
+armor_proficiencies: {self._to_yaml_value(armor_proficiencies)}
 ability_scores:
   strength: {abilities['strength']}
   dexterity: {abilities['dexterity']}
@@ -433,6 +554,7 @@ ability_modifiers:
 armor_class: {armor_class}
 current_hp: {current_hp}
 max_hp: {max_hp}
+temp_hp: {temp_hp}
 initiative: {self._escape_yaml_string(initiative_str)}
 spellcasting_ability: {self._escape_yaml_string(spellcasting_ability)}
 spell_save_dc: {spell_save_dc}
@@ -480,7 +602,11 @@ auto_generated: {self._to_yaml_value(auto_generated)}
 manual_edits: {self._to_yaml_value(manual_edits)}
 tags: {self._to_yaml_value(tags)}
 inventory:
-{chr(10).join(inventory_yaml) if inventory_yaml else '  []'}"""
+{chr(10).join(inventory_yaml) if inventory_yaml else '  []'}
+party_inventory:
+{party_inventory_yaml}
+infusions:
+{infusions_yaml}"""
         
         return frontmatter
     
@@ -586,7 +712,7 @@ ability_modifiers:
         # Universal HP extraction from scraper data
         character_level = character_info.get('level', 1)
         con_mod = ability_scores.get('constitution', {}).get('modifier', 0)
-        max_hp, current_hp = self._get_hit_points(character_data)
+        max_hp, current_hp, temp_hp = self._get_hit_points(character_data)
         
         # Universal initiative: Dex modifier
         initiative = dex_mod
@@ -614,6 +740,7 @@ ability_modifiers:
         return f"""armor_class: {armor_class}
 current_hp: {current_hp}
 max_hp: {max_hp}
+temp_hp: {temp_hp}
 initiative: "{initiative_str}"
 spellcasting_ability: "{spellcasting_ability}"
 spell_save_dc: {spell_save_dc}
@@ -751,7 +878,11 @@ total_wealth_gp: {int(total_wealth_gp) if isinstance(total_wealth_gp, (int, floa
 inventory:"""
         
         # Add detailed inventory items from containers
-        inventory_items = self._extract_inventory_items(containers_data)
+        raw_inventory_items = self.get_inventory_with_containers(character_data)
+        inventory_items = []
+        for item in raw_inventory_items:
+            processed_item = self._process_inventory_item_for_metadata(item)
+            inventory_items.append(processed_item)
         for item in inventory_items:
             inventory_section += f"""
   - item: "{item['name']}"
@@ -850,29 +981,9 @@ tags: {tags}"""
         
         return tags
     
-    def _extract_inventory_items(self, containers_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Extract inventory items from containers data."""
-        container_items = containers_data.get('inventory_items', [])
-        container_mapping = containers_data.get('containers', {})
-        
-        # Create item lookup by ID
-        item_lookup = {item.get('id'): item for item in container_items}
-        
-        inventory_items = []
-        for container_id, container_info in container_mapping.items():
-            container_name = container_info.get('name', 'Unknown Container')
-            is_character = container_info.get('is_character', False)
-            
-            for item_id in container_info.get('items', []):
-                if item_id in item_lookup:
-                    item = item_lookup[item_id]
-                    processed_item = self._process_inventory_item(item, container_name, is_character)
-                    inventory_items.append(processed_item)
-        
-        return inventory_items
-    
-    def _process_inventory_item(self, item: Dict[str, Any], container_name: str, is_character: bool) -> Dict[str, Any]:
-        """Process a single inventory item."""
+
+    def _process_inventory_item_for_metadata(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """Process a single inventory item for metadata formatting."""
         item_type = (item.get('item_type') or item.get('type') or '').lower()
         rarity = (item.get('rarity') or '').lower()
         name = (item.get('name') or '').lower()
@@ -890,7 +1001,7 @@ tags: {tags}"""
             'name': item.get('name', 'Unknown Item'),
             'type': item.get('item_type', item.get('type', 'Item')),
             'category': category,
-            'container': 'Character' if is_character else container_name,
+            'container': item.get('container', 'Character'),  # Container already set by base class
             'quantity': item.get('quantity', 1),
             'equipped': item.get('equipped', False),
             'weight': item.get('weight', 0),
@@ -908,22 +1019,195 @@ tags: {tags}"""
     
     def _determine_item_category(self, item_type: str, rarity: str, name: str, item: Dict[str, Any]) -> str:
         """Determine the category of an inventory item."""
+        # Check for magic items first (non-common rarity)
         if rarity and rarity != 'common':
             return "Magic"
-        elif item.get('is_container', False):
+        
+        # Check for containers
+        if item.get('is_container', False):
             return "Container"
-        elif any(weapon_type in item_type for weapon_type in ['sword', 'bow', 'crossbow', 'dagger', 'staff', 'mace', 'axe', 'hammer', 'spear', 'club']):
-            return "Weapon"
-        elif any(armor_type in item_type for armor_type in ['armor', 'shield']):
-            return "Armor"
-        elif 'bolt' in name or 'arrow' in name or 'ammunition' in item_type:
+        
+        # Specific override rules for items that need special handling
+        name_lower = name.lower()
+        override_category = self._check_category_overrides(name_lower, item_type, item)
+        if override_category:
+            return override_category
+        
+        # Check item_type first (most reliable)
+        if item_type:
+            # Weapons
+            if any(weapon_type in item_type for weapon_type in [
+                'sword', 'bow', 'crossbow', 'dagger', 'staff', 'mace', 'axe', 
+                'hammer', 'spear', 'club', 'javelin', 'trident', 'whip', 'scimitar',
+                'rapier', 'shortsword', 'longsword', 'greatsword', 'handaxe', 'battleaxe',
+                'warhammer', 'maul', 'glaive', 'halberd', 'pike', 'lance'
+            ]):
+                return "Weapon"
+            
+            # Armor
+            if any(armor_type in item_type for armor_type in [
+                'armor', 'shield', 'leather', 'chain', 'plate', 'scale', 'splint',
+                'studded', 'hide', 'padded', 'ring mail', 'breastplate'
+            ]):
+                return "Armor"
+            
+            # Tools and kits
+            if any(tool_type in item_type for tool_type in [
+                'supplies', 'kit', 'tools', 'instrument', 'gaming set', 'artisan'
+            ]):
+                return "Tool"
+            
+            # Potions and consumables
+            if any(consumable_type in item_type for consumable_type in [
+                'potion', 'elixir', 'philter', 'oil'
+            ]):
+                return "Consumable"
+            
+            # Scrolls and books
+            if any(scroll_type in item_type for scroll_type in [
+                'scroll', 'tome', 'book', 'manual', 'spellbook'
+            ]):
+                return "Scroll"
+            
+            # Wondrous items
+            if 'wondrous' in item_type:
+                return "Magic"
+        
+        # Check name for additional categorization
+        name_lower = name.lower()
+        
+        # Ammunition
+        if any(ammo_type in name_lower for ammo_type in [
+            'bolt', 'arrow', 'dart', 'bullet', 'shot', 'ammunition'
+        ]):
             return "Ammo"
-        elif any(tool_type in item_type for tool_type in ['supplies', 'kit', 'tools']):
-            return "Tool"
-        elif any(gear_type in name for gear_type in ['rope', 'torch', 'lamp', 'oil', 'ration', 'bedroll', 'blanket', 'tent', 'pack']):
+        
+        # Scrolls and documents by name (check BEFORE consumables to catch "Book - potions" etc.)
+        if any(scroll_type in name_lower for scroll_type in [
+            'scroll', 'parchment', 'paper', 'document', 'letter', 'map', 'book', 'tome', 'manual', 'spellbook'
+        ]):
+            return "Document"
+        
+        # Potions and consumables by name (moved after documents)
+        if any(potion_type in name_lower for potion_type in [
+            'potion', 'elixir', 'philter', 'draught', 'tincture'
+        ]):
+            return "Consumable"
+        
+        # Gear and equipment
+        if any(gear_type in name_lower for gear_type in [
+            'rope', 'torch', 'lamp', 'lantern', 'oil', 'ration', 'bedroll', 'blanket', 
+            'tent', 'pack', 'bag', 'sack', 'pouch', 'case', 'chest', 'box', 'barrel',
+            'flask', 'bottle', 'jug', 'mug', 'cup', 'bowl', 'plate', 'spoon', 'fork',
+            'knife', 'tinderbox', 'flint', 'steel', 'candle', 'waterskin', 'backpack',
+            'quiver', 'sheath', 'scabbard', 'holster', 'bandolier'
+        ]):
             return "Gear"
-        else:
-            return "Other"
+        
+        # Jewelry and valuables
+        if any(jewelry_type in name_lower for jewelry_type in [
+            'ring', 'necklace', 'amulet', 'bracelet', 'crown', 'tiara', 'circlet',
+            'brooch', 'pin', 'earring', 'pendant', 'chain', 'locket', 'gem', 'jewel',
+            'diamond', 'ruby', 'emerald', 'sapphire', 'pearl', 'gold', 'silver', 'platinum'
+        ]):
+            return "Valuable"
+        
+        # Clothing
+        if any(clothing_type in name_lower for clothing_type in [
+            'robe', 'cloak', 'cape', 'tunic', 'shirt', 'pants', 'trousers', 'dress',
+            'hat', 'cap', 'hood', 'gloves', 'boots', 'shoes', 'sandals', 'belt',
+            'vest', 'jacket', 'coat', 'garment', 'clothing', 'outfit'
+        ]):
+            return "Clothing"
+        
+        # Food and provisions
+        if any(food_type in name_lower for food_type in [
+            'bread', 'cheese', 'meat', 'beef', 'pork', 'chicken', 'fish', 'fruit',
+            'apple', 'orange', 'berry', 'nut', 'grain', 'flour', 'sugar', 'salt',
+            'spice', 'herb', 'wine', 'ale', 'beer', 'mead', 'water', 'milk', 'egg',
+            'bacon', 'ham', 'sausage', 'jerky', 'biscuit', 'cake', 'pie', 'pastry'
+        ]):
+            return "Food"
+        
+        # Tools by name
+        if any(tool_type in name_lower for tool_type in [
+            'hammer', 'saw', 'chisel', 'file', 'pliers', 'tongs', 'anvil', 'bellows',
+            'needle', 'thread', 'scissors', 'brush', 'pen', 'ink', 'quill', 'chalk',
+            'ruler', 'compass', 'scale', 'balance', 'hourglass', 'sundial', 'lens',
+            'magnifying', 'telescope', 'spyglass', 'lockpick', 'crowbar', 'shovel',
+            'pickaxe', 'hoe', 'rake', 'sickle', 'scythe', 'net', 'trap', 'snare'
+        ]):
+            return "Tool"
+        
+        # Default to "Other" instead of "Unknown"
+        return "Other"
+    
+    def _check_category_overrides(self, name_lower: str, item_type: str, item: Dict[str, Any]) -> Optional[str]:
+        """
+        Check for specific category overrides for items that need special handling.
+        
+        This method uses configuration from config/parser.yaml for customizable
+        item categorization rules.
+        
+        Args:
+            name_lower: Lowercase item name
+            item_type: Item type from D&D Beyond
+            item: Full item dictionary
+            
+        Returns:
+            Override category if found, None otherwise
+        """
+        config = self._load_categorization_config()
+        defaults = self._get_categorization_defaults()
+        
+        # Check document patterns
+        document_patterns = config.get('document_patterns', defaults['document_patterns'])
+        for pattern in document_patterns:
+            if pattern in name_lower:
+                return "Document"
+        
+        # Check valuable materials + tableware combinations
+        valuable_materials = config.get('valuable_materials', defaults['valuable_materials'])
+        valuable_tableware = config.get('valuable_tableware', defaults['valuable_tableware'])
+        
+        has_valuable_material = any(material in name_lower for material in valuable_materials)
+        has_tableware = any(item_name in name_lower for item_name in valuable_tableware)
+        
+        if has_valuable_material and has_tableware:
+            return "Valuable"
+        
+        # Check custom overrides
+        custom_overrides = config.get('custom_overrides', defaults['custom_overrides'])
+        if custom_overrides:
+            for item_name, category in custom_overrides.items():
+                if item_name.lower() in name_lower:
+                    return category
+        
+        return None
+    
+    def _load_categorization_config(self) -> Dict[str, Any]:
+        """Load categorization configuration from parser.yaml."""
+        try:
+            config_path = Path(__file__).parent.parent.parent / "config" / "parser.yaml"
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+            categorization_config = config.get('parser', {}).get('categorization', {})
+            if categorization_config is None:
+                categorization_config = {}
+            return categorization_config
+        except Exception as e:
+            self.logger.warning(f"Failed to load categorization config: {e}")
+            # Return fallback defaults
+            return {}
+        
+    def _get_categorization_defaults(self) -> Dict[str, Any]:
+        """Get default categorization rules."""
+        return {
+            'document_patterns': ['book -', 'book:', 'book ', 'spellbook', 'map -', 'map:', 'map ', 'scroll -', 'scroll:', 'scroll '],
+            'valuable_materials': ['silver', 'gold', 'platinum', 'copper', 'bronze', 'brass', 'pewter'],
+            'valuable_tableware': ['bowl', 'cup', 'mug', 'goblet', 'chalice', 'tankard', 'stein', 'plate', 'platter', 'dish', 'saucer', 'carafe', 'pitcher', 'jug', 'flask', 'bottle', 'decanter', 'urn', 'vase'],
+            'custom_overrides': {}
+        }
     
     def _clean_item_description(self, description: str) -> str:
         """Clean item description for YAML output."""
@@ -1050,7 +1334,8 @@ tags: {tags}"""
         if hp_data and 'maximum' in hp_data:
             max_hp = hp_data.get('maximum', 1)
             current_hp = hp_data.get('current', max_hp)
-            return max_hp, current_hp
+            temp_hp = hp_data.get('temporary', 0)
+            return max_hp, current_hp, temp_hp
         
         # Fall back to adapted structure: character_info.hit_points
         character_info = self.get_character_info(character_data)
@@ -1059,10 +1344,11 @@ tags: {tags}"""
         if hp_data and 'maximum' in hp_data:
             max_hp = hp_data.get('maximum', 1)
             current_hp = hp_data.get('current', max_hp)
-            return max_hp, current_hp
+            temp_hp = hp_data.get('temporary', 0)
+            return max_hp, current_hp, temp_hp
         
         # If no HP data available, use minimal defaults
-        return 1, 1
+        return 1, 1, 0
     
     def _extract_hit_die(self, character_data: Dict[str, Any], primary_class: Dict[str, Any]) -> str:
         """Extract hit die from class features or use fallback logic."""
@@ -1259,3 +1545,186 @@ tags: {tags}"""
         
         # Default to 2014 rules if not explicitly 2024
         return False
+    
+    def _extract_languages(self, character_data: Dict[str, Any]) -> List[str]:
+        """
+        Extract language proficiencies from enhanced scraper data.
+        
+        Args:
+            character_data: Complete character data dictionary from enhanced scraper
+            
+        Returns:
+            List of language names
+        """
+        languages = []
+        
+        # Get languages from proficiencies data (enhanced scraper structure)
+        proficiencies_data = character_data.get('proficiencies', {})
+        language_proficiencies = proficiencies_data.get('language_proficiencies', [])
+        
+        for lang_info in language_proficiencies:
+            if isinstance(lang_info, dict):
+                language_name = lang_info.get('name', '')
+                if language_name and language_name not in languages:
+                    languages.append(language_name)
+            elif isinstance(lang_info, str):
+                if lang_info and lang_info not in languages:
+                    languages.append(lang_info)
+        
+        return sorted(languages)
+
+    def _generate_party_inventory_yaml(self, character_data: Dict[str, Any]) -> str:
+        """
+        Generate YAML representation of party inventory data for frontmatter.
+
+        Args:
+            character_data: Complete character data dictionary
+
+        Returns:
+            YAML formatted party inventory data or empty list if none
+        """
+        # Check for party inventory in equipment data
+        equipment = character_data.get('equipment', {})
+        party_inventory = equipment.get('party_inventory')
+
+        if not party_inventory:
+            return '  []'
+
+        # Extract party inventory components
+        party_items = party_inventory.get('party_items', [])
+        party_currency = party_inventory.get('party_currency', {})
+        campaign_id = party_inventory.get('campaign_id')
+        sharing_state = party_inventory.get('sharing_state', 0)
+
+        if not party_items and not any(party_currency.values()):
+            return '  []'
+
+        # Build YAML structure
+        yaml_lines = []
+
+        # Add campaign info
+        if campaign_id:
+            yaml_lines.append(f'  campaign_id: {campaign_id}')
+
+        yaml_lines.append(f'  sharing_state: {sharing_state}')
+
+        # Add party currency
+        if party_currency and any(party_currency.values()):
+            yaml_lines.append('  party_currency:')
+            for coin_type, amount in party_currency.items():
+                if amount > 0:
+                    yaml_lines.append(f'    {coin_type}: {amount}')
+        else:
+            yaml_lines.append('  party_currency: {}')
+
+        # Add party items
+        if party_items:
+            yaml_lines.append('  party_items:')
+            for item in party_items:
+                item_name = self._escape_yaml_string(item.get('name', 'Unknown'))
+                item_type = self._escape_yaml_string(item.get('type', 'Unknown'))
+                quantity = item.get('quantity', 1)
+                rarity = self._escape_yaml_string(item.get('rarity', 'Common'))
+                description = item.get('description', '')
+
+                yaml_lines.append(f'    - name: {item_name}')
+                yaml_lines.append(f'      type: {item_type}')
+                yaml_lines.append(f'      quantity: {quantity}')
+                yaml_lines.append(f'      rarity: {rarity}')
+
+                if description:
+                    # Clean description using the same method as regular inventory
+                    cleaned_desc = self._clean_item_description(description)
+                    if cleaned_desc:
+                        desc_yaml = self._escape_yaml_string(cleaned_desc)
+                        yaml_lines.append(f'      description: {desc_yaml}')
+        else:
+            yaml_lines.append('  party_items: []')
+
+        return '\n'.join(yaml_lines)
+
+    def _generate_infusions_yaml(self, character_data: Dict[str, Any]) -> str:
+        """
+        Generate YAML representation of infusions data for frontmatter.
+
+        Args:
+            character_data: Complete character data dictionary
+
+        Returns:
+            YAML formatted infusions data or empty object if none
+        """
+        # Check for infusions in equipment data
+        equipment = character_data.get('equipment', {})
+        infusions = equipment.get('infusions')
+
+        if not infusions:
+            return '  {}'
+
+        # Extract infusion components
+        active_infusions = infusions.get('active_infusions', [])
+        known_infusions = infusions.get('known_infusions', [])
+        slots_used = infusions.get('infusion_slots_used', 0)
+        slots_total = infusions.get('infusion_slots_total', 0)
+        metadata = infusions.get('metadata', {})
+        artificer_levels = metadata.get('artificer_levels', 0)
+
+        if not active_infusions and not known_infusions:
+            return '  {}'
+
+        # Build YAML structure
+        yaml_lines = []
+
+        # Add infusion slots info
+        yaml_lines.append(f'  slots_used: {slots_used}')
+        yaml_lines.append(f'  slots_total: {slots_total}')
+        yaml_lines.append(f'  artificer_levels: {artificer_levels}')
+
+        # Add active infusions
+        if active_infusions:
+            yaml_lines.append('  active_infusions:')
+            for infusion in active_infusions:
+                infusion_name = self._escape_yaml_string(infusion.get('name', 'Unknown'))
+                infused_item = self._escape_yaml_string(infusion.get('infused_item_name', 'Unknown Item'))
+                infusion_type = self._escape_yaml_string(infusion.get('type', 'Unknown'))
+                rarity = self._escape_yaml_string(infusion.get('rarity', 'Common'))
+                requires_attunement = infusion.get('requires_attunement', False)
+                description = infusion.get('description', '')
+
+                yaml_lines.append(f'    - name: {infusion_name}')
+                yaml_lines.append(f'      infused_item: {infused_item}')
+                yaml_lines.append(f'      type: {infusion_type}')
+                yaml_lines.append(f'      rarity: {rarity}')
+                yaml_lines.append(f'      requires_attunement: {self._to_yaml_value(requires_attunement)}')
+
+                if description:
+                    # Clean description using the same method as regular inventory
+                    cleaned_desc = self._clean_item_description(description)
+                    if cleaned_desc:
+                        desc_yaml = self._escape_yaml_string(cleaned_desc)
+                        yaml_lines.append(f'      description: {desc_yaml}')
+        else:
+            yaml_lines.append('  active_infusions: []')
+
+        # Add known infusions
+        if known_infusions:
+            yaml_lines.append('  known_infusions:')
+            for infusion in known_infusions:
+                infusion_name = self._escape_yaml_string(infusion.get('name', 'Unknown'))
+                level_req = infusion.get('level_requirement', 1)
+                description = infusion.get('description', '')
+
+                yaml_lines.append(f'    - name: {infusion_name}')
+                yaml_lines.append(f'      level_requirement: {level_req}')
+
+                if description:
+                    # Clean description using the same method as regular inventory
+                    cleaned_desc = self._clean_item_description(description)
+                    if cleaned_desc:
+                        desc_yaml = self._escape_yaml_string(cleaned_desc)
+                        yaml_lines.append(f'      description: {desc_yaml}')
+        else:
+            yaml_lines.append('  known_infusions: []')
+
+        return '\n'.join(yaml_lines)
+
+
