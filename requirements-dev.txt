@@ -3,26 +3,10 @@
 # Include core requirements
 -r requirements.txt
 
-# Testing framework
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-pytest-cov>=4.0.0
-
-# Code formatting and linting
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.0.0
-
-# Pre-commit hooks for code quality
-pre-commit>=3.0.0
-
-# Security analysis
-bandit>=1.7.0
-
-# Documentation generation
-sphinx>=6.0.0
-sphinx-rtd-theme>=1.2.0
-
-# Development utilities
+# Development utilities  
 ipython>=8.0.0
 jupyter>=1.0.0
+
+# Optional: Code formatting (if desired)
+# black>=23.0.0
+# flake8>=6.0.0

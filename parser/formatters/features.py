@@ -100,12 +100,18 @@ class FeaturesFormatter(BaseFormatter):
         
         section = ""
         
-        for feat in feats:
+        # Sort feats by name for consistent display
+        sorted_feats = sorted(feats, key=lambda f: f.get('name', '')) if feats else []
+        
+        for feat in sorted_feats:
             if isinstance(feat, dict):
                 name = feat.get('name', 'Unknown Feat')
                 description = feat.get('description', '')
                 
-                section += f"\n>### {name} (Feat)\n>\n"
+                # Determine feat source and type
+                feat_source = self._determine_feat_source(feat)
+                
+                section += f"\n>### {name} ({feat_source})\n>\n"
                 
                 if description:
                     # Use proper formatting for feat descriptions (similar to spells)
@@ -148,7 +154,19 @@ class FeaturesFormatter(BaseFormatter):
         
         section = ""
         
-        for feature in class_features:
+        # Sort class features by type, then name, then level for better grouping
+        def get_feature_type_priority(feature):
+            # Prioritize subclass features after class features
+            is_subclass = feature.get('is_subclass_feature', False)
+            return 1 if is_subclass else 0
+        
+        sorted_features = sorted(class_features, key=lambda f: (
+            get_feature_type_priority(f),  # Class features first, then subclass
+            f.get('name', ''),             # Then by name (groups progressions)  
+            f.get('level_required', 1)     # Then by level (shows progression order)
+        )) if class_features else []
+        
+        for feature in sorted_features:
             if isinstance(feature, dict):
                 name = feature.get('name', 'Unknown Feature')
                 description = feature.get('description', '')
@@ -161,12 +179,15 @@ class FeaturesFormatter(BaseFormatter):
                 if level_required > character_level:
                     continue
                 
-                section += f"\n>### {name}\n>\n"
+                section += f"\n>### {name}\n"
                 
-                # Add level requirement if different from 1
-                if level_required > 1:
-                    feature_type = "Subclass" if is_subclass else "Class"
-                    section += f"> *{feature_type} Feature (Level {level_required})*\n>\n"
+                # Add source and level information
+                feature_type = "Subclass" if is_subclass else "Class"
+                source_name = feature.get('source_name', 'Unknown')
+                section += f"> *{feature_type} Feature (Level {level_required})*\n"
+                if source_name and source_name != 'Unknown':
+                    section += f"> *Source: {source_name}*\n"
+                section += ">\n"
                 
                 # Add limited use information as consumable block
                 if limited_use and isinstance(limited_use, dict):
@@ -220,7 +241,7 @@ class FeaturesFormatter(BaseFormatter):
         resources_by_class = {}
         for resource in class_resources:
             if isinstance(resource, dict):
-                class_name = resource.get('class_name', 'Unknown Class')
+                class_name = resource.get('class', 'Unknown Class')  # Fixed: use 'class' not 'class_name'
                 if class_name not in resources_by_class:
                     resources_by_class[class_name] = []
                 resources_by_class[class_name].append(resource)
@@ -230,7 +251,7 @@ class FeaturesFormatter(BaseFormatter):
             section += f"> **{class_name}:**\n"
             
             for resource in class_resource_list:
-                resource_name = resource.get('resource_name', 'Unknown Resource')
+                resource_name = resource.get('name', 'Unknown Resource')  # Fixed: use 'name' not 'resource_name'
                 maximum = resource.get('maximum', 0)
                 current = resource.get('current', maximum)
                 used = resource.get('used', 0)
@@ -407,3 +428,35 @@ class FeaturesFormatter(BaseFormatter):
             return len(available_features) > 0
         
         return False
+    
+    def _determine_feat_source(self, feat: Dict[str, Any]) -> str:
+        """
+        Determine the source description for a feat.
+        
+        Args:
+            feat: Feat dictionary
+            
+        Returns:
+            Source description string
+        """
+        # Check for feat type from prerequisites or description
+        description = feat.get('description', '')
+        
+        # Check for Origin Feat
+        if 'Origin Feat' in description:
+            return 'Origin Feat'
+        
+        # Check for General Feat
+        if 'General Feat' in description:
+            return 'General Feat'
+        
+        # Check for Fighting Style Feat
+        if 'Fighting Style Feat' in description:
+            return 'Fighting Style Feat'
+        
+        # Check for Epic Boon
+        if 'Epic Boon' in description:
+            return 'Epic Boon'
+        
+        # Default to just "Feat"
+        return 'Feat'

@@ -32,8 +32,6 @@ debug: false                                   # Enable debug mode (verbose logg
 # These paths are used throughout the application for data storage and processing
 paths:
   character_data: "character_data"             # Primary storage for character JSON files and snapshots
-  data_folder: "data"                          # General data directory for rules, constants, and reference files
-  baseline: "data/baseline"                    # Baseline character data for validation and testing
   spells_folder: "obsidian/spells"             # Enhanced spell descriptions for markdown generation
   config_dir: "config"                         # Configuration files directory
 
@@ -46,14 +44,6 @@ logging:
   level: "INFO"                                # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   # Note: Additional logging settings (file output, formatting) are handled
   # in environment-specific configurations to avoid cluttering the main config
-
-# ===================================================================
-# PERFORMANCE SETTINGS
-# ===================================================================
-# Global performance optimization settings
-performance:
-  memory_optimization: true                    # Enable memory usage optimizations (recommended: true)
-  enable_caching: false                        # Enable calculation result caching (can improve performance but uses more memory)
 
 # ===================================================================
 # ENVIRONMENT-SPECIFIC OVERRIDES

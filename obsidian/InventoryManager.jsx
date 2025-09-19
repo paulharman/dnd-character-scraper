@@ -140,8 +140,9 @@ function InventoryQuery({ characterName, paging = 50 }) {
   const [filtersShown, setFiltersShown] = dc.useState(false);
   const [sortBy, setSortBy] = dc.useState('name'); // name, category, container, weight
   
-  // Extract inventory from character frontmatter
+  // Extract inventory and wealth from character frontmatter
   let inventoryItems = [];
+  let personalWealth = {};
   if (character && character.$frontmatter && character.$frontmatter.inventory) {
     // Use DataCore's useArray to properly extract the inventory data
     const inventoryArray = dc.useArray(character.$frontmatter.inventory, arr => arr);
@@ -159,6 +160,24 @@ function InventoryQuery({ characterName, paging = 50 }) {
     console.debug("Processed inventory items:", inventoryItems.length, "items");
     console.debug("First item structure:", inventoryItems[0]);
     console.debug("First item keys:", inventoryItems[0] ? Object.keys(inventoryItems[0]) : 'none');
+  }
+
+  // Extract wealth data from character frontmatter
+  if (character && character.$frontmatter && character.$frontmatter.wealth) {
+    // Use DataCore's useArray to properly extract the wealth data
+    const wealthArray = dc.useArray(character.$frontmatter.wealth, arr => arr);
+
+    // Handle nested structure where wealth data is wrapped in key/value pairs
+    if (wealthArray && wealthArray.length > 0 && wealthArray[0]?.key === 'wealth') {
+      // Extract the actual wealth data from the value property
+      personalWealth = wealthArray[0]?.value || {};
+    } else if (wealthArray && typeof wealthArray === 'object' && !Array.isArray(wealthArray)) {
+      // Direct object structure
+      personalWealth = wealthArray;
+    }
+
+    console.debug("Raw wealth:", character.$frontmatter.wealth);
+    console.debug("Processed wealth:", personalWealth);
   }
   
   // If no character found, show helpful error
@@ -221,7 +240,13 @@ function InventoryQuery({ characterName, paging = 50 }) {
   
   const clearFilterRarity = () => setFilterRarity([]);
   const toggleFilterRarity = () => setFilterRarity(allRarities.filter(r => !filterRarity.includes(r)));
-  
+
+  // Calculate total personal wealth value in gold pieces
+  const totalPersonalWealthGP = Object.entries(personalWealth).reduce((total, [coinType, amount]) => {
+    const multipliers = { 'copper': 0.01, 'silver': 0.1, 'electrum': 0.5, 'gold': 1, 'platinum': 10 };
+    return total + (amount * (multipliers[coinType] || 1));
+  }, 0);
+
   // Apply filters
   const filteredItems = inventoryItems.filter(item => {
     if (filterSearch && !item?.item?.toLowerCase().includes(filterSearch.toLowerCase())) {
@@ -347,6 +372,28 @@ function InventoryQuery({ characterName, paging = 50 }) {
   
   return (
     <>
+      {/* Personal Wealth Summary */}
+      {Object.keys(personalWealth).length > 0 && (
+        <div style="margin-bottom: 1.5em; padding: 1em; background-color: var(--background-secondary-alt, #23272e); border-radius: 0.5em; border: 1px solid var(--background-modifier-border, #444);">
+          <h4 style="margin: 0 0 0.5em 0; display: flex; align-items: center; gap: 0.5em;">
+            <dc.Icon icon="lucide-coins" />
+            Personal Wealth
+          </h4>
+          <div style="display: flex; gap: 1em; flex-wrap: wrap;">
+            {Object.entries(personalWealth).map(([coinType, amount]) =>
+              amount > 0 && (
+                <span key={coinType} style="font-weight: 500;">
+                  {amount} {coinType === 'gold' ? 'gp' : coinType === 'silver' ? 'sp' : coinType === 'copper' ? 'cp' : coinType === 'platinum' ? 'pp' : coinType === 'electrum' ? 'ep' : coinType}
+                </span>
+              )
+            )}
+            <span style="margin-left: auto; font-style: italic; opacity: 0.8;">
+              Total: {Math.round(totalPersonalWealthGP * 100) / 100} gp
+            </span>
+          </div>
+        </div>
+      )}
+
       <div style="display: flex; gap: 0.75em; align-items: center; margin-bottom: 1em;">
         <input
           type="search"

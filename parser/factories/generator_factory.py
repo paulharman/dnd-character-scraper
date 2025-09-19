@@ -13,7 +13,7 @@ import os
 
 # Add project root to path for config manager access
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from src.config.manager import get_config_manager
+from shared.config.manager import get_config_manager
 
 # Add parser directory to path for absolute imports
 current_dir = os.path.dirname(os.path.abspath(__file__))

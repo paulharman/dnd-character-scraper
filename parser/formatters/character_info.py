@@ -162,11 +162,22 @@ else:
         # Avatar URL
         avatar_url = character_info.get('avatarUrl', '')
         
-        # Class information
+        # Class information - handle multiclassing
         classes = character_info.get('classes', [])
         primary_class = classes[0] if classes else {}
-        class_name = primary_class.get('name', 'Unknown')
-        subclass_name = primary_class.get('subclass', '')
+        
+        # Check for multiclassing
+        if len(classes) > 1:
+            # Format as "Class1 X/Class2 Y"
+            class_parts = []
+            for class_data in classes:
+                class_parts.append(f"{class_data.get('name', 'Unknown')} {class_data.get('level', 1)}")
+            class_name = " / ".join(class_parts)
+            # For subclass, use primary class's subclass
+            subclass_name = primary_class.get('subclass', '')
+        else:
+            class_name = primary_class.get('name', 'Unknown')
+            subclass_name = primary_class.get('subclass', '')
         
         # If subclass is empty, try to derive from features
         if not subclass_name:
@@ -292,11 +303,22 @@ else:
         character_name = character_info.get('name', 'Unknown Character')
         character_level = character_info.get('level', 1)
         
-        # Class information
+        # Class information - handle multiclassing
         classes = character_info.get('classes', [])
         primary_class = classes[0] if classes else {}
-        class_name = primary_class.get('name', 'Unknown')
-        subclass_name = primary_class.get('subclass', 'None')
+        
+        # Check for multiclassing
+        if len(classes) > 1:
+            # Format as "Class1 X/Class2 Y"
+            class_parts = []
+            for class_data in classes:
+                class_parts.append(f"{class_data.get('name', 'Unknown')} {class_data.get('level', 1)}")
+            class_name = " / ".join(class_parts)
+            # For subclass, use primary class's subclass
+            subclass_name = primary_class.get('subclass', 'None')
+        else:
+            class_name = primary_class.get('name', 'Unknown')
+            subclass_name = primary_class.get('subclass', 'None')
         
         # If subclass is empty, try to derive from features
         if not subclass_name or subclass_name == 'None':
@@ -504,11 +526,22 @@ hitdice:
         character_name = character_info.get('name', 'Unknown Character')
         character_level = character_info.get('level', 1)
         
-        # Class information
+        # Class information - handle multiclassing  
         classes = character_info.get('classes', [])
         primary_class = classes[0] if classes else {}
-        class_name = primary_class.get('name', 'Unknown')
-        subclass_name = primary_class.get('subclass', '')
+        
+        # Check for multiclassing
+        if len(classes) > 1:
+            # Format as "Class1 X/Class2 Y"
+            class_parts = []
+            for class_data in classes:
+                class_parts.append(f"{class_data.get('name', 'Unknown')} {class_data.get('level', 1)}")
+            class_name = " / ".join(class_parts)
+            # For subclass, use primary class's subclass
+            subclass_name = primary_class.get('subclass', '')
+        else:
+            class_name = primary_class.get('name', 'Unknown')
+            subclass_name = primary_class.get('subclass', '')
         
         # Species/Race and background
         rule_version = character_info.get('rule_version', meta.get('rule_version', 'unknown'))

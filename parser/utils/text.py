@@ -307,7 +307,8 @@ class TextProcessor(ITextProcessor):
         text = re.sub(r'\*([^*]+)\*', r'*\1*', text)
         
         # Convert dice notation to inline code with better pattern matching
-        text = re.sub(r'(\d+d\d+(?:\s*[+-]\s*\d+)?)', r'`\1`', text)
+        # Only convert dice notation that isn't already backticked
+        text = re.sub(r'(?<!`)(\d+d\d+(?:\s*[+-]\s*\d+)?)(?!`)', r'`\1`', text)
         
         # Convert "At Higher Levels" sections to bold
         text = re.sub(r'^(At Higher Levels\.?)(.*)$', r'**\1**\2', text, flags=re.MULTILINE)
@@ -394,10 +395,10 @@ class TextProcessor(ITextProcessor):
         text = re.sub(r'[ \t]+([.,:;!?])', r'\1', text)
         text = re.sub(r'([.,:;!?])[ \t]+', r'\1 ', text)
         
-        # Ensure proper spacing around dice notation
-        text = re.sub(r'`(\d+d\d+(?:[+-]\d+)?)`', r' `\1` ', text)
-        text = re.sub(r'\s+`', r' `', text)
-        text = re.sub(r'`\s+', r'` ', text)
+        # Ensure proper spacing around backticked content without doubling backticks
+        text = re.sub(r'(\S)`([^`]+)`(\S)', r'\1 `\2` \3', text)  # Add spaces around backticked content
+        text = re.sub(r'^`([^`]+)`(\S)', r'`\1` \2', text, flags=re.MULTILINE)  # Space after at start of line
+        text = re.sub(r'(\S)`([^`]+)`$', r'\1 `\2`', text, flags=re.MULTILINE)  # Space before at end of line
         
         # Fix double markdown formatting
         text = re.sub(r'\*\*\*\*([^*]+)\*\*\*\*', r'**\1**', text)

@@ -88,16 +88,26 @@ class InventoryFormatter(BaseFormatter):
         
         # Header
         sections.append(self._generate_header())
-        
+
         # Wealth information
         sections.append(self._generate_wealth_section(character_data))
-        
+
         # Encumbrance information
         sections.append(self._generate_encumbrance_section(character_data))
-        
-        # Interactive inventory component
+
+        # Interactive inventory component (player inventory)
         sections.append(self._generate_interactive_inventory_section(character_data))
-        
+
+        # Party inventory (if available)
+        party_inventory_section = self._generate_party_inventory_section(character_data)
+        if party_inventory_section:
+            sections.append(party_inventory_section)
+
+        # Infusions (if available)
+        infusions_section = self._generate_infusions_section(character_data)
+        if infusions_section:
+            sections.append(infusions_section)
+
         # Footer
         sections.append(self._generate_footer())
         
@@ -108,7 +118,8 @@ class InventoryFormatter(BaseFormatter):
         return """## Inventory
 
 <span class="right-link">[[#Character Statistics|Top]]</span>
-> """
+
+"""
     
     def _generate_wealth_section(self, character_data: Dict[str, Any]) -> str:
         """Generate wealth calculation section with v6.0.0 format support."""
@@ -178,8 +189,112 @@ class InventoryFormatter(BaseFormatter):
         if not wealth_str:
             wealth_str.append("0 gp")
         
-        return f"**Wealth:** {', '.join(wealth_str)} *(Total: {int(total_gp) if isinstance(total_gp, (int, float)) else 0} gp)*\n> "
-    
+        # Simple wealth display - styling is now handled in InventoryManager.jsx
+        wealth_display = ' | '.join(wealth_str)
+        total_display = f"Total: {int(total_gp) if isinstance(total_gp, (int, float)) else 0} gp"
+
+        return f"**Personal Wealth:** {wealth_display} ({total_display})\n\n"
+
+    def _generate_party_inventory_section(self, character_data: Dict[str, Any]) -> Optional[str]:
+        """Generate party inventory section with interactive JSX component if available."""
+        # Check for party inventory in equipment data
+        equipment = character_data.get('equipment', {})
+        party_inventory = equipment.get('party_inventory')
+
+        if not party_inventory:
+            return None
+
+        # Extract party inventory data
+        party_items = party_inventory.get('party_items', [])
+        party_currency = party_inventory.get('party_currency', {})
+        campaign_id = party_inventory.get('campaign_id')
+
+        if not party_items and not any(party_currency.values()):
+            return None
+
+        # Get character name for the component
+        character_info = self.get_character_info(character_data)
+        character_name = character_info.get('name', 'Unknown Character')
+
+        # Get template settings using proper configuration method
+        jsx_dir, _ = self._get_template_settings()
+        party_component = "PartyInventoryManager.jsx"
+
+        # Generate the DataCore JSX component for party inventory
+        section = f"### Party Inventory"
+        if campaign_id:
+            section += f" (Campaign {campaign_id})"
+        section += "\n\n"
+
+        section += "```datacorejsx\n"
+        section += f"const {{ PartyInventoryQuery }} = await dc.require(\"{jsx_dir}/{party_component}\");\n"
+        section += f"return <PartyInventoryQuery characterName=\"{character_name}\""
+        if campaign_id:
+            section += f" campaignId=\"{campaign_id}\""
+        section += " />;\n"
+        section += "```\n\n"
+
+        return section
+
+    def _generate_infusions_section(self, character_data: Dict[str, Any]) -> Optional[str]:
+        """Generate infusions section if character has infusions."""
+        # Check for infusions in equipment data
+        equipment = character_data.get('equipment', {})
+        infusions = equipment.get('infusions')
+
+        if not infusions:
+            return None
+
+        # Extract infusion data
+        active_infusions = infusions.get('active_infusions', [])
+        known_infusions = infusions.get('known_infusions', [])
+        slots_used = infusions.get('infusion_slots_used', 0)
+        slots_total = infusions.get('infusion_slots_total', 0)
+        artificer_levels = infusions.get('metadata', {}).get('artificer_levels', 0)
+
+        # Only show section if there are infusions
+        if not active_infusions and not known_infusions:
+            return None
+
+        # Get character name for the component
+        character_info = self.get_character_info(character_data)
+        character_name = character_info.get('name', 'Unknown Character')
+
+        # Generate section header
+        section = f"### Artificer Infusions"
+        if artificer_levels > 0:
+            section += f" (Level {artificer_levels} Artificer)"
+        section += "\n\n"
+
+        # Add infusion slots information
+        if slots_total > 0:
+            section += f"**Infusion Slots:** {slots_used}/{slots_total} used"
+            if slots_total > slots_used:
+                section += f" ({slots_total - slots_used} available)"
+            section += "\n\n"
+
+        # Add active infusions if any
+        if active_infusions:
+            section += f"**Active Infusions ({len(active_infusions)}):**\n"
+            for infusion in active_infusions:
+                infusion_name = infusion.get('name', 'Unknown')
+                infused_item = infusion.get('infused_item_name', 'Unknown Item')
+                section += f"- **{infusion_name}** (on {infused_item})\n"
+            section += "\n"
+
+        # Add known infusions count if any
+        if known_infusions:
+            section += f"**Known Infusions:** {len(known_infusions)} total\n\n"
+
+        # Add interactive component for detailed infusion management
+        jsx_dir = self.DEFAULT_JSX_DIR
+        section += "```datacorejsx\n"
+        section += f"const {{ InfusionsQuery }} = await dc.require(\"{jsx_dir}/InfusionsManager.jsx\");\n"
+        section += f"return <InfusionsQuery characterName=\"{character_name}\" />;\n"
+        section += "```\n\n"
+
+        return section
+
     def _generate_encumbrance_section(self, character_data: Dict[str, Any]) -> str:
         """Generate encumbrance tracking section with v6.0.0 format support."""
         # Get encumbrance data - try top level first, then equipment section
@@ -199,12 +314,14 @@ class InventoryFormatter(BaseFormatter):
                 carrying_capacity = encumbrance.get('carrying_capacity', 0)
                 encumbrance_level = encumbrance.get('encumbrance_level')
             else:
-                # Fallback to equipment_summary
+                # Fallback to equipment_summary for carrying capacity only
                 equipment_summary = equipment.get('equipment_summary', {})
                 weight_distribution = equipment_summary.get('weight_distribution', {})
                 
-                total_weight = weight_distribution.get('total_weight', 0)
-                encumbrance_level = weight_distribution.get('encumbrance_level')
+                # Don't override total_weight - keep our corrected calculation
+                # Only get encumbrance_level if not already set
+                if encumbrance_level is None:
+                    encumbrance_level = weight_distribution.get('encumbrance_level')
                 
                 # Calculate carrying capacity from abilities if not available
                 # Carrying capacity = Strength score * 15
@@ -219,12 +336,18 @@ class InventoryFormatter(BaseFormatter):
         
         # Use v6.0.0 encumbrance level if available, otherwise calculate
         if encumbrance_level is not None:
+            # Convert to int if it's a string to handle type mismatches
+            try:
+                encumbrance_level_int = int(encumbrance_level) if isinstance(encumbrance_level, str) else encumbrance_level
+            except (ValueError, TypeError):
+                encumbrance_level_int = 0
+
             # v6.0.0 uses numeric levels: 0=Unencumbered, 1=Encumbered, 2=Heavily Encumbered, 3=Overloaded
-            if encumbrance_level >= 3:
+            if encumbrance_level_int >= 3:
                 encumbrance_status = "Overloaded"
-            elif encumbrance_level >= 2:
+            elif encumbrance_level_int >= 2:
                 encumbrance_status = "Heavy"
-            elif encumbrance_level >= 1:
+            elif encumbrance_level_int >= 1:
                 encumbrance_status = "Medium"
             else:
                 encumbrance_status = "Light"
@@ -232,30 +355,30 @@ class InventoryFormatter(BaseFormatter):
             # Fallback calculation
             encumbrance_status = "Heavy" if percentage > 66 else "Medium" if percentage > 33 else "Light"
         
-        return f"**Encumbrance:** {total_weight:.1f}/{carrying_capacity} lbs ({percentage}% - {encumbrance_status})\n>\n>\n"
+        return f"**Encumbrance:** {total_weight:.1f}/{carrying_capacity} lbs ({percentage}% - {encumbrance_status})\n\n"
     
     def _generate_interactive_inventory_section(self, character_data: Dict[str, Any]) -> str:
         """Generate interactive inventory component section."""
-        section = ">### Interactive Inventory\n>\n"
-        
+        section = "### Personal Inventory\n\n"
+
         # Get character name for the component
         character_info = self.get_character_info(character_data)
         character_name = character_info.get('name', 'Unknown Character')
-        
+
         # Get template settings using proper configuration method
         jsx_dir, inventory_component = self._get_template_settings()
-        
+
         # Generate the DataCore JSX component
-        section += "> ```datacorejsx\n"
-        section += f"> const {{ InventoryQuery }} = await dc.require(\"{jsx_dir}/{inventory_component}\");\n"
-        section += f"> return <InventoryQuery characterName=\"{character_name}\" />;\n"
-        section += "> ```\n>\n"
-        
+        section += "```datacorejsx\n"
+        section += f"const {{ InventoryQuery }} = await dc.require(\"{jsx_dir}/{inventory_component}\");\n"
+        section += f"return <InventoryQuery characterName=\"{character_name}\" />;\n"
+        section += "```\n\n"
+
         return section
     
     def _generate_footer(self) -> str:
         """Generate inventory section footer."""
-        return "> ^inventory"
+        return "^inventory"
     
     def format_wealth_only(self, character_data: Dict[str, Any]) -> str:
         """
@@ -408,18 +531,43 @@ class InventoryFormatter(BaseFormatter):
         basic_equipment = equipment_data.get('basic_equipment', [])
         total_weight = 0.0
         
-        # First pass: identify extradimensional containers
+        # Get container inventory structure if available
+        container_inventory = equipment_data.get('container_inventory', {})
+        containers = container_inventory.get('containers', {})
+        
+        # First pass: identify extradimensional containers using container structure
         extradimensional_containers = set()
-        for item in basic_equipment:
-            item_name = item.get('name', '').lower()
-            
-            # Check for known extradimensional containers
-            if any(name in item_name for name in [
-                'bag of holding', 'heward\'s handy haversack', 'portable hole',
-                'handy haversack', 'efficient quiver'
-            ]):
-                extradimensional_containers.add(item.get('id'))
-                self.logger.debug(f"Parser:   Identified extradimensional container: {item.get('name')} (ID: {item.get('id')})")
+        
+        if containers:
+            # Use container structure to identify extradimensional containers
+            for container_id, container_info in containers.items():
+                container_name = container_info.get('name', '').lower()
+                
+                # Check for known extradimensional containers
+                if any(name in container_name for name in [
+                    'bag of holding', 'heward\'s handy haversack', 'portable hole',
+                    'handy haversack', 'efficient quiver'
+                ]):
+                    # Add both string and integer versions to handle type mismatches
+                    extradimensional_containers.add(str(container_id))
+                    try:
+                        extradimensional_containers.add(int(container_id))
+                    except (ValueError, TypeError):
+                        # Handle cases where container_id can't be converted to int
+                        pass
+                    self.logger.debug(f"Parser:   Identified extradimensional container: {container_info.get('name')} (ID: {container_id})")
+        else:
+            # Fallback: identify extradimensional containers by item names in basic_equipment
+            for item in basic_equipment:
+                item_name = item.get('name', '').lower()
+                
+                # Check for known extradimensional containers
+                if any(name in item_name for name in [
+                    'bag of holding', 'heward\'s handy haversack', 'portable hole',
+                    'handy haversack', 'efficient quiver'
+                ]):
+                    extradimensional_containers.add(item.get('id'))
+                    self.logger.debug(f"Parser:   Identified extradimensional container: {item.get('name')} (ID: {item.get('id')})")
         
         # Second pass: calculate weight, excluding items in extradimensional containers
         for item in basic_equipment:

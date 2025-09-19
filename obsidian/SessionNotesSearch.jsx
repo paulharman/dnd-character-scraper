@@ -101,7 +101,8 @@ function renderSimpleMarkdown(text) {
   // Step 5: Replace placeholders with actual wiki links
   processed = processed.replace(/___WIKI_(\d+)___/g, (match, index) => {
     const linkText = wikiLinks[parseInt(index)];
-    return `<a href="obsidian://open?file=${encodeURIComponent(linkText)}" style="color: #4fc3f7; text-decoration: none;">${linkText}</a>`;
+    const encodedLink = encodeURIComponent(linkText);
+    return `<a target="_blank" rel="noopener" data-href="${linkText}" href="obsidian://open?file=${encodedLink}" class="internal-link" aria-label="${linkText}" style="color: #4fc3f7; text-decoration: none;">${linkText}</a>`;
   });
   
   return processed;
@@ -306,7 +307,12 @@ function SessionNotesSearch({ paging = 50 }) {
         const href = `obsidian://open?file=${encodeURIComponent(event.sessionPath)}`;
         return (
           <a
+            target="_blank"
+            rel="noopener"
+            data-href={event.sessionPath}
             href={href}
+            class="internal-link"
+            aria-label={event.sessionPath}
             style="color: #4fc3f7; text-decoration: none; font-weight: 500;"
             title={`Open ${event.sessionName}`}
           >

@@ -11,11 +11,11 @@ from typing import Dict, Any, Optional, List
 from enum import Enum
 
 # Use consolidated enhanced change detection system
-from src.models.change_detection import FieldChange, ChangeType, ChangePriority
+from shared.models.change_detection import FieldChange, ChangeType, ChangePriority
 
 # Import change log models
 try:
-    from src.models.change_log import ChangeAttribution, ChangeCausation
+    from discord.core.models.change_log import ChangeAttribution, ChangeCausation
 except ImportError:
     # Fallback for when running from different contexts
     import sys
@@ -23,7 +23,7 @@ except ImportError:
     project_root = Path(__file__).parent.parent.parent
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
-    from src.models.change_log import ChangeAttribution, ChangeCausation
+    from discord.core.models.change_log import ChangeAttribution, ChangeCausation
 
 logger = logging.getLogger(__name__)
 

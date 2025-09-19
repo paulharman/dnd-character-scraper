@@ -6,6 +6,8 @@ spell statistics, spell slots, spell lists, and detailed spell descriptions.
 """
 
 from typing import Dict, Any, List, Optional, Tuple
+from pathlib import Path
+import re
 
 # Import interfaces and utilities using absolute import
 import sys
@@ -16,6 +18,13 @@ import logging
 from formatters.base import BaseFormatter
 from utils.text import TextProcessor
 from utils.spell_data_extractor import SpellDataExtractor
+
+# Import EnhancedSpellInfo for type checking
+try:
+    from scraper.core.calculators.services.spell_processor import EnhancedSpellInfo
+except ImportError:
+    # Fallback if import fails
+    EnhancedSpellInfo = None
 
 
 class SpellcastingFormatter(BaseFormatter):
@@ -39,6 +48,47 @@ class SpellcastingFormatter(BaseFormatter):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.spell_extractor = None  # Will be initialized when needed
         self.combat_data = {}  # Initialize combat data storage
+
+    def _convert_spell_to_dict(self, spell) -> Dict[str, Any]:
+        """
+        Convert EnhancedSpellInfo object to dictionary format for compatibility.
+        
+        Args:
+            spell: Either EnhancedSpellInfo object or dictionary
+            
+        Returns:
+            Dictionary representation of the spell
+        """
+        # If it's already a dictionary, return as-is
+        if isinstance(spell, dict):
+            return spell
+            
+        # If it's an EnhancedSpellInfo object, convert it
+        if EnhancedSpellInfo and isinstance(spell, EnhancedSpellInfo):
+            return {
+                'name': spell.name,
+                'level': spell.level,
+                'school': spell.school,
+                'source': spell.source,
+                'description': spell.description,
+                'isLegacy': spell.is_legacy,
+                'is_prepared': spell.is_prepared or spell.is_always_prepared,
+                'always_prepared': spell.is_always_prepared,
+                'ritual': False,  # Will be filled by spell extractor if needed
+                'concentration': False,  # Will be filled by spell extractor if needed
+                # Additional metadata for enhanced features
+                'counts_as_known': spell.counts_as_known,
+                'uses_spell_slot': spell.uses_spell_slot,
+                'limited_use': spell.limited_use,
+                'component_id': spell.component_id,
+                'component_type_id': spell.component_type_id,
+                'is_available': spell.is_available,
+                'availability_reason': spell.availability_reason
+            }
+        
+        # Fallback for unknown types
+        self.logger.warning(f"Unknown spell type: {type(spell)}")
+        return {}
     
     def _get_required_fields(self) -> List[str]:
         """Get list of required fields for spellcasting formatting."""
@@ -60,11 +110,13 @@ class SpellcastingFormatter(BaseFormatter):
                 return False
             
             for spell in spell_list:
-                if not isinstance(spell, dict):
-                    self.logger.error(f"Spell in {source} is not a dictionary")
+                # Convert spell to dict format for validation
+                spell_dict = self._convert_spell_to_dict(spell)
+                if not spell_dict:
+                    self.logger.error(f"Could not convert spell in {source} to dictionary format")
                     return False
                 
-                if 'name' not in spell:
+                if 'name' not in spell_dict:
                     self.logger.error(f"Spell in {source} missing name field")
                     return False
         
@@ -241,9 +293,10 @@ class SpellcastingFormatter(BaseFormatter):
         # First check processed spells
         for source, spell_list in spells.items():
             for spell in spell_list:
-                spell_name = spell.get('name', '')
-                spell_level = spell.get('level', 0)
-                source_info = spell.get('source_info', {})
+                spell_dict = self._convert_spell_to_dict(spell)
+                spell_name = spell_dict.get('name', '')
+                spell_level = spell_dict.get('level', 0)
+                source_info = spell_dict.get('source_info', {})
                 
                 # Skip cantrips (they're always free, but handled separately)
                 if spell_level == 0:
@@ -316,9 +369,10 @@ class SpellcastingFormatter(BaseFormatter):
         if not free_cast_spells:
             for source, spell_list in spells.items():
                 for spell in spell_list:
-                    spell_name = spell.get('name', '')
-                    spell_level = spell.get('level', 0)
-                    source_info = spell.get('source_info', {})
+                    spell_dict = self._convert_spell_to_dict(spell)
+                    spell_name = spell_dict.get('name', '')
+                    spell_level = spell_dict.get('level', 0)
+                    source_info = spell_dict.get('source_info', {})
                     
                     # Skip cantrips (they're always free, but handled separately)
                     if spell_level == 0:
@@ -376,10 +430,6 @@ class SpellcastingFormatter(BaseFormatter):
         
         return section
     
-    def _generate_free_cast_consumables(self, character_data: Dict[str, Any]) -> str:
-        """Generate consumable blocks for spells that can be cast for free."""
-        # Legacy method - use the new _generate_free_cast_spells method
-        return self._generate_free_cast_spells(character_data)
     
     def _generate_spell_list_table(self, character_data: Dict[str, Any]) -> str:
         """Generate interactive spell list using datacorejsx component."""
@@ -417,10 +467,10 @@ return <SpellQuery characterName="{character_name}" />;
         all_spells = []
         for source, spell_list in spells.items():
             for spell in spell_list:
-                # Add source information to spell for formatting
-                spell_copy = spell.copy()
-                spell_copy['display_source'] = source
-                all_spells.append(spell_copy)
+                # Convert spell to dict and add source information for formatting
+                spell_dict = self._convert_spell_to_dict(spell)
+                spell_dict['display_source'] = source
+                all_spells.append(spell_dict)
         
         # Sort spells by level first, then alphabetically by name
         all_spells.sort(key=lambda x: (x.get('level', 0), x.get('name', 'Unknown').lower()))
@@ -432,6 +482,62 @@ return <SpellQuery characterName="{character_name}" />;
         
         return section
     
+    def _get_spell_source_indicator(self, spell: Dict[str, Any]) -> str:
+        """
+        Determine spell source indicator for badge.
+        
+        Returns:
+            'F' if spell is enhanced from external spell files
+            'A' if spell uses API data only (homebrew, custom, no file enhancement)
+        """
+        # Check if enhanced spell file exists for this spell
+        if self._has_enhanced_spell_file(spell):
+            return 'F'  # Enhanced from files
+        else:
+            return 'A'  # API only
+    
+    def _has_enhanced_spell_file(self, spell: Dict[str, Any]) -> bool:
+        """Check if an enhanced spell file exists for this spell."""
+        if not self.spell_extractor or not self.spell_extractor.spells_path:
+            return False
+            
+        spell_name = spell.get('name', '').lower().replace(' ', '-').replace("'", "")
+        spell_name = re.sub(r'[^\w\-]', '', spell_name)  # Remove special characters
+        spell_file = Path(self.spell_extractor.spells_path) / f"{spell_name}-xphb.md"
+        
+        return spell_file.exists()
+    
+    def _is_homebrew_spell(self, spell: Dict[str, Any]) -> bool:
+        """Check if this appears to be a homebrew/custom spell."""
+        # Check if it's from an item source (often homebrew)
+        source = spell.get('source', '')
+        if source == 'Item':
+            return True
+            
+        # Check for custom component indicators
+        component_type_id = spell.get('component_type_id')
+        if component_type_id and component_type_id > 100000000:  # High IDs often indicate custom content
+            return True
+            
+        # Check if description suggests custom content
+        description = spell.get('description', '')
+        if 'homebrew' in description.lower() or 'custom' in description.lower():
+            return True
+            
+        return False
+    
+    def _has_spell_file_enhancement(self, spell: Dict[str, Any]) -> bool:
+        """Check if spell has enhancement from external spell files."""
+        # This is a simplified check - in a full implementation, you'd check
+        # if the spell exists in your spell files directory and if it was used
+        # to enhance the description beyond what the API provides
+        
+        spell_name = spell.get('name', '').lower().replace(' ', '-').replace("'", "")
+        
+        # For now, return False to indicate most spells should show 'A'
+        # until we have a proper spell file enhancement system
+        return False
+
     def _generate_single_spell_detail(self, spell: Dict[str, Any]) -> str:
         """Generate detailed information for a single spell using restored extraction logic."""
         name = spell.get('name', 'Unknown Spell')
@@ -450,12 +556,18 @@ return <SpellQuery characterName="{character_name}" />;
         
         # Build badges section
         level_label = "Cantrip" if level == 0 else f"Level {level}"
+        
+        # Determine data source indicator:
+        # F = Enhanced from spell files
+        # A = API only (homebrew, custom, or no external file enhancement)
+        source_indicator = self._get_spell_source_indicator(spell)
+        
         badges_section = f"""> ```badges
 > items:
 >   - label: {level_label}
 >   - label: {school}
 >   - label:
->   - label: F
+>   - label: {source_indicator}
 > ```"""
         
         # Build spell-components section
@@ -518,15 +630,17 @@ return <SpellQuery characterName="{character_name}" />;
         )
         
         # Get spells path from config if available
-        spells_path = None
+        spells_path = "obsidian/spells"  # Default fallback
         use_enhanced_spells = True
         if self.config_manager:
             # Try to get spells path from config
             try:
-                spells_path = self.config_manager.get_template_setting("spells_path", None)
-                use_enhanced_spells = self.config_manager.get_template_setting("use_enhanced_spells", True)
-            except:
-                pass
+                paths = self.config_manager.resolve_paths()
+                spells_path = str(paths.get("spells", "obsidian/spells"))
+                use_enhanced_spells = self.config_manager.should_enhance_spells()
+            except Exception as e:
+                # If config access fails, use default path
+                spells_path = "obsidian/spells"
         
         self.spell_extractor = SpellDataExtractor(
             spells_path=spells_path,
@@ -580,37 +694,6 @@ return <SpellQuery characterName="{character_name}" />;
         
         return '\n'.join(section for section in sections if section)
     
-    def _format_casting_time(self, spell: Dict[str, Any]) -> str:
-        """Format casting time properly (deprecated - use spell extractor)."""
-        # Initialize spell extractor if needed
-        if self.spell_extractor is None:
-            self._initialize_spell_extractor()
-        
-        return self.spell_extractor.extract_casting_time(spell)
-    
-    def _extract_range(self, spell: Dict[str, Any]) -> str:
-        """Extract spell range (deprecated - use spell extractor)."""
-        # Initialize spell extractor if needed
-        if self.spell_extractor is None:
-            self._initialize_spell_extractor()
-        
-        return self.spell_extractor.extract_range(spell)
-    
-    def _extract_components(self, spell: Dict[str, Any]) -> str:
-        """Extract spell components (deprecated - use spell extractor)."""
-        # Initialize spell extractor if needed
-        if self.spell_extractor is None:
-            self._initialize_spell_extractor()
-        
-        return self.spell_extractor.extract_components(spell)
-    
-    def _extract_duration(self, spell: Dict[str, Any]) -> str:
-        """Extract spell duration (deprecated - use spell extractor)."""
-        # Initialize spell extractor if needed
-        if self.spell_extractor is None:
-            self._initialize_spell_extractor()
-        
-        return self.spell_extractor.extract_duration(spell)
     
     def _format_spell_source(self, spell: Dict[str, Any]) -> str:
         """Format spell source with proper names (deprecated - use spell extractor)."""
@@ -620,35 +703,7 @@ return <SpellQuery characterName="{character_name}" />;
         
         return self.spell_extractor.format_spell_source(spell)
     
-    def _format_prepared_status(self, spell: Dict[str, Any]) -> str:
-        """Format prepared status for spells (deprecated - use spell extractor)."""
-        # Initialize spell extractor if needed
-        if self.spell_extractor is None:
-            self._initialize_spell_extractor()
-        
-        return self.spell_extractor.format_prepared_status(spell)
     
-    def _get_spell_description(self, spell: Dict[str, Any]) -> str:
-        """Get spell description with proper formatting (deprecated - use spell extractor)."""
-        # Initialize spell extractor if needed
-        if self.spell_extractor is None:
-            self._initialize_spell_extractor()
-        
-        description = self.spell_extractor.get_spell_description(spell)
-        
-        if not description:
-            return "*No description available.*"
-        
-        # Clean and format the description
-        description = self.text_processor.format_spell_description(description)
-        
-        # Handle higher level effects
-        higher_level = spell.get('higher_level', '')
-        if higher_level:
-            higher_level = self.text_processor.format_spell_description(higher_level)
-            description += f"\n\n**At Higher Levels:** {higher_level}"
-        
-        return description
     
     def _determine_racial_spell_source(self, character_data: Dict[str, Any], spell_name: str) -> str:
         """Determine the specific racial spell source based on available feature data."""

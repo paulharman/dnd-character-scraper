@@ -41,3 +41,78 @@ parser:
   # Discord Integration Settings (actively used)
   discord:
     enabled: true                 # Enable Discord notifications when parsing
+    party_inventory_enabled: true # Enable party inventory change notifications
+    character_notifications_enabled: true # Enable individual character change notifications
+  
+  # ===================================================================
+  # ITEM CATEGORIZATION SYSTEM
+  # ===================================================================
+  # The parser automatically categorizes inventory items into groups like
+  # weapons, armor, tools, documents, etc. These overrides allow fine-tuning
+  # the categorization for edge cases and specific item types.
+  categorization:
+    # ===================================================================
+    # DOCUMENT PATTERNS
+    # ===================================================================
+    # Items matching these patterns will be categorized as "Documents"
+    # Patterns are case-insensitive and match anywhere in the item name
+    # Used for: books, maps, scrolls, letters, and other written materials
+    document_patterns:
+      - "book -"          # Matches "Book - Title" format
+      - "book:"           # Matches "Book: Title" format
+      - "book "           # Matches "Book Title" format
+      - "spellbook"       # Any spellbook variant
+      - "map -"           # Matches "Map - Location" format
+      - "map:"            # Matches "Map: Location" format
+      - "map "            # Matches "Map Location" format
+      - "scroll -"        # Matches "Scroll - Type" format
+      - "scroll:"         # Matches "Scroll: Type" format
+      - "scroll "         # Matches "Scroll Type" format
+    
+    # ===================================================================
+    # VALUABLE MATERIALS
+    # ===================================================================
+    # Items containing these materials will be categorized as "Valuables"
+    # Used for: precious metals, gems, and other inherently valuable materials
+    # These override the default categorization to ensure valuable items
+    # are properly grouped for easy identification
+    valuable_materials:
+      - "silver"          # Silver items (coins, jewelry, utensils)
+      - "gold"            # Gold items (coins, jewelry, decorations)
+      - "platinum"        # Platinum items (rare and valuable)
+      - "copper"          # Copper items (coins, tools, decorations)
+      - "bronze"          # Bronze items (weapons, tools, art)
+      - "brass"           # Brass items (instruments, decorations)
+      - "pewter"          # Pewter items (tableware, decorations)
+    
+    # ===================================================================
+    # VALUABLE TABLEWARE
+    # ===================================================================
+    # Tableware items that should be categorized as "Valuables" when made
+    # from precious materials. This works in combination with valuable_materials
+    # to catch items like "Silver Goblet" or "Gold Plate"
+    valuable_tableware:
+      - "bowl"            # Bowls (eating, serving, decorative)
+      - "cup"             # Cups and drinking vessels
+      - "mug"             # Mugs and tankards
+      - "goblet"          # Goblets and chalices
+      - "chalice"         # Religious or ceremonial cups
+      - "tankard"         # Drinking vessels
+      - "stein"           # Beer mugs and drinking vessels
+      - "plate"           # Plates and serving dishes
+      - "platter"         # Large serving plates
+      - "dish"            # Various serving dishes
+      - "saucer"          # Small plates and saucers
+      - "carafe"          # Serving vessels for liquids
+      - "pitcher"         # Pouring vessels
+      - "jug"             # Storage and serving vessels
+      - "flask"           # Portable liquid containers
+      - "bottle"          # Storage containers
+      - "decanter"        # Serving vessels for spirits
+      - "urn"             # Storage and ceremonial vessels
+      - "vase"            # Decorative vessels
+    
+    # Custom overrides - specific item names and their categories
+    custom_overrides:
+      # Example: "specific item name": "Category"
+      # Add your custom overrides here

@@ -5,7 +5,7 @@
 webhook_url: "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
 
 # Required: Character ID to monitor
-character_id: "145081718"
+character_id: "YOUR_CHARACTER_ID"
 
 # How often to check for changes (in seconds)
 check_interval: 600  # 10 minutes
@@ -62,7 +62,7 @@ filtering:
 
 # Multiple character monitoring (future feature)
 # characters:
-#   - character_id: "145081718"
+#   - character_id: "YOUR_CHARACTER_ID"
 #     nickname: "Elara the Wizard"
 #     filtering:
 #       preset: "level_up"

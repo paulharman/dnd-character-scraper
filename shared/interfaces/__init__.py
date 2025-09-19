@@ -1,0 +1,1 @@
+# Shared interfaces for cross-cutting concerns

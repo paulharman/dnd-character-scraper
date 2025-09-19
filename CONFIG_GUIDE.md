@@ -1,61 +1,95 @@
 # Configuration Guide
 
-This guide explains the configuration options available in the D&D Beyond Character Scraper.
+This guide explains the configuration options available in the D&D Beyond Character Scraper v6.0.0.
+
+The project uses a modular configuration approach with separate files for different components:
+- `config/main.yaml` - Project-wide settings and environment configuration
+- `config/discord.yaml` - Discord notifications and change tracking
+- `config/parser.yaml` - Markdown generation and formatting
+- `config/scraper.yaml` - API settings and rate limiting
 
 ## Discord Configuration (`config/discord.yaml`)
 
 ### Core Settings
 ```yaml
-enabled: true                     # Enable/disable Discord integration
-webhook_url: "https://discord.com/api/webhooks/..."  # Discord webhook URL
-username: "D&D Beyond Scraper"    # Bot username in Discord
-avatar_url: null                  # Optional bot avatar URL
+# Discord webhook for notifications
+webhook_url: ${DISCORD_WEBHOOK_URL}     # Use environment variable for security
+character_id: 145081718                 # D&D Beyond character ID to monitor
+
+# Monitoring behavior
+run_continuous: false                   # Run once vs continuous monitoring
+check_interval_seconds: 600             # Check interval (10 minutes)
+log_level: INFO                         # Logging level: DEBUG, INFO, WARNING, ERROR
 ```
 
-### Notification Settings
+### Party Monitoring
 ```yaml
-format_type: "detailed"           # Options: "compact", "detailed", "json"
-min_priority: "LOW"               # Options: "LOW", "MEDIUM", "HIGH", "CRITICAL"
-max_changes_per_notification: 200 # Maximum changes per notification
-timezone: "UTC"                   # Timezone for timestamps
+# Monitor multiple characters (party mode)
+party:
+- character_id: '145081718'             # Add character IDs to monitor multiple
 ```
 
-### Change Type Filtering
-You can control which types of character changes trigger Discord notifications by modifying the `change_types` list. Remove any types you don't want to monitor:
+### Discord Message Settings
+```yaml
+discord:
+  username: D&D Beyond Monitor          # Bot username in Discord messages
+  avatar_url: null                      # Bot avatar (null = use character avatar)
+  timezone: UTC                         # Timezone for timestamps
+  
+  # Content filtering
+  min_priority: LOW                     # Minimum priority: LOW, MEDIUM, HIGH, CRITICAL
+  include_attribution: true             # Show what caused each change
+  include_causation: true               # Include causation analysis
+  include_timestamps: true              # Show when changes occurred
+  
+  # Visual formatting
+  use_embeds: true                      # Use rich Discord embeds
+  color_code_by_priority: true          # Color by priority (red=HIGH, yellow=MEDIUM, blue=LOW)
+  group_related_changes: true           # Group similar changes together
+  detail_level: summary                 # summary, detailed, or comprehensive
+  
+  # Performance settings
+  maximum_changes_per_notification: 200 # Max changes per message
+  delay_between_messages: 2.0           # Seconds between multiple messages
+```
+
+### Field-Based Change Detection
+The system uses field patterns to determine change priorities. You can customize which fields trigger notifications and their priority levels:
 
 ```yaml
-change_types:
-  - "level"              # Character level changes
-  - "experience"         # Experience point changes  
-  - "hit_points"         # HP/health changes
-  - "armor_class"        # AC changes
-  - "ability_scores"     # Strength, Dex, Con, Int, Wis, Cha changes
-  - "spells_known"       # New spells learned
-  - "spell_slots"        # Spell slot changes
-  - "inventory_items"    # Items added/removed from inventory
-  - "equipment"          # Equipment changes
-  - "currency"           # Gold/currency changes
-  - "skills"             # Skill proficiency changes
-  - "proficiencies"      # Other proficiency changes
-  - "feats"              # Feat changes
-  - "class_features"     # Class feature changes
-  - "appearance"         # Appearance/avatar changes
-  - "background"         # Background changes
+detection:
+  # HIGH PRIORITY - Critical character progression (red embeds)
+  field_patterns:
+    character_info.level: HIGH                    # Level changes
+    character.abilityScores.*: HIGH               # Ability score changes
+    character.species: HIGH                       # Species/race changes
+    
+    # MEDIUM PRIORITY - Important gameplay changes (yellow embeds)
+    character.hit_points.maximum: MEDIUM          # Max HP changes
+    character.spellcasting.spell_save_dc: MEDIUM  # Spell save DC
+    equipment.*.equipped: MEDIUM                  # Equipment changes
+    character.spells.*: MEDIUM                    # Spell changes
+    character.feats.*: MEDIUM                     # Feat changes
+    
+    # LOW PRIORITY - Minor changes (blue embeds)
+    character.hit_points.temporary: LOW           # Temporary HP
+    character.skills.*: LOW                       # Skill bonuses
+    character.personality.*: LOW                  # Personality traits
+    
+    # IGNORED - No notifications
+    character.hit_points.current: IGNORED         # Current HP changes
+    character.metadata.*: IGNORED                 # Internal metadata
 ```
 
-### Change Type to Group Mapping
-The system internally maps change types to notification groups:
-
-| Change Type | Group | Description |
-|-------------|-------|-------------|
-| `level`, `experience`, `class_features` | `basic` | Core character progression |
-| `hit_points`, `armor_class` | `combat` | Combat-related stats |
-| `ability_scores` | `abilities` | Ability score changes |
-| `spells_known`, `spell_slots` | `spells` | Spellcasting changes |
-| `inventory_items`, `equipment`, `currency` | `inventory` | Items and wealth |
-| `skills`, `proficiencies`, `feats` | `skills` | Skills and proficiencies |
-| `appearance` | `appearance` | Visual appearance |
-| `background` | `backstory` | Background and story |
+### Field Pattern Examples
+| Pattern | Matches | Priority |
+|---------|---------|----------|
+| `character_info.level` | Character level | HIGH |
+| `character.abilityScores.*` | All ability scores | HIGH |
+| `equipment.*.equipped` | Any equipment status | MEDIUM |
+| `character.spells.*` | All spell changes | MEDIUM |
+| `character.skills.*` | All skill changes | LOW |
+| `character.metadata.*` | Metadata (ignored) | IGNORED |
 
 ## Parser Configuration (`config/parser.yaml`)
 
@@ -127,15 +161,48 @@ You can reorder the sections in your character sheet by modifying the `section_o
 ## Other Configuration Files
 
 ### Main Configuration (`config/main.yaml`)
-- Project settings
-- Environment configuration
-- Global logging settings
-- Feature flags
+```yaml
+# Project settings
+project:
+  name: "DnD Beyond Character Scraper"
+  version: "6.0.0"
+  description: "Enhanced D&D Beyond character scraper with 2024 rules support"
+
+# Environment configuration  
+environment: "production"        # Environment: development, testing, production
+debug: false                    # Enable debug mode for troubleshooting
+
+# Global paths
+paths:
+  character_data: "character_data"     # Primary storage for character data
+  spells_folder: "obsidian/spells"     # Enhanced spell descriptions
+  config_dir: "config"                 # Configuration files directory
+
+# Global logging
+logging:
+  level: "INFO"                        # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+```
 
 ### Scraper Configuration (`config/scraper.yaml`)
-- API settings
-- Output preferences
-- Processing options
+```yaml
+# D&D Beyond API settings
+api:
+  base_url: "https://character-service.dndbeyond.com/character/v5/character/"
+  user_agent: "DnDBeyond-Enhanced-Scraper/6.0.0"
+  timeout: 30                   # Request timeout in seconds
+  max_retries: 3                # Maximum retry attempts
+  retry_delay: 30               # Delay between retries in seconds
+
+# Rate limiting (respects D&D Beyond API limits)
+rate_limit:
+  delay_between_requests: 30    # Required 30-second delay between API calls
+
+# Calculation constants
+calculations:
+  spell_save_dc_base: 8         # Base value for spell save DC (8 + prof + modifier)
+```
+
+**Important**: The 30-second delay respects D&D Beyond's API limits and should not be modified.
 
 ### Rules Configuration (`config/rules/`)
 - D&D 2014 rules (`2014.yaml`)
@@ -144,24 +211,35 @@ You can reorder the sections in your character sheet by modifying the `section_o
 
 ## Usage Tips
 
-1. **Discord Filtering**: To reduce notification noise, remove change types you don't care about from the `change_types` list in `config/discord.yaml`.
+1. **Discord Filtering**: To reduce notification noise, set `min_priority` to MEDIUM or HIGH in `config/discord.yaml`, or set unwanted field patterns to IGNORED.
 
 2. **Section Ordering**: Customize your character sheet layout by reordering the sections in `config/parser.yaml`.
 
-3. **Environment Overrides**: Use files in `config/environments/` to override settings for different environments (development, production, testing).
+3. **Field Pattern Customization**: Add new field patterns or change priorities in the `detection.field_patterns` section.
 
-4. **Validation**: The configuration system validates all settings when loaded. Check the logs for any configuration errors.
+4. **Party Monitoring**: Add multiple character IDs to the `party` list to monitor an entire D&D party.
+
+5. **Environment Security**: Use environment variables like `${DISCORD_WEBHOOK_URL}` for secure configuration.
+
+6. **Validation**: The configuration system validates all settings when loaded. Check the logs for any configuration errors.
 
 ## Example Configurations
 
 ### Minimal Discord Notifications
 ```yaml
-# Only monitor important changes
-change_types:
-  - "level"
-  - "hit_points"
-  - "spells_known"
-  - "class_features"
+# Only monitor critical changes (level ups, ability scores)
+discord:
+  min_priority: HIGH              # Only HIGH priority changes
+  
+detection:
+  field_patterns:
+    character_info.level: HIGH
+    character.abilityScores.*: HIGH
+    character.species: HIGH
+    # Set everything else to IGNORED
+    character.spells.*: IGNORED
+    equipment.*: IGNORED
+    character.hit_points.*: IGNORED
 ```
 
 ### Combat-Focused Character Sheet

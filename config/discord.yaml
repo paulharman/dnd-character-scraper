@@ -16,12 +16,13 @@ webhook_url: ${DISCORD_WEBHOOK_URL}
 
 # Primary character ID to monitor for changes (D&D Beyond character ID)
 # Find this in your D&D Beyond character URL: dndbeyond.com/characters/[ID]
-character_id: 145081718
+# Replace with your actual character ID
+character_id: 145082302
 
-# Additional characters to monitor (party members)
+# Additional characters to monitor (party members)  
 # Each character will be monitored independently
 party:
-- character_id: '145081718'
+- character_id: 145081718
 
 # Monitoring behavior
 run_continuous: false                          # Run once vs continuous monitoring (false = run once)
@@ -46,6 +47,12 @@ discord:
   min_priority: LOW                           # Minimum change priority to notify about
                                               # Options: LOW, MEDIUM, HIGH, CRITICAL
                                               # LOW = all changes, CRITICAL = only critical changes
+
+  # ===================================================================
+  # PARTY INVENTORY NOTIFICATIONS
+  # ===================================================================
+  party_inventory_enabled: true              # Enable notifications for party inventory changes
+  character_notifications_enabled: true      # Enable notifications for individual character changes
   
   include_attribution: true                   # Show what caused each change (e.g., "Level up", "Equipment change")
   include_causation: true                     # Include detailed causation analysis in notifications
@@ -197,6 +204,7 @@ detection:
     character.ability_scores.*: HIGH           # Alternative ability score field format
     character.species: HIGH                    # Species/race changes (2024 rules)
     character.race: HIGH                       # Race changes (2014 rules)
+    features.class_features.*: HIGH            # Class feature changes (Sneak Attack, Expertise, etc.)
     
     # ===================================================================
     # MEDIUM PRIORITY - Important gameplay changes  
@@ -229,15 +237,49 @@ detection:
     character.spells.*: MEDIUM                 # Character spell data
     
     # Character features and abilities
-    character.proficiencies.*: MEDIUM          # Skill and tool proficiencies
-    character.feats.*: MEDIUM                  # Feat changes
-    character.features.*: MEDIUM               # Class and racial features
-    character.classes.*: MEDIUM                # Class information
+    character.proficiencies.*: MEDIUM          # Skill and tool proficiencies (general)
+    character.proficiencies.saving_throws.*: HIGH     # Saving throw proficiencies (enhanced detectors)
+    character.proficiencies.skills.*: MEDIUM          # Skill proficiencies (enhanced detectors)
+    character.proficiencies.tools.*: MEDIUM           # Tool proficiencies (enhanced detectors)
+    character.proficiencies.languages.*: MEDIUM       # Language proficiencies (enhanced detectors)
+    character.proficiencies.weapons.*: MEDIUM         # Weapon proficiencies (enhanced detectors)
+    character.proficiencies.armor.*: MEDIUM           # Armor proficiencies (enhanced detectors)
+    proficiencies.saving_throw_proficiencies.*: HIGH  # Saving throw proficiencies (data format)
+    proficiencies.tool_proficiencies.*: MEDIUM        # Tool proficiencies (data format)
+    proficiencies.language_proficiencies.*: MEDIUM    # Language proficiencies (data format)
+    proficiencies.weapon_proficiencies.*: MEDIUM      # Weapon proficiencies (data format)
+    character.classes.*: HIGH                  # Class changes and multiclassing (enhanced detectors)
+    character.classes.*.level: CRITICAL        # Individual class level changes
+    character_info.classes.*: HIGH             # Class changes (data format)
+    character_info.metadata.multiclass: CRITICAL      # Multiclass status changes
+    character_info.metadata.total_class_levels: HIGH  # Total class level changes
+    character_info.experience_points: MEDIUM   # Experience point changes
+    character.feats.*: HIGH                     # Feat changes (enhanced detectors)
+    feats.*: HIGH                              # Feats in data format
+    character.features.*: MEDIUM               # Class and racial features (enhanced detectors)
+    character.features.class_features.*: HIGH  # Class features specifically
+    features.*: MEDIUM                         # Features in data format
     character.race.traits.*: MEDIUM            # Racial traits
     character.race.bonuses.*: MEDIUM           # Racial bonuses
     character.background: MEDIUM               # Background changes
     character.background.traits.*: MEDIUM      # Background traits
     character.background.features.*: MEDIUM    # Background features
+    character.background.skill_proficiencies.*: MEDIUM  # Background skill proficiencies
+    character.background.tool_proficiencies.*: MEDIUM   # Background tool proficiencies
+    character.background.languages.*: MEDIUM            # Background languages
+    
+    # ===================================================================
+    # MEDIUM PRIORITY - Additional Important Changes
+    # ===================================================================
+    character.hit_points.maximum: HIGH         # Maximum HP changes (important)
+    character.max_hp: HIGH                     # Alternative max HP field
+    character.initiative.bonus: MEDIUM        # Initiative bonus changes
+    character.spellcasting.spell_attack_bonus: MEDIUM   # Spell attack bonus
+    character.spellcasting.spell_save_dc: MEDIUM        # Spell save DC
+    character.subclass.*: HIGH                 # Subclass changes
+    character.classes.*.subclass.*: HIGH       # Subclass within classes
+    character.ability_scores.*: HIGH           # Ability scores (alternative path)
+    character.abilityScores.*: HIGH            # Ability scores (legacy path)
     
     # ===================================================================
     # LOW PRIORITY - Minor or cosmetic changes
@@ -246,7 +288,10 @@ detection:
     character.hit_points.current: IGNORED      # Current HP changes (set to IGNORED per user request)
     character.hit_points.temporary: LOW        # Temporary HP changes
     character.proficiency_bonus: MEDIUM        # Proficiency bonus (actually medium priority)
-    character.speed.*: LOW                     # Movement speed changes
+    character.speed: LOW                       # General speed changes
+    character.speed.*: LOW                     # Individual movement speeds
+    character.movement: LOW                    # Movement type changes
+    character.speeds: LOW                      # Multiple speeds
     character.passive_skills.*: LOW            # Passive skill scores
     character.passive_*: LOW                   # Other passive scores
     character.skills.*: LOW                    # Individual skill bonuses
@@ -313,6 +358,4 @@ detection:
 # ===================================================================
 
     # === AUTO-DISCOVERED PATTERNS ===
-    character.feats: MEDIUM
-    character.metadata: MEDIUM
-    character.traits: MEDIUM
+    character_info.total_level: MEDIUM

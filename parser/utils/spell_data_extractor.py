@@ -409,13 +409,112 @@ class SpellDataExtractor:
                             parts = content.split('---', 2)
                             if len(parts) >= 3:
                                 description = parts[2].strip()
+                                # Process images to add size constraints
+                                description = self._process_spell_images(description)
+                                # Remove redundant spell title and metadata section
+                                description = self._clean_enhanced_spell_content(description)
                                 return description
                         
                         # If no frontmatter, use whole content
-                        return content.strip()
+                        content_processed = self._process_spell_images(content.strip())
+                        content_processed = self._clean_enhanced_spell_content(content_processed)
+                        return content_processed
                         
                     except Exception as e:
                         self.logger.debug(f"Parser:   Failed to read enhanced spell file {spell_file}: {e}")
         
         # Fall back to spell data description
         return spell.get('description', 'No description available.')
+    
+    def _process_spell_images(self, content: str) -> str:
+        """Process images in spell content to add size constraints using correct Obsidian syntax."""
+        # Pattern to match markdown images: ![alt text](url#anchor)
+        image_pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+        
+        def replace_image(match):
+            alt_text = match.group(1)
+            url_with_anchor = match.group(2)
+            
+            # Check if alt text already has size constraints (Obsidian format: ![alt|size](url))
+            if '|' in alt_text:
+                # Image already has size constraints in alt text, leave as is
+                return match.group(0)
+            
+            # Add size constraints to alt text using correct Obsidian syntax
+            if '#' in url_with_anchor:
+                url, anchor = url_with_anchor.rsplit('#', 1)
+                # Correct Obsidian syntax: size goes in alt text, not URL
+                return f'![{alt_text}|300]({url}#{anchor})'
+            else:
+                # No anchor, add size to alt text
+                return f'![{alt_text}|300]({url_with_anchor})'
+        
+        # Apply the replacement to all images
+        processed_content = re.sub(image_pattern, replace_image, content)
+        return processed_content
+    
+    def _clean_enhanced_spell_content(self, content: str) -> str:
+        """Remove redundant spell title and metadata section from enhanced spell content."""
+        # Pattern to match and remove the spell title section:
+        # # Spell Name
+        # *level, school*
+        # (optional image)
+        # - **Casting time:** ...
+        # - **Range:** ...
+        # - **Components:** ...
+        # - **Duration:** ...
+        
+        # Split content into lines for easier processing
+        lines = content.split('\n')
+        cleaned_lines = []
+        skip_mode = False
+        found_title = False
+        
+        for i, line in enumerate(lines):
+            # Check if this line starts the redundant section
+            if line.startswith('# ') and not found_title:
+                found_title = True
+                skip_mode = True
+                continue
+            
+            # Skip the spell level/school line (e.g., "*cantrip, Evocation*")
+            if skip_mode and line.strip().startswith('*') and line.strip().endswith('*') and ', ' in line:
+                continue
+            
+            # Skip image lines
+            if skip_mode and line.strip().startswith('!['):
+                continue
+            
+            # Skip empty lines while in skip mode
+            if skip_mode and line.strip() == '':
+                continue
+            
+            # Skip the component list section (lines starting with "- **")
+            if skip_mode and line.strip().startswith('- **') and any(comp in line for comp in ['Casting time:', 'Range:', 'Components:', 'Duration:']):
+                continue
+            
+            # If we've found content that's not part of the redundant section, exit skip mode
+            if skip_mode and line.strip() and not line.startswith('- **'):
+                skip_mode = False
+            
+            # Add the line if we're not in skip mode
+            if not skip_mode:
+                cleaned_lines.append(line)
+        
+        # Join the cleaned lines back together
+        cleaned_content = '\n'.join(cleaned_lines).strip()
+        
+        # Remove any leading empty lines
+        while cleaned_content.startswith('\n'):
+            cleaned_content = cleaned_content[1:]
+            
+        return cleaned_content
+    
+    def _fix_image_path(self, url: str) -> str:
+        """Fix image path separators for Windows compatibility."""
+        # Convert forward slashes to backslashes for Windows paths
+        # Only do this for paths that start with /z_Mechanics (the known image directory)
+        if url.startswith('/z_Mechanics'):
+            # Convert /z_Mechanics to \z_Mechanics for Windows
+            return url.replace('/', '\\')
+        return url

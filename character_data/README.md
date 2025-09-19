@@ -1,43 +1,42 @@
 # Character Data Directory
 
-This directory contains character data organized by processing stage:
+This directory contains character data organized by processing stage and module:
 
 ## Directory Structure
 
 ```
 character_data/
-├── scraper/        # Raw character data from D&D Beyond API
-├── parser/         # Generated markdown character sheets
-├── discord/        # Discord notification data
-└── archive/        # Historical character data backups
+├── scraper/           # Processed character data from D&D Beyond API  
+│   └── raw/          # Unprocessed API responses (for debugging)
+├── discord/          # Discord notification snapshots
+├── parser/           # Generated Obsidian-compatible markdown sheets
+│   └── archive/      # Historical parser outputs
+└── change_logs/      # Character change tracking files
 ```
 
 ## Data Flow
 
-1. **Scraper** → Fetches character data from D&D Beyond and saves to `scraper/`
-2. **Parser** → Converts JSON data to markdown and saves to `parser/`
-3. **Discord** → Monitors changes and saves notification data to `discord/`
-4. **Archive** → Automatic backups of character data over time
+1. **Scraper**: Fetches and processes character data from D&D Beyond API
+2. **Parser**: Converts character data to Obsidian-compatible markdown  
+3. **Discord**: Monitors changes and sends notifications
+4. **Change Logs**: Track character changes over time
 
-## File Naming Convention
+## File Retention
 
-- **Scraper files**: `character_{ID}_{timestamp}.json`
-- **Parser files**: `{CharacterName}_Character_Sheet.md`
-- **Discord files**: `character_{ID}_{timestamp}.json`
-- **Raw API files**: `character_{ID}_{timestamp}_raw.json`
+- **Scraper data**: Retained according to `config/discord.yaml` settings (default: 365 days)
+- **Raw API data**: Kept for debugging purposes
+- **Change logs**: Permanent retention for change history
+- **Parser output**: Latest version plus archive of historical outputs
 
-## Usage
+## Integration with Obsidian
 
-The application automatically manages these directories. Character data is saved here when you run:
+The parser generates markdown files compatible with:
+- **Obsidian**: Direct import into your vault
+- **D&D UI Toolkit**: Enhanced character sheet formatting
+- **Datacore**: Query and analyze character data across your vault
 
-```bash
-# Scrape character data
-python scraper/enhanced_dnd_scraper.py YOUR_CHARACTER_ID
+## Security Notes
 
-# Generate markdown
-python parser/dnd_json_to_markdown.py YOUR_CHARACTER_ID
-```
-
-## Privacy Note
-
-Your personal character data is excluded from the public repository for privacy. This directory structure shows how the application organizes data locally.
+- **No sensitive data**: Character sheets contain only public D&D Beyond information
+- **Local storage**: All data remains on your local machine
+- **Version control safe**: Generated files are safe to commit to Git repositories

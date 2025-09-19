@@ -376,6 +376,54 @@ class BaseFormatter(IFormatter, ABC):
         # Fallback to backup format
         return character_data.get('inventory', [])
     
+    def get_inventory_with_containers(self, character_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Get inventory items with container information included.
+        
+        Args:
+            character_data: Complete character data dictionary
+            
+        Returns:
+            List of inventory items with container information
+        """
+        equipment_data = character_data.get('equipment', {})
+        container_inventory = equipment_data.get('container_inventory', {})
+        
+        if container_inventory:
+            # Use container-aware extraction
+            return self._extract_inventory_with_containers(container_inventory, equipment_data)
+        else:
+            # Fallback to base method without container info
+            items = self.get_inventory(character_data)
+            # Add default container info
+            for item in items:
+                if 'container' not in item:
+                    item['container'] = 'Character'
+            return items
+    
+    def _extract_inventory_with_containers(self, container_inventory: Dict[str, Any], equipment_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract inventory items from containers data with container information."""
+        # Get item details from basic_equipment
+        basic_equipment = equipment_data.get('basic_equipment', [])
+        container_mapping = container_inventory.get('containers', {})
+        
+        # Create item lookup by ID
+        item_lookup = {item.get('id'): item for item in basic_equipment}
+        
+        inventory_items = []
+        for container_id, container_info in container_mapping.items():
+            container_name = container_info.get('name', 'Unknown Container')
+            is_character = container_info.get('is_character', False)
+            
+            for item_id in container_info.get('items', []):
+                if item_id in item_lookup:
+                    item = item_lookup[item_id].copy()  # Don't modify original
+                    # Add container information
+                    item['container'] = 'Character' if is_character else container_name
+                    inventory_items.append(item)
+        
+        return inventory_items
+    
     def get_wealth(self, character_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get wealth from adapted data format.

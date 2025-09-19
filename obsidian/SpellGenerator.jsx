@@ -1,6 +1,6 @@
 // === Constants and Helpers ===
 const CHARACTER_DIR = "Campaign/Parties/Characters/Party 1";
-const CHARACTER_NAME = "Ilarion Veles";
+const CHARACTER_NAME = "Ilarion_Veles_Paul";
 const SPELLBOOK_YAML_KEY = "spells";
 const SPELL_LOCATION = "z_Mechanics/CLI/spells";
 
@@ -46,32 +46,69 @@ function extractSpellFileName(entry) {
   return "";
 }
 
-function useIlarionSpellbook() {
+function useSelectedCharactersSpellbooks(selectedCharacters) {
   const chars = dc.useArray(dc.useQuery(`@page and path("${CHARACTER_DIR}")`), arr => arr);
-  const ilarion = chars.find(page => page.$name === CHARACTER_NAME);
+  console.debug("All characters found:", chars);
+  console.debug("Selected character names:", selectedCharacters);
+  
+  let combinedSpells = new Set();
+  let spellToCharacters = new Map(); // Track which characters know each spell
+  
+  selectedCharacters.forEach(characterName => {
+    const character = chars.find(page => page.$name === characterName);
+    console.debug("Found character:", character?.name || characterName);
+    
+    if (character) {
+      console.debug("Found character object:", character);
+      let raw = null;
+      console.debug("Checking for spells with key:", SPELLBOOK_YAML_KEY);
+      if (typeof character.value === "function") raw = character.value(SPELLBOOK_YAML_KEY);
+      if (!raw && character.frontmatter) raw = character.frontmatter[SPELLBOOK_YAML_KEY];
+      if (!raw && character.$frontmatter) raw = character.$frontmatter[SPELLBOOK_YAML_KEY];
 
-  let spells = [];
-  if (ilarion) {
-    let raw = null;
-    if (typeof ilarion.value === "function") raw = ilarion.value(SPELLBOOK_YAML_KEY);
-    if (!raw && ilarion.frontmatter) raw = ilarion.frontmatter[SPELLBOOK_YAML_KEY];
-    if (!raw && ilarion.$frontmatter) raw = ilarion.$frontmatter[SPELLBOOK_YAML_KEY];
+      // DEBUG: See what you actually get from YAML
+      console.debug("Character spellbook raw value:", raw);
+      console.debug("Available frontmatter keys:", Object.keys(character.frontmatter || {}));
+      console.debug("Available $frontmatter keys:", Object.keys(character.$frontmatter || {}));
 
-    // DEBUG: See what you actually get from YAML
-    console.debug("Ilarion spellbook raw value:", raw);
-
-    if (raw) {
-      if (Array.isArray(raw)) {
-        spells = raw.map(extractSpellFileName).filter(Boolean);
-      } else {
-        const single = extractSpellFileName(raw);
-        if (single) spells = [single];
+      if (raw) {
+        let spells = [];
+        if (Array.isArray(raw)) {
+          spells = raw.map(extractSpellFileName).filter(Boolean);
+        } else {
+          const single = extractSpellFileName(raw);
+          if (single) spells = [single];
+        }
+        spells.forEach(spell => {
+          combinedSpells.add(spell);
+          if (!spellToCharacters.has(spell)) {
+            spellToCharacters.set(spell, []);
+          }
+          spellToCharacters.get(spell).push(characterName.replace(/_/g, ' '));
+        });
       }
     }
-  }
+  });
+  
+  const spellsArray = Array.from(combinedSpells);
   // DEBUG: Output the normalized spell list
-  console.debug("Ilarion spellbook (normalized):", spells);
-  return spells;
+  console.debug("Combined character spellbooks (normalized):", spellsArray);
+  return { spells: spellsArray, spellToCharacters };
+}
+
+function useAvailableCharacters() {
+  const chars = dc.useArray(dc.useQuery(`@page and path("${CHARACTER_DIR}")`), arr => arr);
+  return chars
+    .filter(page => {
+      // Only include pages that have spells in frontmatter
+      let hasSpells = false;
+      if (typeof page.value === "function") hasSpells = !!page.value(SPELLBOOK_YAML_KEY);
+      if (!hasSpells && page.frontmatter) hasSpells = !!page.frontmatter[SPELLBOOK_YAML_KEY];
+      if (!hasSpells && page.$frontmatter) hasSpells = !!page.$frontmatter[SPELLBOOK_YAML_KEY];
+      return hasSpells;
+    })
+    .map(page => page.$name)
+    .sort();
 }
 
 
@@ -149,25 +186,29 @@ function SpellQuerySetting({ title, icon, children, onToggle, onClear }) {
   );
 }
 
-function SpellQuery({ showFilters = true, paging = 30 }) {
+function SpellQuery({ showFilters = true, paging = 100 }) {
   const query = dc.useQuery(`@page and path("${SPELL_LOCATION}")`);
   const allPages = dc.useArray(query, arr => arr.sort(page => [page.value("name")], 'asc'));
 
-  const ilarionSpellbook = useIlarionSpellbook();
-  const [showSpellbookOnly, setShowSpellbookOnly] = dc.useState(false);
+  const availableCharacters = useAvailableCharacters();
+  const [selectedCharacters, setSelectedCharacters] = dc.useState([]);
+  const spellbookData = useSelectedCharactersSpellbooks(selectedCharacters);
+  const characterSpellbook = spellbookData.spells;
+  const spellToCharacters = spellbookData.spellToCharacters;
+  const showSpellbookOnly = selectedCharacters.length > 0;
 
   const [filterSearch, setFilterSearch] = dc.useState('');
   const [filterClass, setFilterClass] = dc.useState([]);
   const [filterLevel, setFilterLevel] = dc.useState('');
   const [filterLevelMin, setFilterLevelMin] = dc.useState('');
   const [filterLevelMax, setFilterLevelMax] = dc.useState('');
-  const [useLevelRange, setUseLevelRange] = dc.useState(false);
   const [filterSchool, setFilterSchool] = dc.useState([]);
   const [filterComponents, setFilterComponents] = dc.useState([]);
   const [filtersShown, setFiltersShown] = dc.useState(false);
   const [filterClassSearch, setFilterClassSearch] = dc.useState('');
   const [filterConcentration, setFilterConcentration] = dc.useState('');
   const [filterRitual, setFilterRitual] = dc.useState('');
+  const [filterRange, setFilterRange] = dc.useState('');
 
   const allComponents = ["V", "S", "M"];
   const componentNames = { V: "Verbal", S: "Somatic", M: "Material" };
@@ -199,12 +240,15 @@ function SpellQuery({ showFilters = true, paging = 30 }) {
   
   const clearFilterComponents = () => setFilterComponents([]);
   const toggleFilterComponents = () => setFilterComponents(allComponents.filter(c => !filterComponents.includes(c)));
+  
+  const clearSelectedCharacters = () => setSelectedCharacters([]);
+  const toggleSelectedCharacters = () => setSelectedCharacters(availableCharacters.filter(c => !selectedCharacters.includes(c)));
 
   const filteredPages = allPages.filter(page => {
     const fm = page.$frontmatter || {};
 
     if (page.$path === `${SPELL_LOCATION}/spells.md`) return false;
-    if (showSpellbookOnly && !ilarionSpellbook.includes(page.$name)) return false;
+    if (showSpellbookOnly && !characterSpellbook.includes(page.$name)) return false;
     const spellName = (getFMVal(fm, 'name') || page.$name || '').toLowerCase();
     if (filterSearch && !spellName.includes(filterSearch.toLowerCase()))
       return false;
@@ -216,16 +260,15 @@ function SpellQuery({ showFilters = true, paging = 30 }) {
       return false;
     // Handle level filtering - either exact level or range
     const spellLevel = Number(getFMVal(fm, 'levelint'));
-    if (useLevelRange) {
-      // Range filtering
+    // If exact level is specified, use that
+    if (filterLevel && spellLevel !== Number(filterLevel)) {
+      return false;
+    }
+    // If range is specified (and exact is not), use range
+    if (!filterLevel && (filterLevelMin || filterLevelMax)) {
       const minLevel = filterLevelMin !== '' ? Number(filterLevelMin) : 0;
       const maxLevel = filterLevelMax !== '' ? Number(filterLevelMax) : 9;
       if (spellLevel < minLevel || spellLevel > maxLevel) {
-        return false;
-      }
-    } else {
-      // Exact level filtering
-      if (filterLevel && spellLevel !== Number(filterLevel)) {
         return false;
       }
     }
@@ -239,6 +282,13 @@ function SpellQuery({ showFilters = true, paging = 30 }) {
       String(getFMVal(fm, 'ritual')) !== filterRitual
     )
       return false;
+    // Range filtering
+    if (filterRange) {
+      const spellRange = (getFMVal(fm, 'range') || '').toLowerCase();
+      if (filterRange === 'touch' && !spellRange.includes('touch')) {
+        return false;
+      }
+    }
     if (
       filterSchool.length > 0 &&
       !filterSchool.includes(getFMVal(fm, 'school'))
@@ -281,22 +331,37 @@ if (sortByLevel) {
       value: p => {
         const fileName = p.$name;
         const displayName = p.value("name") || fileName;
-        const href = `obsidian://open?file=${encodeURIComponent(p.$path)}`;
-        const inBook = ilarionSpellbook.includes(fileName);
+        const filePath = p.$path;
+        const href = `obsidian://open?file=${encodeURIComponent(filePath)}`;
+        const inBook = characterSpellbook.includes(fileName);
         return (
           <a
+            target="_blank"
+            rel="noopener"
+            data-href={filePath}
             href={href}
+            class="internal-link"
+            aria-label={filePath}
             style={inBook
               // Softer, blue, bold, NO underline or background
               ? "font-weight: bold; color: #4fc3f7; text-decoration: none;"
               : undefined}
-            title={inBook ? "Ilarion knows this spell" : ""}
+            title={inBook ? "Character knows this spell" : ""}
           >
             {displayName}
           </a>
         );
       }
     },
+    // Add character column only when multiple characters are selected
+    ...(selectedCharacters.length > 1 ? [{
+      id: "Characters",
+      value: p => {
+        const fileName = p.$name;
+        const characters = spellToCharacters.get(fileName) || [];
+        return characters.length > 0 ? characters.sort().join(", ") : "";
+      }
+    }] : []),
     {
   id: "Level",
   value: p => (
@@ -371,14 +436,14 @@ if (sortByLevel) {
               setFilterLevel('');
               setFilterLevelMin('');
               setFilterLevelMax('');
-              setUseLevelRange(false);
               setFilterSearch('');
               clearFilterSchool();
               clearFilterComponents();
               setFilterClassSearch('');
               setFilterConcentration('');
               setFilterRitual('');
-              setShowSpellbookOnly(false);
+              setFilterRange('');
+              clearSelectedCharacters();
             }}
           >
             Clear All
@@ -388,6 +453,38 @@ if (sortByLevel) {
 
       {filtersShown && (
         <SpellQuerySettings>
+          <SpellQuerySetting 
+            title="Characters" 
+            icon="lucide-user"
+            onToggle={toggleSelectedCharacters}
+            onClear={clearSelectedCharacters}
+          >
+            <div style="display: flex; flex-direction: column; gap: 0.2em; min-height: 400px; max-height: 400px; overflow-y: auto;">
+              {availableCharacters.map(c => (
+                <button
+                  key={c}
+                  onclick={() => setSelectedCharacters(
+                    selectedCharacters.includes(c)
+                      ? selectedCharacters.filter(x => x !== c)
+                      : [...selectedCharacters, c]
+                  )}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${selectedCharacters.includes(c) ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${selectedCharacters.includes(c) ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${selectedCharacters.includes(c) ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: all 0.2s ease;
+                    text-align: left;
+                  `}
+                >
+                  {c.replace(/_/g, ' ')}
+                </button>
+              ))}
+            </div>
+          </SpellQuerySetting>
           <SpellQuerySetting 
             title="Class" 
             icon="lucide-users"
@@ -399,26 +496,33 @@ if (sortByLevel) {
               placeholder="Type to filter classes..."
               value={filterClassSearch}
               oninput={e => setFilterClassSearch(e.target.value)}
-              style="margin-bottom: 0.5em;"
+              style="margin-bottom: 0.5em; font-size: 0.8em; padding: 0.3em;"
             />
-            <div style="display: flex; flex-direction: column; gap: 0.25em; min-height: 260px; max-height: 260px; overflow-y: auto;">
+            <div style="display: flex; flex-direction: column; gap: 0.2em; min-height: 400px; max-height: 400px; overflow-y: auto;">
               {allClasses
                 .filter(c => c.toLowerCase().includes(filterClassSearch.toLowerCase()))
                 .map(c => (
-                  <label style="display: block" key={c}>
-                    <input
-                      type="checkbox"
-                      checked={filterClass.includes(c)}
-                      onchange={e =>
-                        setFilterClass(
-                          e.target.checked
-                            ? [...filterClass, c]
-                            : filterClass.filter(x => x !== c)
-                        )
-                      }
-                    />{' '}
+                  <button
+                    key={c}
+                    onclick={() => setFilterClass(
+                      filterClass.includes(c)
+                        ? filterClass.filter(x => x !== c)
+                        : [...filterClass, c]
+                    )}
+                    style={`
+                      padding: 0.3em 0.5em;
+                      border: 1px solid ${filterClass.includes(c) ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                      border-radius: 0.25em;
+                      background-color: ${filterClass.includes(c) ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                      color: ${filterClass.includes(c) ? '#4fc3f7' : 'var(--text-normal)'};
+                      cursor: pointer;
+                      font-size: 0.8em;
+                      transition: all 0.2s ease;
+                      text-align: left;
+                    `}
+                  >
                     {c}
-                  </label>
+                  </button>
                 ))}
             </div>
           </SpellQuerySetting>
@@ -428,226 +532,272 @@ if (sortByLevel) {
             onToggle={toggleFilterSchool}
             onClear={clearFilterSchool}
           >
-            {allSchools.map(s => (
-              <label style="display: block" key={s}>
-                <input
-                  type="checkbox"
-                  checked={filterSchool.includes(s)}
-                  onchange={e =>
-                    setFilterSchool(
-                      e.target.checked
-                        ? [...filterSchool, s]
-                        : filterSchool.filter(x => x !== s)
-                    )
-                  }
-                />{' '}
-                {s}
-              </label>
-            ))}
+            <div style="display: flex; flex-direction: column; gap: 0.2em;">
+              {allSchools.map(s => (
+                <button
+                  key={s}
+                  onclick={() => setFilterSchool(
+                    filterSchool.includes(s)
+                      ? filterSchool.filter(x => x !== s)
+                      : [...filterSchool, s]
+                  )}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${filterSchool.includes(s) ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${filterSchool.includes(s) ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterSchool.includes(s) ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: all 0.2s ease;
+                    text-align: left;
+                  `}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </SpellQuerySetting>
           <SpellQuerySetting 
-            title="Components" 
-            icon="lucide-puzzle"
+            title="Level, Components & Sorting" 
+            icon="lucide-hash"
             onToggle={toggleFilterComponents}
             onClear={clearFilterComponents}
           >
-            {allComponents.map(comp => (
-              <label style="display: block" key={comp}>
-                <input
-                  type="checkbox"
-                  checked={filterComponents.includes(comp)}
-                  onchange={e =>
-                    setFilterComponents(
-                      e.target.checked
-                        ? [...filterComponents, comp]
-                        : filterComponents.filter(x => x !== comp)
-                    )
-                  }
-                />{' '}
-                {componentNames[comp]}
-              </label>
-            ))}
-          </SpellQuerySetting>
-          <SpellQuerySetting title="Level, Concentration & Ritual" icon="lucide-hash">
-            <div style="margin-bottom: 1em;">
-              <div style="font-weight: 500; margin-bottom: 0.25em; display: flex; align-items: center; gap: 0.5em;">
-                Level
-                <label style="font-weight: normal; font-size: 0.9em; display: flex; align-items: center; gap: 0.25em;">
-                  <input
-                    type="checkbox"
-                    checked={useLevelRange}
-                    onchange={e => {
-                      setUseLevelRange(e.target.checked);
-                      if (e.target.checked) {
-                        setFilterLevel(''); // Clear exact level when switching to range
-                      } else {
-                        setFilterLevelMin(''); // Clear range when switching to exact
-                        setFilterLevelMax('');
-                      }
-                    }}
-                    style="transform: scale(0.9);"
-                  />
-                  Range
-                </label>
-              </div>
-              {useLevelRange ? (
-                <div style="display: flex; gap: 0.5em; align-items: center;">
-                  <input
-                    type="number"
-                    min="0"
-                    max="9"
-                    value={filterLevelMin}
-                    onchange={e => setFilterLevelMin(e.target.value)}
-                    placeholder="Min"
-                    style="max-width: 60px;"
-                  />
-                  <span style="font-size: 0.9em; color: var(--text-muted);">to</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="9"
-                    value={filterLevelMax}
-                    onchange={e => setFilterLevelMax(e.target.value)}
-                    placeholder="Max"
-                    style="max-width: 60px;"
-                  />
-                </div>
-              ) : (
-                <input
-                  type="number"
-                  min="0"
-                  max="9"
-                  value={filterLevel}
-                  onchange={e => setFilterLevel(e.target.value)}
-                  placeholder="Exact level"
-                  style="max-width: 75px;"
-                />
-              )}
+            <div style="font-weight: 500; margin-bottom: 0.5em;">Level Filter</div>
+            <div style="display: flex; gap: 0.4em; align-items: center; margin-bottom: 1em; flex-wrap: wrap;">
+              <input
+                type="number"
+                min="0"
+                max="9"
+                value={filterLevel || filterLevelMin}
+                onchange={e => {
+                  const value = e.target.value;
+                  setFilterLevel(value);
+                  setFilterLevelMin(value);
+                  if (!value) setFilterLevelMax('');
+                }}
+                placeholder="Min/Exact"
+                style="max-width: 70px;"
+              />
+              <span style="color: var(--text-muted); font-size: 0.85em;">to</span>
+              <input
+                type="number"
+                min="0"
+                max="9"
+                value={filterLevelMax}
+                onchange={e => {
+                  setFilterLevelMax(e.target.value);
+                  if (e.target.value) setFilterLevel('');
+                }}
+                placeholder="Max"
+                style="max-width: 50px;"
+              />
             </div>
-            <div style="margin-bottom: 1em;">
-              <div style="font-weight: 500; margin-bottom: 0.5em;">Concentration</div>
-              <div style="display: flex; flex-direction: column; gap: 0.25em;">
+            
+            <div style="font-weight: 500; margin-bottom: 0.4em;">Components</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.2em; margin-bottom: 1em;">
+              {allComponents.map(comp => (
                 <button
-                  onclick={() => setFilterConcentration('')}
+                  key={comp}
+                  onclick={() => setFilterComponents(
+                    filterComponents.includes(comp)
+                      ? filterComponents.filter(x => x !== comp)
+                      : [...filterComponents, comp]
+                  )}
                   style={`
-                    padding: 0.4em 0.6em;
-                    border: 1px solid ${filterConcentration === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.3em;
-                    background-color: ${filterConcentration === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${filterConcentration === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                    padding: 0.25em 0.4em;
+                    border: 1px solid ${filterComponents.includes(comp) ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.2em;
+                    background-color: ${filterComponents.includes(comp) ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterComponents.includes(comp) ? '#4fc3f7' : 'var(--text-normal)'};
                     cursor: pointer;
-                    font-size: 0.9em;
+                    font-size: 0.75em;
+                    transition: all 0.2s ease;
+                    min-width: 60px;
+                    text-align: center;
+                  `}
+                >
+                  {componentNames[comp]}
+                </button>
+              ))}
+            </div>
+            
+            <div style="padding-top: 0.4em; border-top: 1px solid var(--background-modifier-border, #444);">
+              <div style="font-weight: 500; margin-bottom: 0.4em;">Sort Order</div>
+              <div style="display: flex; flex-direction: column; gap: 0.2em;">
+                <button
+                  onclick={() => setSortByLevel(false)}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${!sortByLevel ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${!sortByLevel ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${!sortByLevel ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
                     transition: all 0.2s ease;
                   `}
                 >
-                  All Spells
+                  🔤 Sort by Name
+                </button>
+                <button
+                  onclick={() => setSortByLevel(true)}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${sortByLevel ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${sortByLevel ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${sortByLevel ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  📈 Sort by Level
+                </button>
+              </div>
+            </div>
+          </SpellQuerySetting>
+          
+          <SpellQuerySetting title="Properties & Range" icon="lucide-focus">
+            <div style="margin-bottom: 1em;">
+              <div style="font-weight: 500; margin-bottom: 0.4em;">Concentration</div>
+              <div style="display: flex; flex-direction: column; gap: 0.2em;">
+                <button
+                  onclick={() => setFilterConcentration('')}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${filterConcentration === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${filterConcentration === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterConcentration === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  All
                 </button>
                 <button
                   onclick={() => setFilterConcentration('true')}
                   style={`
-                    padding: 0.4em 0.6em;
+                    padding: 0.3em 0.5em;
                     border: 1px solid ${filterConcentration === 'true' ? '#4caf50' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.3em;
+                    border-radius: 0.25em;
                     background-color: ${filterConcentration === 'true' ? 'rgba(76, 175, 80, 0.1)' : 'var(--background-primary, #1e1e1e)'};
                     color: ${filterConcentration === 'true' ? '#4caf50' : 'var(--text-normal)'};
                     cursor: pointer;
-                    font-size: 0.9em;
+                    font-size: 0.8em;
                     transition: all 0.2s ease;
                   `}
                 >
-                  🔮 Concentration Only
+                  🔮 Yes
                 </button>
                 <button
                   onclick={() => setFilterConcentration('false')}
                   style={`
-                    padding: 0.4em 0.6em;
+                    padding: 0.3em 0.5em;
                     border: 1px solid ${filterConcentration === 'false' ? '#ff9800' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.3em;
+                    border-radius: 0.25em;
                     background-color: ${filterConcentration === 'false' ? 'rgba(255, 152, 0, 0.1)' : 'var(--background-primary, #1e1e1e)'};
                     color: ${filterConcentration === 'false' ? '#ff9800' : 'var(--text-normal)'};
                     cursor: pointer;
-                    font-size: 0.9em;
+                    font-size: 0.8em;
                     transition: all 0.2s ease;
                   `}
                 >
-                  ⚡ No Concentration
+                  ⚡ No
                 </button>
               </div>
             </div>
+            
             <div style="margin-bottom: 1em;">
-              <div style="font-weight: 500; margin-bottom: 0.5em;">Ritual</div>
-              <div style="display: flex; flex-direction: column; gap: 0.25em;">
+              <div style="font-weight: 500; margin-bottom: 0.4em;">Ritual</div>
+              <div style="display: flex; flex-direction: column; gap: 0.2em;">
                 <button
                   onclick={() => setFilterRitual('')}
                   style={`
-                    padding: 0.4em 0.6em;
+                    padding: 0.3em 0.5em;
                     border: 1px solid ${filterRitual === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.3em;
+                    border-radius: 0.25em;
                     background-color: ${filterRitual === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
                     color: ${filterRitual === '' ? '#4fc3f7' : 'var(--text-normal)'};
                     cursor: pointer;
-                    font-size: 0.9em;
+                    font-size: 0.8em;
                     transition: all 0.2s ease;
                   `}
                 >
-                  All Spells
+                  All
                 </button>
                 <button
                   onclick={() => setFilterRitual('true')}
                   style={`
-                    padding: 0.4em 0.6em;
+                    padding: 0.3em 0.5em;
                     border: 1px solid ${filterRitual === 'true' ? '#9c27b0' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.3em;
+                    border-radius: 0.25em;
                     background-color: ${filterRitual === 'true' ? 'rgba(156, 39, 176, 0.1)' : 'var(--background-primary, #1e1e1e)'};
                     color: ${filterRitual === 'true' ? '#9c27b0' : 'var(--text-normal)'};
                     cursor: pointer;
-                    font-size: 0.9em;
+                    font-size: 0.8em;
                     transition: all 0.2s ease;
                   `}
                 >
-                  🕯️ Ritual Only
+                  🕯️ Yes
                 </button>
                 <button
                   onclick={() => setFilterRitual('false')}
                   style={`
-                    padding: 0.4em 0.6em;
+                    padding: 0.3em 0.5em;
                     border: 1px solid ${filterRitual === 'false' ? '#607d8b' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.3em;
+                    border-radius: 0.25em;
                     background-color: ${filterRitual === 'false' ? 'rgba(96, 125, 139, 0.1)' : 'var(--background-primary, #1e1e1e)'};
                     color: ${filterRitual === 'false' ? '#607d8b' : 'var(--text-normal)'};
                     cursor: pointer;
-                    font-size: 0.9em;
+                    font-size: 0.8em;
                     transition: all 0.2s ease;
                   `}
                 >
-                  ⚔️ No Ritual
+                  ⚔️ No
                 </button>
               </div>
             </div>
-			
-
-            {/* Spellbook filter, in-box and visually attached */}
-            <div style="margin-top: 0.8em; padding-top: 0.6em; border-top: 1px solid var(--background-modifier-border, #444); padding-left: 0.4em;">
-  <label style="display: flex; align-items: center; gap: 0.45em; margin-bottom: 0.5em;">
-    <input
-      type="checkbox"
-      checked={showSpellbookOnly}
-      onchange={e => setShowSpellbookOnly(e.target.checked)}
-      style="transform: scale(1.15);"
-    />
-    <span style="font-size: 1em;">Show only Ilarion’s spellbook</span>
-  </label>
-  <label style="display: flex; align-items: center; gap: 0.45em;">
-    <input
-      type="checkbox"
-      checked={sortByLevel}
-      onchange={e => setSortByLevel(e.target.checked)}
-      style="transform: scale(1.15);"
-    />
-    <span style="font-size: 1em;">Sort by spell level</span>
-  </label>
-</div>
-
+            
+            <div>
+              <div style="font-weight: 500; margin-bottom: 0.4em;">Range</div>
+              <div style="display: flex; flex-direction: column; gap: 0.2em;">
+                <button
+                  onclick={() => setFilterRange('')}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${filterRange === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${filterRange === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterRange === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  All Ranges
+                </button>
+                <button
+                  onclick={() => setFilterRange('touch')}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${filterRange === 'touch' ? '#e91e63' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${filterRange === 'touch' ? 'rgba(233, 30, 99, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterRange === 'touch' ? '#e91e63' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  👋 Touch Only
+                </button>
+              </div>
+            </div>
           </SpellQuerySetting>
         </SpellQuerySettings>
       )}

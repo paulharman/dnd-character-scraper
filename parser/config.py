@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional
 # Import main config system
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.config.manager import ConfigManager as MainConfigManager
+from shared.config.manager import ConfigManager as MainConfigManager
 
 
 class ParserConfigManager:

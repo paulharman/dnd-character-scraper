@@ -10,12 +10,14 @@ import asyncio
 import logging
 from typing import List, Dict, Any, Optional, Set, Union, Tuple
 from datetime import datetime, timedelta
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
+from copy import deepcopy
 
 from .discord_service import DiscordService, EmbedColor
-from src.services.enhanced_change_detection_service import EnhancedChangeDetectionService as ChangeDetectionService
-from src.models.change_detection import ChangePriority, ChangeDetectionResult
+from .party_inventory_tracker import PartyInventoryTracker
+from discord.core.services.change_detection_service import EnhancedChangeDetectionService as ChangeDetectionService
+from shared.models.change_detection import ChangePriority, ChangeDetectionResult
 from discord.services.change_detection.models import CharacterChangeSet, CharacterSnapshot
 
 # Handle both relative and absolute imports
@@ -82,11 +84,14 @@ class NotificationManager:
         # Initialize services - using enhanced change detection as primary service
         enhanced_config = self._create_enhanced_change_detection_config()
         self.change_detector = ChangeDetectionService(config=enhanced_config)
-        
+
+        # Initialize party inventory tracker
+        self.party_tracker = PartyInventoryTracker(str(self.storage_dir))
+
         # Load Discord configuration for formatter
         discord_config = self._load_discord_config()
         self.formatter = DiscordFormatter(config=discord_config)
-        
+
         # Track last notification times to avoid spam
         self.last_notification_times: Dict[int, datetime] = {}
         
@@ -111,7 +116,7 @@ class NotificationManager:
     
     def _create_enhanced_change_detection_config(self):
         """Create enhanced change detection configuration from discord config."""
-        from src.models.enhanced_change_detection import ChangeDetectionConfig
+        from discord.core.models.change_detection_models import ChangeDetectionConfig
         
         # Load the discord configuration to get enabled change types
         import yaml
@@ -163,7 +168,7 @@ class NotificationManager:
             for field_path, priority_str in field_patterns.items():
                 if priority_str != 'IGNORED':
                     try:
-                        from src.models.change_detection import ChangePriority
+                        from shared.models.change_detection import ChangePriority
                         priority_overrides[field_path] = ChangePriority[priority_str]
                     except KeyError:
                         logger.warning(f"Invalid priority '{priority_str}' for field '{field_path}'")
@@ -332,7 +337,7 @@ class NotificationManager:
                         priority_value = 2  # Default to medium
                     
                     # Compare with minimum priority
-                    min_priority_value = getattr(self.config.min_priority, 'value', 2)
+                    min_priority_value = getattr(self.config.min_priority, 'value', 1)
                     if priority_value >= min_priority_value:
                         qualifying_changes.append(change)
                 except Exception as e:
@@ -348,10 +353,22 @@ class NotificationManager:
                 priority_info = []
                 for change in filtered_changes:
                     try:
-                        field = getattr(change, 'field_path', getattr(change, 'field', 'unknown'))
-                        priority = getattr(change, 'priority', 'unknown')
+                        # Handle both object and dictionary field paths
+                        if isinstance(change, dict):
+                            field = change.get('field_path', change.get('field', 'unknown'))
+                            priority = change.get('priority', 'unknown')
+                        else:
+                            field = getattr(change, 'field_path', getattr(change, 'field', 'unknown'))
+                            priority = getattr(change, 'priority', 'unknown')
+                        
+                        # Convert priority enum to name if needed
                         if hasattr(priority, 'name'):
                             priority = priority.name
+                        elif isinstance(priority, int):
+                            # Convert integer priority to name for logging
+                            priority_names = {1: 'LOW', 2: 'MEDIUM', 3: 'HIGH', 4: 'CRITICAL'}
+                            priority = priority_names.get(priority, f'UNKNOWN({priority})')
+                        
                         priority_info.append(f'{field}:{priority}')
                     except:
                         priority_info.append('unknown:unknown')
@@ -534,13 +551,21 @@ class NotificationManager:
         try:
             # Get character avatar if available
             avatar_url = await self._get_character_avatar_url(change_set.character_id)
-            
+
             # Format messages (consolidate to prevent duplicates)
             messages = self.formatter.format_character_changes(
                 change_set,
                 max_changes=self.config.max_changes_per_notification,
                 avatar_url=avatar_url
             )
+
+            # Apply party inventory customizations if this is a party inventory changeset
+            is_party_inventory = change_set.metadata.get("is_party_inventory", False)
+            logger.info(f"DEBUG: is_party_inventory = {is_party_inventory}, metadata = {change_set.metadata}")
+            if is_party_inventory:
+                logger.info(f"DEBUG: Applying party inventory customizations to {len(messages)} messages")
+                messages = self._customize_party_messages(messages, change_set)
+                logger.info(f"DEBUG: Customizations applied successfully")
             
             # Capture message content for console output if requested
             message_content = ""
@@ -703,6 +728,10 @@ class NotificationManager:
     async def _send_character_discovered_notification(self, character_id: int):
         """Send notification for newly discovered character."""
         try:
+            # Get character name and avatar
+            character_name = await self._get_character_name(character_id)
+            avatar_url = await self._get_character_avatar_url(character_id)
+            
             async with DiscordService(
                 webhook_url=self.config.webhook_url,
                 username=self.config.username,
@@ -710,11 +739,12 @@ class NotificationManager:
             ) as discord:
                 await discord.send_embed(
                     title="🆕 New Character Discovered",
-                    description=f"Started monitoring character {character_id}",
+                    description=f"Started monitoring **{character_name}** for changes.",
                     color=EmbedColor.SUCCESS,
-                    footer_text="Character monitoring started"
+                    footer_text="Character monitoring started",
+                    thumbnail_url=avatar_url
                 )
-                logger.info(f"Character discovered notification sent for {character_id}")
+                logger.info(f"Character discovered notification sent for {character_name} ({character_id})")
         except Exception as e:
             logger.error(f"Failed to send character discovered notification: {e}")
     
@@ -772,6 +802,38 @@ class NotificationManager:
             return False
     
     
+    async def _get_character_name(self, character_id: int) -> str:
+        """Get character name from storage."""
+        try:
+            # For file-based storage, get the latest snapshot file
+            storage_dir = self.storage_dir
+            pattern = f"character_{character_id}_*.json"
+            
+            import glob
+            import json
+            
+            # Find the latest file
+            character_files = glob.glob(str(storage_dir / pattern))
+            if not character_files:
+                return f"Character {character_id}"
+            
+            latest_file = max(character_files, key=lambda x: Path(x).stat().st_mtime)
+            
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                character_data = json.load(f)
+                
+                if 'character_info' in character_data:
+                    character_info = character_data['character_info']
+                    if isinstance(character_info, dict):
+                        character_name = character_info.get('name', f'Character {character_id}')
+                        return character_name
+                
+                return f"Character {character_id}"
+                
+        except Exception as e:
+            logger.warning(f"Could not get character name for {character_id}: {e}")
+            return f"Character {character_id}"
+
     async def _get_character_avatar_url(self, character_id: int) -> Optional[str]:
         """Get character avatar URL from storage."""
         try:
@@ -943,7 +1005,7 @@ class NotificationManager:
     async def send_detailed_test(self) -> bool:
         """Send a detailed test notification showing the formatting."""
         try:
-            from src.models.change_detection import FieldChange, ChangeType, ChangePriority
+            from shared.models.change_detection import FieldChange, ChangeType, ChangePriority
             from discord.services.change_detection.models import CharacterChangeSet
             from datetime import datetime
             
@@ -1111,6 +1173,10 @@ class NotificationManager:
     async def _send_character_discovered_notification(self, character_id: int) -> bool:
         """Send a notification when a character is discovered for the first time."""
         try:
+            # Get character name and avatar
+            character_name = await self._get_character_name(character_id)
+            avatar_url = await self._get_character_avatar_url(character_id)
+            
             async with DiscordService(
                 webhook_url=self.config.webhook_url,
                 username=self.config.username,
@@ -1118,9 +1184,10 @@ class NotificationManager:
             ) as discord:
                 return await discord.send_embed(
                     title="🆕 New Character Discovered",
-                    description=f"Now monitoring character {character_id} for changes.\n\nFuture updates will be reported here.",
+                    description=f"Now monitoring **{character_name}** for changes.\n\nFuture updates will be reported here.",
                     color=EmbedColor.INFO,
-                    footer_text="Baseline snapshot saved"
+                    footer_text="Baseline snapshot saved",
+                    thumbnail_url=avatar_url
                 )
                 
         except Exception as e:
@@ -1143,3 +1210,571 @@ class NotificationManager:
     def get_delivery_stats(self) -> Dict[int, Dict[str, Any]]:
         """Get simple delivery statistics."""
         return getattr(self, 'delivery_stats', {})
+
+    async def check_and_notify_party_inventory_changes(self, character_data: Dict[str, Any]) -> bool:
+        """
+        Check for party inventory changes and send notifications if found.
+
+        Args:
+            character_data: Character data that may contain party inventory
+
+        Returns:
+            True if notification sent or no changes found, False on error
+        """
+        try:
+            # Process character data for party inventory changes
+            party_changes = self.party_tracker.process_character_for_party_changes(character_data)
+
+            if not party_changes:
+                logger.debug("No party inventory changes detected")
+                return True
+
+            # Extract campaign info for virtual character creation
+            equipment = character_data.get('equipment', {})
+            party_inventory = equipment.get('party_inventory', {})
+            campaign_id = party_inventory.get('campaign_id')
+
+            if not campaign_id:
+                logger.warning("Party changes detected but no campaign ID found")
+                return False
+
+            # Create virtual character changeset
+            virtual_character_id = self.party_tracker.get_virtual_character_id(str(campaign_id))
+            virtual_character_name = f"Party Inventory (Campaign {campaign_id})"
+
+            # Create changeset in format expected by notification system
+            changeset = CharacterChangeSet(
+                character_id=virtual_character_id,
+                character_name=virtual_character_name,
+                from_version=0,  # Version tracking for party inventory
+                to_version=1,
+                timestamp=datetime.now(),
+                changes=party_changes,
+                summary=f"Party inventory changes for campaign {campaign_id}",
+                metadata={
+                    "is_party_inventory": True,
+                    "campaign_id": campaign_id,
+                    "change_count": len(party_changes)
+                }
+            )
+
+            # Send notification using existing infrastructure
+            return await self._send_character_notification(changeset)
+
+        except Exception as e:
+            logger.error(f"Error checking party inventory changes: {e}")
+            return False
+
+
+    async def _send_formatted_notification(self, changeset: CharacterChangeSet, is_party_inventory: bool = False) -> bool:
+        """
+        Format and send the Discord notification.
+
+        Args:
+            changeset: Filtered changeset to send
+            is_party_inventory: Whether this is a party inventory notification
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        try:
+            # Use existing formatter to create Discord message
+            notification_data = self.formatter.format_character_changes(changeset)
+
+            # Customize for party inventory
+            if is_party_inventory:
+                notification_data = self._customize_party_notification(notification_data, changeset)
+
+            # Send via Discord service
+            async with DiscordService(
+                webhook_url=self.config.webhook_url,
+                username=self.config.username,
+                avatar_url=self.config.avatar_url
+            ) as discord:
+                # Send based on notification format
+                if notification_data.get('embeds'):
+                    success = await discord.send_embeds(notification_data['embeds'])
+                else:
+                    success = await discord.send_message(notification_data.get('content', 'Party inventory updated'))
+
+                if success:
+                    logger.info(f"Successfully sent {'party inventory' if is_party_inventory else 'character'} notification for {changeset.character_name}")
+                    self._track_delivery_success(changeset.character_id)
+                    return True
+                else:
+                    logger.error(f"Failed to send {'party inventory' if is_party_inventory else 'character'} notification for {changeset.character_name}")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Error formatting/sending notification: {e}")
+            return False
+
+    def _customize_party_notification(self, notification_data: Dict[str, Any], changeset: CharacterChangeSet) -> Dict[str, Any]:
+        """
+        Customize notification data for party inventory with improved formatting and icons.
+
+        Args:
+            notification_data: Base notification data from formatter
+            changeset: Party inventory changeset
+
+        Returns:
+            Customized notification data with inventory-specific styling
+        """
+        try:
+            # Customize embeds if present
+            if 'embeds' in notification_data and notification_data['embeds']:
+                for embed in notification_data['embeds']:
+                    # Enhance title with party inventory icon
+                    if 'title' in embed:
+                        embed['title'] = f"🎒 {embed['title']}"
+
+                    # Add campaign info to footer
+                    campaign_id = changeset.metadata.get('campaign_id')
+                    if campaign_id and 'footer' in embed:
+                        current_footer = embed['footer'].get('text', '')
+                        embed['footer']['text'] = f"Campaign {campaign_id} | {current_footer}".strip(' |')
+
+                    # Use inventory-themed color (brown/leather)
+                    embed['color'] = 0x8B4513  # Brown color for party inventory
+
+                    # Enhance field formatting for inventory changes
+                    if 'fields' in embed:
+                        embed['fields'] = self._enhance_party_inventory_fields(embed['fields'], changeset.changes)
+
+            # Customize content if no embeds
+            elif 'content' in notification_data:
+                notification_data['content'] = f"🎒 {notification_data['content']}"
+
+            return notification_data
+
+        except Exception as e:
+            logger.error(f"Error customizing party notification: {e}")
+            return notification_data
+
+    def _enhance_party_inventory_fields(self, fields: List[Dict[str, Any]], changes: List) -> List[Dict[str, Any]]:
+        """
+        Enhance Discord embed fields for party inventory changes with better icons and categorization.
+
+        Args:
+            fields: List of Discord embed fields
+            changes: List of FieldChange objects
+
+        Returns:
+            Enhanced fields with inventory-specific formatting
+        """
+        try:
+            enhanced_fields = []
+
+            for field in fields:
+                field_name = field.get('name', '')
+                field_value = field.get('value', '')
+
+                # Replace generic "Other" category or equipment category with inventory-specific categories
+                # This handles both "📋 Other (1)" and other generic categories for party inventory
+                if ('Other' in field_name or 'equipment' in field_name.lower() or 'inventory' in field_name.lower()) and '(' in field_name:
+                    # Analyze changes to categorize them properly
+                    currency_changes = 0
+                    item_changes = 0
+                    container_changes = 0
+
+                    # Analyze both field paths and descriptions to properly categorize
+                    for change in changes:
+                        change_text = ''
+
+                        # Get text from field path
+                        if hasattr(change, 'field_path'):
+                            change_text += change.field_path.lower()
+
+                        # Get text from description
+                        if hasattr(change, 'description') and change.description:
+                            change_text += ' ' + change.description.lower()
+
+                        # Also check the field_value for additional context
+                        change_text += ' ' + field_value.lower()
+
+                        # Categorize based on combined text analysis
+                        if any(word in change_text for word in ['currency', 'gp', 'gold', 'pp', 'platinum', 'cp', 'copper', 'sp', 'silver', 'ep', 'electrum']):
+                            currency_changes += 1
+                        elif any(word in change_text for word in ['container', 'bag of holding', 'handy haversack', 'bag', 'chest', 'pouch']):
+                            container_changes += 1
+                        elif any(word in change_text for word in ['added', 'removed', 'item', 'inventory', 'equipment']):
+                            item_changes += 1
+                        else:
+                            # Default to items if we can't determine
+                            item_changes += 1
+
+                    # Create inventory-specific category fields with better separation
+                    if currency_changes > 0:
+                        enhanced_fields.append({
+                            'name': f'💰 **Party Currency** • {currency_changes} change{"s" if currency_changes != 1 else ""}',
+                            'value': self._format_category_section(
+                                self._filter_field_value_by_type(field_value, ['gp', 'gold', 'currency']),
+                                'currency'
+                            ),
+                            'inline': field.get('inline', False)
+                        })
+
+                    if item_changes > 0:
+                        enhanced_fields.append({
+                            'name': f'🎒 **Party Items** • {item_changes} change{"s" if item_changes != 1 else ""}',
+                            'value': self._format_category_section(
+                                self._filter_field_value_by_type(field_value, ['added', 'removed', 'item']),
+                                'items'
+                            ),
+                            'inline': field.get('inline', False)
+                        })
+
+                    if container_changes > 0:
+                        enhanced_fields.append({
+                            'name': f'📦 **Containers** • {container_changes} change{"s" if container_changes != 1 else ""}',
+                            'value': self._format_category_section(
+                                self._filter_field_value_by_type(field_value, ['bag', 'container']),
+                                'containers'
+                            ),
+                            'inline': field.get('inline', False)
+                        })
+
+                    # If we couldn't categorize, fall back to improved inventory field
+                    if not (currency_changes or item_changes or container_changes):
+                        change_count = field_name.split("(")[1].rstrip(")") if "(" in field_name else "?"
+                        enhanced_fields.append({
+                            'name': f'🎒 **Party Inventory** • {change_count} change{"s" if change_count != "1" else ""}',
+                            'value': self._format_category_section(field_value, 'general'),
+                            'inline': field.get('inline', False)
+                        })
+                else:
+                    # Keep non-"Other" fields as-is but enhance icons for party inventory
+                    enhanced_field_name = self._enhance_party_field_name(field_name)
+                    enhanced_fields.append({
+                        'name': enhanced_field_name,
+                        'value': self._enhance_party_field_value(field_value),
+                        'inline': field.get('inline', False)
+                    })
+
+            return enhanced_fields
+
+        except Exception as e:
+            logger.error(f"Error enhancing party inventory fields: {e}")
+            return fields
+
+    def _filter_field_value_by_type(self, field_value: str, keywords: List[str]) -> str:
+        """Filter field value lines that contain specific keywords."""
+        try:
+            lines = field_value.split('\n')
+            filtered_lines = []
+
+            for line in lines:
+                line_lower = line.lower()
+                if any(keyword.lower() in line_lower for keyword in keywords):
+                    filtered_lines.append(line)
+
+            return '\n'.join(filtered_lines) if filtered_lines else field_value
+
+        except Exception:
+            return field_value
+
+    def _enhance_party_field_name(self, field_name: str) -> str:
+        """Enhance field names with party inventory appropriate icons."""
+        try:
+            if 'currency' in field_name.lower() or 'gp' in field_name.lower():
+                return f"💰 {field_name}"
+            elif 'item' in field_name.lower() or 'equipment' in field_name.lower():
+                return f"🎒 {field_name}"
+            elif 'container' in field_name.lower() or 'bag' in field_name.lower():
+                return f"📦 {field_name}"
+            else:
+                return f"🎒 {field_name}"  # Default party inventory icon
+
+        except Exception:
+            return field_name
+
+    def _enhance_party_field_value(self, field_value: str) -> str:
+        """Enhance field values with better formatting for party inventory."""
+        try:
+            lines = field_value.split('\n')
+            enhanced_lines = []
+
+            for line in lines:
+                # Enhance currency changes
+                if 'gp' in line.lower() or 'gold' in line.lower():
+                    enhanced_lines.append(f"💰 {line}")
+                # Enhance item additions/removals
+                elif 'added' in line.lower() and 'to party' in line.lower():
+                    enhanced_lines.append(f"📥 {line}")
+                elif 'removed' in line.lower() and 'from party' in line.lower():
+                    enhanced_lines.append(f"📤 {line}")
+                # Enhance container-related changes
+                elif any(container in line.lower() for container in ['bag of holding', 'handy haversack', 'container']):
+                    enhanced_lines.append(f"📦 {line}")
+                else:
+                    enhanced_lines.append(line)
+
+            return '\n'.join(enhanced_lines)
+
+        except Exception:
+            return field_value
+
+    def _format_category_section(self, field_value: str, category_type: str) -> str:
+        """
+        Format a category section with better visual separation and item differentiation.
+
+        Args:
+            field_value: The raw field value content
+            category_type: Type of category (currency, items, containers, general)
+
+        Returns:
+            Formatted section with improved visual hierarchy
+        """
+        try:
+            lines = field_value.split('\n')
+            formatted_lines = []
+
+            for i, line in enumerate(lines):
+                if not line.strip():
+                    continue
+
+                # Remove existing icons and emoji from the beginning to avoid duplication
+                # This handles cases like "🔄 🎒 New party inventory..." and "🔄 ➕ Added 1x..."
+                clean_line = line
+                # Remove all common change and category icons
+                for icon in ['🔄', '➕', '➖', '💰', '🎒', '📦', '📥', '📤', '📋', '✨', '⚔️', '🛡️']:
+                    clean_line = clean_line.replace(icon, '')
+                clean_line = clean_line.strip()
+
+                if category_type == 'currency':
+                    # Currency items with clear hierarchy
+                    if 'gp' in line.lower() or 'gold' in line.lower():
+                        formatted_lines.append(f"   💸 {clean_line}")
+                    else:
+                        formatted_lines.append(f"   💰 {clean_line}")
+
+                elif category_type == 'items':
+                    # Item changes with action icons
+                    if 'added' in line.lower():
+                        formatted_lines.append(f"   📥 {clean_line}")
+                    elif 'removed' in line.lower():
+                        formatted_lines.append(f"   📤 {clean_line}")
+                    else:
+                        formatted_lines.append(f"   🔄 {clean_line}")
+
+                elif category_type == 'containers':
+                    # Container-related changes
+                    if 'bag of holding' in line.lower():
+                        formatted_lines.append(f"   🎒 {clean_line}")
+                    elif 'handy haversack' in line.lower():
+                        formatted_lines.append(f"   🎒 {clean_line}")
+                    else:
+                        formatted_lines.append(f"   📦 {clean_line}")
+
+                else:  # general
+                    # General party inventory items
+                    formatted_lines.append(f"   • {clean_line}")
+
+                # Add minimal spacing between items for better readability
+                if i < len(lines) - 1 and line.strip():  # Add space after each item except the last
+                    formatted_lines.append("")
+
+            # Join with newlines and add section borders
+            content = '\n'.join(formatted_lines)
+
+            # Add visual formatting for better section separation
+            if content.strip():
+                # Use simple indentation and line breaks instead of code blocks
+                return content
+            else:
+                return field_value
+
+        except Exception as e:
+            logger.error(f"Error formatting category section: {e}")
+            return field_value
+
+    def _customize_party_messages(self, messages: List, changeset: CharacterChangeSet) -> List:
+        """
+        Apply party inventory customizations to Discord messages.
+
+        Args:
+            messages: List of DiscordMessage objects
+            changeset: Party inventory changeset
+
+        Returns:
+            List of customized DiscordMessage objects
+        """
+        try:
+            customized_messages = []
+
+            for message in messages:
+                # Create a copy of the DiscordMessage
+                customized_message = replace(message)
+
+                # Customize embeds
+                if message.embeds:
+                    customized_embeds = []
+
+                    for embed in message.embeds:
+                        # Create a deep copy of the embed since it contains nested structures
+                        customized_embed = deepcopy(embed)
+
+                        # Add party inventory icon to title
+                        if hasattr(customized_embed, 'title') and customized_embed.title:
+                            customized_embed.title = f"🎒 {customized_embed.title}"
+
+                        # Use inventory-themed color
+                        customized_embed.color = 0x8B4513
+
+                        # Add campaign info to footer
+                        campaign_id = changeset.metadata.get('campaign_id')
+                        if campaign_id and hasattr(customized_embed, 'footer') and customized_embed.footer:
+                            current_footer = customized_embed.footer.get('text', '') if isinstance(customized_embed.footer, dict) else ''
+                            customized_embed.footer['text'] = f"Campaign {campaign_id} | {current_footer}".strip(' |')
+
+                        # Most importantly: enhance the description for party inventory formatting
+                        if hasattr(customized_embed, 'description') and customized_embed.description:
+                            customized_embed.description = self._enhance_party_inventory_description(
+                                customized_embed.description, changeset.changes
+                            )
+
+                        customized_embeds.append(customized_embed)
+
+                    customized_message = replace(customized_message, embeds=customized_embeds)
+
+                # Customize content if no embeds
+                elif message.content:
+                    customized_message = replace(customized_message, content=f"🎒 {message.content}")
+
+                customized_messages.append(customized_message)
+
+            return customized_messages
+
+        except Exception as e:
+            logger.error(f"Error customizing party messages: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return messages
+
+    def _enhance_party_inventory_description(self, description: str, changes: List) -> str:
+        """
+        Enhance the embed description for party inventory with better formatting.
+
+        Args:
+            description: Original embed description
+            changes: List of FieldChange objects
+
+        Returns:
+            Enhanced description with better party inventory formatting
+        """
+        try:
+            lines = description.split('\n')
+            enhanced_lines = []
+
+            # Keep the title line
+            if lines and "total changes" in lines[0]:
+                enhanced_lines.append(lines[0])
+                lines = lines[1:]
+
+            # Process each line to enhance party inventory formatting
+            currency_changes = []
+            item_changes = []
+            container_changes = []
+            discovery_changes = []
+            other_changes = []
+
+            # Group changes by type for better organization
+            for change in changes:
+                field_path = change.field_path.lower()
+                description_text = change.description
+
+                # Categorize based on field path and description
+                if 'discovery' in field_path or 'new party inventory discovered' in description_text:
+                    discovery_changes.append(change)
+                elif 'items' in field_path or any(action in description_text.lower() for action in ['added', 'removed']):
+                    item_changes.append(change)
+                elif any(currency in field_path for currency in ['pp', 'gp', 'sp', 'cp', 'currency']):
+                    currency_changes.append(change)
+                elif 'container' in field_path or 'bag' in field_path:
+                    container_changes.append(change)
+                else:
+                    other_changes.append(change)
+
+            # Add discovery section first (for new party found)
+            if discovery_changes:
+                enhanced_lines.append("")
+                enhanced_lines.append("🆕 **Party Discovery**")
+                for change in discovery_changes:
+                    enhanced_lines.append(f"   {change.description}")
+
+            # Add currency section
+            if currency_changes:
+                enhanced_lines.append("")
+                enhanced_lines.append(f"💰 **Currency Changes** ({len(currency_changes)})")
+                for change in currency_changes:
+                    emoji = "💎" if "PP" in change.description else "💰"
+                    enhanced_lines.append(f"   {emoji} {change.description}")
+
+            # Add items section
+            if item_changes:
+                enhanced_lines.append("")
+                enhanced_lines.append(f"🎒 **Item Changes** ({len(item_changes)})")
+                for change in item_changes:
+                    if 'added' in change.description.lower():
+                        emoji = "➕"
+                    elif 'removed' in change.description.lower():
+                        emoji = "➖"
+                    else:
+                        emoji = "🔄"
+                    enhanced_lines.append(f"   {emoji} {change.description}")
+
+            # Add container section
+            if container_changes:
+                enhanced_lines.append("")
+                enhanced_lines.append(f"📦 **Container Changes** ({len(container_changes)})")
+                for change in container_changes:
+                    enhanced_lines.append(f"   📦 {change.description}")
+
+            # Add other changes if any
+            if other_changes:
+                enhanced_lines.append("")
+                enhanced_lines.append(f"📋 **Other Changes** ({len(other_changes)})")
+                for change in other_changes:
+                    enhanced_lines.append(f"   🔄 {change.description}")
+
+            return '\n'.join(enhanced_lines)
+
+        except Exception as e:
+            logger.error(f"Error enhancing party inventory description: {e}")
+            return description
+
+    def _filter_changes_by_config(self, changes: List[Any]) -> List[Any]:
+        """
+        Filter changes based on configuration (priority, groups, etc.).
+
+        Args:
+            changes: List of changes to filter
+
+        Returns:
+            Filtered list of changes
+        """
+        try:
+            filtered = []
+
+            for change in changes:
+                # Check minimum priority
+                if hasattr(change, 'priority') and change.priority.value < self.config.min_priority.value:
+                    continue
+
+                # Check include/exclude groups (simplified version)
+                if self.config.include_groups or self.config.exclude_groups:
+                    # For party inventory, always include inventory category changes
+                    if hasattr(change, 'category') and str(change.category).lower() == 'inventory':
+                        filtered.append(change)
+                        continue
+
+                    # Apply group filtering logic here if needed
+                    # (This would need more complex group mapping)
+
+                filtered.append(change)
+
+            return filtered
+
+        except Exception as e:
+            logger.error(f"Error filtering changes: {e}")
+            return changes  # Return unfiltered on error

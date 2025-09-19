@@ -13,7 +13,7 @@ from datetime import datetime
 
 # Use consolidated enhanced change detection system
 from discord.services.change_detection.models import CharacterChangeSet
-from src.models.change_detection import FieldChange, ChangeType, ChangePriority
+from shared.models.change_detection import FieldChange, ChangeType, ChangePriority
 from discord.services.discord_service import (
     DiscordEmbed, DiscordMessage, EmbedColor,
     DISCORD_EMBED_DESC_LIMIT, DISCORD_EMBED_FIELD_LIMIT, DISCORD_EMBED_FIELD_COUNT_LIMIT,
@@ -702,11 +702,12 @@ class DiscordFormatter:
             return individual_groups
     
     def _group_changes_by_category(self, changes: List[FieldChange]) -> Dict[str, List[FieldChange]]:
-        """Group changes by field category."""
+        """Group changes by their actual category (not re-categorized by field path)."""
         groups = {}
         
         for change in changes:
-            category = self._categorize_field(change.field_path)
+            # Use the actual category from the change, not re-categorize by field path
+            category = self._map_change_category_to_display_name(change.category)
             if category not in groups:
                 groups[category] = []
             groups[category].append(change)
@@ -715,7 +716,7 @@ class DiscordFormatter:
         for category in groups:
             if category == 'spells':
                 groups[category].sort(key=self._spell_sort_key)
-            elif category == 'equipment':
+            elif category == 'equipment' or category == 'inventory':
                 groups[category].sort(key=self._equipment_sort_key)
             elif category == 'ability_scores':
                 groups[category].sort(key=self._ability_score_sort_key)
@@ -725,6 +726,27 @@ class DiscordFormatter:
                 groups[category].sort(key=lambda c: c.field_path)
         
         return groups
+    
+    def _map_change_category_to_display_name(self, category) -> str:
+        """Map ChangeCategory enum to display name for Discord."""
+        # Import here to avoid circular imports
+        from shared.models.change_detection import ChangeCategory
+        
+        category_mapping = {
+            ChangeCategory.INVENTORY: 'inventory',
+            ChangeCategory.EQUIPMENT: 'equipment', 
+            ChangeCategory.COMBAT: 'armor_class',
+            ChangeCategory.SPELLS: 'spells',
+            ChangeCategory.ABILITIES: 'ability_scores',
+            ChangeCategory.SKILLS: 'skills',
+            ChangeCategory.FEATURES: 'feats',
+            ChangeCategory.PROGRESSION: 'level',
+            ChangeCategory.BASIC_INFO: 'level',  # Fix: Map basic_info to level for proper display
+            ChangeCategory.SOCIAL: 'personality',
+            ChangeCategory.METADATA: 'other'
+        }
+        
+        return category_mapping.get(category, 'other')
     
     def _categorize_field(self, field_path: str) -> str:
         """Categorize a field path into a logical group."""

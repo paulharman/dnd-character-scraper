@@ -12,7 +12,7 @@ This project implements comprehensive security measures to protect your sensitiv
 - **📋 Security Audit Tools**: Regular security audits with detailed reporting
 - **📚 Complete Security Documentation**: Step-by-step security setup and best practices
 
-## ✨ Latest Updates (v6.1.0)
+## ✨ Latest Updates (v6.0.0)
 
 - **🔐 Comprehensive Security Enhancement**: Environment variable support, pre-commit hooks, and security audit tools
 - **🛡️ Discord Webhook Protection**: Automatic detection and prevention of hardcoded webhook URLs
@@ -55,17 +55,61 @@ python discord/discord_monitor.py --validate-webhook
 python scripts/security_audit.py
 ```
 
-### 3. Usage
-```bash
-# Extract character data
-python scraper/enhanced_dnd_scraper.py CHARACTER_ID
+### 3. Character Setup
 
-# Generate markdown sheet
+**⚠️ IMPORTANT**: Your D&D Beyond character must be set to **PUBLIC** for the scraper to access it.
+
+1. Go to your character on D&D Beyond
+2. Click **"Edit"** → **"Manage"** → **"Privacy"**
+3. Set to **"Public"** (anyone can view)
+4. Note your character ID from the URL: `dndbeyond.com/characters/[CHARACTER_ID]`
+
+### 4. Usage
+
+**Primary Workflow (Recommended)**:
+```bash
+# Complete pipeline: scrape → parse → Discord notification
 python parser/dnd_json_to_markdown.py CHARACTER_ID
 
-# Monitor character changes (Discord notifications)
+# The parser automatically:
+# 1. Calls the scraper to get fresh character data
+# 2. Generates Obsidian-compatible markdown
+# 3. Triggers Discord change monitoring and notifications
+```
+
+**Individual Components**:
+```bash
+# Extract character data only
+python scraper/enhanced_dnd_scraper.py CHARACTER_ID
+
+# Generate markdown from existing data (skips scraper call)
+python parser/dnd_json_to_markdown.py CHARACTER_ID --validate-only
+
+# Monitor character changes only
 python discord/discord_monitor.py --character-id CHARACTER_ID
 ```
+
+## 🏗️ Architecture
+
+The project uses a clean modular architecture with domain-specific separation:
+
+```
+├── scraper/core/          # Character data extraction & calculations
+│   ├── calculators/       # D&D rule calculations & coordinators  
+│   ├── clients/          # D&D Beyond API integration
+│   └── services/         # Processing services
+├── parser/               # Markdown generation & formatting
+│   ├── formatters/       # Output format handlers
+│   └── templates/        # Obsidian & UI toolkit integration
+├── discord/core/         # Change detection & notifications
+│   ├── services/         # Change tracking & notification logic
+│   └── storage/          # Data persistence
+└── shared/               # Cross-cutting concerns
+    ├── config/           # Configuration management
+    └── models/           # Shared data models
+```
+
+**Integrated Workflow**: The parser serves as the main entry point, orchestrating the entire pipeline automatically with proper rate limiting and error handling.
 
 ## Configuration
 
@@ -73,10 +117,10 @@ The system uses YAML configuration files for all settings. See **[CONFIG_GUIDE.m
 
 ### Key Configuration Files
 
-- **`config/discord.yaml`**: Discord notification settings and change type filtering
-- **`config/parser.yaml`**: Parser behavior and output formatting options
-- **`config/scraper.yaml`**: Scraper settings and API configuration
-- **`config/main.yaml`**: Project-wide settings and environment configuration
+- **`config/discord.yaml`**: Discord notification settings, change type filtering, and data retention
+- **`config/parser.yaml`**: Parser behavior, output formatting, and section ordering
+- **`config/scraper.yaml`**: API rate limiting, timeout settings, and retry logic
+- **`config/main.yaml`**: Project-wide settings, environment configuration, and performance options
 
 ### 🔐 Secure Discord Setup
 
@@ -190,6 +234,9 @@ python scraper/enhanced_dnd_scraper.py <character_id> --discord
 
 # Force specific rule version
 python scraper/enhanced_dnd_scraper.py <character_id> --force-2024
+
+# Keep HTML formatting in output
+python scraper/enhanced_dnd_scraper.py <character_id> --keep-html
 ```
 
 ### Generate Character Sheet
@@ -197,8 +244,15 @@ python scraper/enhanced_dnd_scraper.py <character_id> --force-2024
 # Generate markdown character sheet
 python parser/dnd_json_to_markdown.py <character_id> <output_file>
 
-# Generate with enhanced spell processing
-python parser/dnd_json_to_markdown.py <character_id> <output_file> --enhanced-spells
+# Generate without enhanced spells (API only)
+python parser/dnd_json_to_markdown.py <character_id> <output_file> --no-enhance-spells
+
+# Force specific D&D rules version
+python parser/dnd_json_to_markdown.py <character_id> <output_file> --force-2024
+python parser/dnd_json_to_markdown.py <character_id> <output_file> --force-2014
+
+# Verbose output for debugging
+python parser/dnd_json_to_markdown.py <character_id> <output_file> --verbose
 ```
 
 ### Discord Monitoring
@@ -208,6 +262,12 @@ python discord/discord_monitor.py --config config/discord.yaml
 
 # Check for changes without monitoring
 python discord/discord_monitor.py --config config/discord.yaml --check-only
+
+# Monitor party characters instead of single character
+python discord/discord_monitor.py --config config/discord.yaml --party
+
+# Run once and exit (no continuous monitoring)
+python discord/discord_monitor.py --config config/discord.yaml --once
 ```
 
 ### Advanced Usage

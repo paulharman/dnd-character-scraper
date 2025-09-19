@@ -14,6 +14,7 @@ License: MIT
 """
 
 import argparse
+import asyncio
 import json
 import logging
 import os
@@ -39,9 +40,9 @@ logger = logging.getLogger(__name__)
 # Import the config systems (make optional for basic functionality)
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 try:
-    from src.config.manager import ConfigManager
-    from src.storage.archiving import SnapshotArchiver
-    from src.calculators.character_calculator import CharacterCalculator
+    from shared.config.manager import ConfigManager
+    from discord.core.storage.archiving import SnapshotArchiver
+    from scraper.core.calculators.character_calculator import CharacterCalculator
     ADVANCED_FEATURES_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Parser:   Advanced features not available due to missing dependencies: {e}")
@@ -50,9 +51,17 @@ except ImportError as e:
     CharacterCalculator = None
     ADVANCED_FEATURES_AVAILABLE = False
 
+# Import Discord integration (optional)
+try:
+    from discord.services.parser_integration import send_discord_notifications, send_party_inventory_notification
+    DISCORD_INTEGRATION_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Parser:   Discord integration not available: {e}")
+    DISCORD_INTEGRATION_AVAILABLE = False
+
 # Handle relative imports for both direct execution and module import
 try:
-    from .config import ParserConfigManager
+    from shared.config import ParserConfigManager
     from .factories.generator_factory import GeneratorFactory
 except ImportError:
     # When run directly, use absolute imports
@@ -231,7 +240,68 @@ def process_character_json(json_file: str, output_dir: str = None, **kwargs) -> 
         raise
 
 
-def trigger_discord_monitor(character_id: str, parser_config_manager = None, verbose: bool = False) -> None:
+async def trigger_discord_notifications(character_data: Dict[str, Any], character_id: str, verbose: bool = False) -> Dict[str, bool]:
+    """
+    Trigger Discord notifications for both character and party inventory changes.
+
+    Args:
+        character_data: Complete character data dictionary
+        character_id: The character ID
+        verbose: Enable verbose logging
+    """
+    try:
+        if not DISCORD_INTEGRATION_AVAILABLE:
+            logger.debug("Parser:   Discord integration not available, skipping notifications")
+            return {'character': False, 'party_inventory': False}
+
+        # Check if Discord integration is enabled in parser config
+        discord_enabled = True  # Default to enabled
+        try:
+            import yaml
+            project_root = Path(__file__).parent.parent
+            parser_config_path = project_root / "config" / "parser.yaml"
+
+            if parser_config_path.exists():
+                with open(parser_config_path, 'r') as f:
+                    parser_config = yaml.safe_load(f) or {}
+                discord_enabled = parser_config.get('parser', {}).get('discord', {}).get('enabled', True)
+        except Exception as e:
+            logger.debug(f"Parser:   Discord config check failed, defaulting to enabled: {e}")
+
+        if not discord_enabled:
+            logger.debug("Parser:   Discord integration disabled in parser config")
+            return {'character': False, 'party_inventory': False}
+
+        logger.info(f"Parser:   Triggering Discord notifications for character {character_id}")
+
+        # Send both character and party inventory notifications
+        results = await send_discord_notifications(character_data)
+
+        # Report results
+        success_count = sum(1 for success in results.values() if success)
+        total_count = len(results)
+
+        if success_count > 0:
+            logger.info(f"Parser:   Discord notifications sent: {success_count}/{total_count} successful")
+
+            if results.get('character'):
+                print("[NOTIFICATION] Character Discord notification sent successfully", flush=True)
+
+            if results.get('party_inventory'):
+                print("[NOTIFICATION] Party inventory Discord notification sent successfully", flush=True)
+        else:
+            logger.debug("Parser:   No Discord notifications sent (no changes detected)")
+            if verbose:
+                print("[INFO] No character or party inventory changes detected", flush=True)
+
+        return results
+
+    except Exception as e:
+        logger.warning(f"Parser:   Error sending Discord notifications: {e}")
+        return {'character': False, 'party_inventory': False}
+
+
+def trigger_discord_monitor_legacy(character_id: str, parser_config_manager = None, verbose: bool = False) -> None:
     """
     Execute Discord monitor to check for character changes and send notifications.
     
@@ -346,7 +416,7 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None, ver
                 try:
                     # Extract number from PARSER_CHANGES:X format
                     changes_detected = int(line.split(':')[1])
-                except:
+                except (ValueError, IndexError, AttributeError):
                     changes_detected = 0  # Default if parsing fails
             
             if 'notification sent' in line.lower() or 'discord notification' in line.lower():
@@ -385,7 +455,7 @@ def trigger_discord_monitor(character_id: str, parser_config_manager = None, ver
         logger.warning(f"Parser:   Error running Discord monitor: {e}")
 
 
-def main():
+async def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
         description='Convert D&D Beyond JSON to Markdown with YAML frontmatter and DnD UI Toolkit blocks'
@@ -394,7 +464,6 @@ def main():
     parser.add_argument('output_path', nargs='?', help='Output markdown file path (default: character_data/parser/current_output_{character_id}.md)')
     
     # Core options
-    parser.add_argument('--session', help='D&D Beyond session cookie for private characters')
     parser.add_argument('--config', help='Path to parser configuration file (default: config/parser.yaml)')
     parser.add_argument('--scraper-path', type=Path, help='Path to enhanced_dnd_scraper.py script')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose logging')
@@ -437,10 +506,6 @@ def main():
         
         # Build scraper command
         scraper_cmd = [sys.executable, str(scraper_script), character_id]
-        
-        # Add session cookie if provided
-        if args.session:
-            scraper_cmd.extend(['--session', args.session])
         
         # Add verbose flag if requested
         if args.verbose:
@@ -527,6 +592,9 @@ def main():
             safe_name = "".join(c for c in character_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
             safe_name = safe_name.replace(' ', '_')
             args.output_path = f"{safe_name}.md"
+            logger.info(f"Parser:   No output path provided, using default: {args.output_path}")
+        else:
+            logger.info(f"Parser:   Output path provided: {args.output_path}")
         
         # Handle spell enhancement logic
         # Default is to use enhanced spells unless explicitly disabled
@@ -555,9 +623,9 @@ def main():
         if args.validate_only:
             is_valid = generator.validate_character_data()
             if is_valid:
-                print("✅ Character data is valid")
+                print("[OK] Character data is valid")
             else:
-                print("❌ Character data is invalid")
+                print("[ERROR] Character data is invalid")
                 errors = generator.get_validation_errors()
                 for error in errors:
                     print(f"  - {error}")
@@ -576,22 +644,81 @@ def main():
         if Path(args.output_path).is_absolute():
             # Absolute path provided - use it directly for backward compatibility
             output_path = Path(args.output_path)
+            logger.info(f"Parser:   Using absolute path: {output_path}")
         else:
             # Relative path - save to parser directory
             parser_dir = project_root / "character_data" / "parser"
             parser_dir.mkdir(exist_ok=True, parents=True)
             output_path = parser_dir / args.output_path
+            logger.info(f"Parser:   Using relative path in parser dir: {output_path}")
         
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
         
-        logger.info(f"Parser:   ✅ Character markdown saved to: {output_path.absolute()}")
+        logger.info(f"Parser:   [OK] Character markdown saved to: {output_path.absolute()}")
         
-        # Trigger Discord monitor to check for changes and send notifications
+        # Trigger Discord notifications for both character and party inventory changes
         try:
-            trigger_discord_monitor(args.character_id, parser_config_manager=None, verbose=args.verbose)
+            # Capture stdout from notification system to get change details
+            import io
+            from contextlib import redirect_stdout
+
+            captured_output = io.StringIO()
+
+            # Capture the notification output which includes PARSER_CHANGES and PARSER_DETAIL
+            with redirect_stdout(captured_output):
+                results = await trigger_discord_notifications(character_data, args.character_id, verbose=args.verbose)
+
+            notification_output = captured_output.getvalue()
+
+            # Parse change information from the captured output
+            character_changes = results.get('character', False)
+            party_changes = results.get('party_inventory', False)
+
+            # Extract change count and details from notification output
+            change_count = 0
+            change_details = []
+
+            for line in notification_output.split('\n'):
+                if line.startswith('PARSER_CHANGES:'):
+                    try:
+                        change_count = int(line.split(':')[1])
+                    except:
+                        pass
+                elif line.startswith('PARSER_DETAIL:'):
+                    detail = line.replace('PARSER_DETAIL:', '').strip()
+                    if detail:
+                        change_details.append(detail)
+
+            # Format output for Obsidian run-python integration
+            if character_changes or party_changes or change_count > 0:
+                print("DISCORD CHANGES DETECTED:")
+
+                if change_count > 0:
+                    print(f"Character changes found: {change_count}")
+                    for detail in change_details[:10]:  # Limit to first 10 details
+                        print(f"  - {detail}")
+                    if len(change_details) > 10:
+                        print(f"  ... and {len(change_details) - 10} more changes")
+
+                if party_changes:
+                    print("Party inventory changes detected")
+
+                print("====")
+
+                # Also output the notification messages to stdout for run-python
+                if '[NOTIFICATION]' in notification_output:
+                    for line in notification_output.split('\n'):
+                        if '[NOTIFICATION]' in line:
+                            print(line)
+            else:
+                print("DISCORD STATUS: No changes detected")
+                print("====")
+
         except Exception as e:
-            logger.warning(f"Parser:   Failed to trigger Discord monitor: {e}")
+            logger.warning(f"Parser:   Failed to trigger Discord notifications: {e}")
+            print("DISCORD STATUS: Discord notification failed")
+            print("====")
         
     except Exception as e:
         logger.error(f"Parser:   Error processing character: {e}")
@@ -599,4 +726,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

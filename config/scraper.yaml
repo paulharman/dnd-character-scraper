@@ -1,24 +1,38 @@
-# Scraper Configuration
-# User preferences for API settings and output behavior
+# ===================================================================
+# SCRAPER MODULE CONFIGURATION
+# ===================================================================
+# This file configures the D&D Beyond API scraping module, including
+# API settings, rate limiting, and calculation constants.
+# ===================================================================
 
-# API Configuration (user preferences)
+# ===================================================================
+# D&D BEYOND API CONFIGURATION
+# ===================================================================
+# Settings for connecting to and interacting with the D&D Beyond character API
 api:
-  base_url: "https://character-service.dndbeyond.com/character/v5/character/"
-  user_agent: "DnDBeyond-Enhanced-Scraper/6.0.0"
-  timeout: 30
-  max_retries: 3
-  retry_delay: 30
+  base_url: "https://character-service.dndbeyond.com/character/v5/character/"  # D&D Beyond character API endpoint
+  user_agent: "DnDBeyond-Enhanced-Scraper/6.0.0"                             # User agent string for API requests
+  timeout: 30                                                                 # Request timeout in seconds
+  max_retries: 3                                                              # Maximum retry attempts for failed requests
+  retry_delay: 30                                                             # Delay between retry attempts (seconds)
 
-# Rate Limiting (user preferences)
+# ===================================================================
+# RATE LIMITING CONFIGURATION
+# ===================================================================
+# IMPORTANT: The 30-second delay respects D&D Beyond's API limits and should not be modified
 rate_limit:
-  delay_between_requests: 30
+  delay_between_requests: 30                                                  # Required delay between API requests (seconds)
 
-# Calculation Constants (used in calculations)
-calculations:
-  spell_save_dc_base: 8
-
-# Output Settings (user preferences)
+# ===================================================================
+# OUTPUT CONFIGURATION
+# ===================================================================
+# Settings for scraper output and data storage
 output:
-  verbose: false
-  include_raw_data: true
-  clean_html: true
+  include_raw_data: true                                                      # Automatically save raw API responses to character_data/scraper/raw/
+
+# ===================================================================
+# CALCULATION CONSTANTS
+# ===================================================================
+# Fixed values used in character stat calculations
+calculations:
+  spell_save_dc_base: 8                                                       # Base value for spell save DC calculations (8 + proficiency + ability modifier)

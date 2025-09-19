@@ -1,0 +1,156 @@
+# ===================================================================
+# ENHANCED CHANGE TRACKING CONFIGURATION
+# ===================================================================
+# This file provides granular configuration for the enhanced change
+# detection and tracking system, including causation analysis and
+# detailed change type settings.
+# ===================================================================
+
+# ===================================================================
+# CAUSATION ANALYSIS SETTINGS
+# ===================================================================
+# Advanced analysis to determine what caused character changes
+causation_analysis:
+  analysis_timeout_seconds: 30          # Maximum time for causation analysis
+  cache_analysis_results: true          # Cache results for performance
+  confidence_threshold: 0.7             # Minimum confidence level (0.0-1.0)
+  detect_ability_score_cascades: true   # Detect cascading ability score effects
+  detect_equipment_causation: true      # Detect equipment-related changes
+  detect_feat_causation: true           # Detect feat-related changes
+  detect_level_progression: true        # Detect level-up related changes
+  enabled: true                         # Enable causation analysis
+  max_cascade_depth: 3                  # Maximum cascade analysis depth
+
+# ===================================================================
+# CHANGE LOGGING CONFIGURATION
+# ===================================================================
+# Settings for persistent change log storage and management
+change_log:
+  backup_old_logs: true                 # Keep backups of rotated logs
+  detail_level: comprehensive           # comprehensive, summary, or basic
+  enable_causation_analysis: true       # Include causation in logs
+  enable_compression: false             # FUTURE: Compress old logs
+  enable_detailed_descriptions: true    # Include detailed descriptions
+  enabled: true                         # Enable change logging
+  max_entries_per_batch: 100           # Maximum entries per batch
+  retention_days: 365                   # Days to retain logs
+  rotation_size_mb: 10                  # Log rotation size threshold
+  storage_dir: character_data\change_logs  # Log storage directory
+change_types:
+  ability_scores:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: HIGH
+  alignment:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  background:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: HIGH
+  feats:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: HIGH
+  initiative:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  inventory:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  max_hp:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  movement_speed:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: false
+    log_enabled: true
+    priority: LOW
+  multiclass:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: HIGH
+  passive_skills:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: false
+    log_enabled: true
+    priority: LOW
+  personality:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: false
+    log_enabled: true
+    priority: LOW
+  proficiencies:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  race_species:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: HIGH
+  size:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  spellcasting_stats:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  spells:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: MEDIUM
+  subclass:
+    causation_analysis: true
+    discord_enabled: true
+    enabled: true
+    log_enabled: true
+    priority: HIGH
+config_version: '1.0'
+detect_cosmetic_changes: false
+detect_metadata_changes: false
+detect_minor_changes: false
+discord:
+  detail_level: summary
+  enabled: true
+  group_related_changes: true
+  include_attribution: true
+  include_causation: true
+  max_changes_per_notification: 200
+  min_priority: LOW
+  notify_on_causation_detected: true
+enabled: true
+migration_backup: true

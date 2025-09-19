@@ -98,14 +98,14 @@ if str(discord_root) not in sys.path:
 
 from services.notification_manager import NotificationManager, NotificationConfig
 from services.discord_service import DiscordService
-from src.models.change_detection import ChangePriority
+from shared.models.change_detection import ChangePriority
 from services.webhook_manager import WebhookManager
 from services.configuration_validator import ConfigurationValidator, SecurityLevel
 from services.discord_logger import DiscordLogger, OperationType, LogLevel, log_configuration_event
 
 from scraper.enhanced_dnd_scraper import EnhancedDnDScraper
-from src.config.manager import get_config_manager
-from src.storage.archiving import SnapshotArchiver
+from shared.config.manager import get_config_manager
+from discord.core.storage.archiving import SnapshotArchiver
 
 logger = logging.getLogger(__name__)
 

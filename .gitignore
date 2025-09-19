@@ -47,6 +47,13 @@ discord/discord_config.yml
 Thumbs.db
 desktop.ini
 
+# Obsidian vault and related files - excluded from public repository
+# Contains personal vault files, JSX components, and potentially copyrighted content
+obsidian/
+**/obsidian/
+*.obsidian/
+.obsidian/
+
 # Copyright-protected content - excluded from main branch
 # These files are allowed in development branch for testing but not in public main branch
 obsidian/spells/*.md
@@ -74,12 +81,30 @@ cleanup_report.json
 security_audit_results.json
 ci_results.json
 
-# Personal character data (keep folder structure, exclude personal data)
-character_data/discord/*.json
-character_data/parser/*.md
-character_data/scraper/*.json
-character_data/archive/
-character_data/.last_scrape
+# Personal character data (keep folder structure, exclude all personal data files)
+# Include directories but exclude all files in character_data
+character_data/**/*
+!character_data/
+!character_data/*/
+!character_data/scraper/
+!character_data/scraper/raw/
+!character_data/parser/
+!character_data/parser/archive/
+!character_data/discord/
+!character_data/change_logs/
+!character_data/README.md
+!character_data/*/README.md
+
+# Log files and custom logs - create directories but exclude all log content
+custom_logs/**/*
+!custom_logs/
+!custom_logs/README.md
+
+# Additional log patterns
+*.log
+**/*.log
+error_log.json
+**/error_log.json
 
 # All tests are for development only - not included in public release
 tests/
@@ -97,6 +122,8 @@ test_results.json
 
 # IDE and development environment files (exclude from public repo)
 .kiro/
+.Kiro/
 .claude/
+.Claude/
 .vscode/
 .idea/

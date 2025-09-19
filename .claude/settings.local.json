@@ -10,7 +10,14 @@
       "Bash(diff:*)",
       "Bash(python:*)",
       "Bash(rm:*)",
-      "WebFetch(domain:blacksmithgu.github.io)"
+      "WebFetch(domain:blacksmithgu.github.io)",
+      "Bash(mkdir:*)",
+      "Bash(powershell:*)",
+      "Bash(/dev/null)",
+      "Bash(git rm:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(cd:*)",
+      "Bash(dir \"C:\\Users\\alc_u\\Documents\\DnD\\CharacterScraper - Kiro\\character_data\\parser\"\")"
     ],
     "deny": []
   }

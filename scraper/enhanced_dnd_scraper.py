@@ -35,15 +35,27 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-# Add parent directory to path for src imports
+# JSON encoder for EnhancedSpellInfo objects
+class EnhancedSpellJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        # Import here to avoid circular imports
+        try:
+            from scraper.core.calculators.services.spell_processor import EnhancedSpellInfo
+            if isinstance(obj, EnhancedSpellInfo):
+                return obj.to_dict()
+        except ImportError:
+            pass
+        return super().default(obj)
+
+# Add parent directory to path for module imports
 sys.path.append(str(Path(__file__).parent.parent))
 
 # v6.0.0 imports
-from src.clients.factory import ClientFactory
-from src.calculators.character_calculator import CharacterCalculator
-from src.rules.version_manager import RuleVersionManager, RuleVersion
-from src.config.manager import get_config_manager
-from src.services.discord_integration import DiscordIntegrationService
+from scraper.core.clients.factory import ClientFactory
+from scraper.core.calculators.character_calculator import CharacterCalculator
+from scraper.core.rules.version_manager import RuleVersionManager, RuleVersion
+from shared.config.manager import get_config_manager
+from discord.core.services.discord_integration import DiscordIntegrationService
 
 # Configure logging
 logging.basicConfig(
@@ -62,16 +74,14 @@ class EnhancedDnDScraper:
     the new rule-aware calculator system and enhanced detection.
     """
     
-    def __init__(self, character_id: str, session_cookie: Optional[str] = None, 
-                 force_rule_version: Optional[RuleVersion] = None, no_html: bool = False,
-                 discord_config: Optional[Dict[str, Any]] = None, storage_dir: Optional[str] = None,
-                 discord_output: bool = False):
+    def __init__(self, character_id: str, force_rule_version: Optional[RuleVersion] = None, 
+                 no_html: bool = False, discord_config: Optional[Dict[str, Any]] = None, 
+                 storage_dir: Optional[str] = None, discord_output: bool = False):
         """
         Initialize the enhanced scraper.
         
         Args:
             character_id: D&D Beyond character ID
-            session_cookie: Optional session cookie for private characters
             force_rule_version: Optional rule version override
             no_html: Whether to strip HTML from text fields
             discord_config: Optional Discord configuration for notifications
@@ -79,7 +89,6 @@ class EnhancedDnDScraper:
             discord_output: Whether to also save JSON to discord directory
         """
         self.character_id = character_id
-        self.session_cookie = session_cookie
         self.force_rule_version = force_rule_version
         self.no_html = no_html
         self.discord_output = discord_output
@@ -106,8 +115,7 @@ class EnhancedDnDScraper:
         
         self.client = ClientFactory.create_client(
             client_type='real',
-            config_manager=self.config_manager,
-            session_cookie=session_cookie
+            config_manager=self.config_manager
         )
         self.calculator = CharacterCalculator(
             config_manager=self.config_manager,
@@ -137,100 +145,91 @@ class EnhancedDnDScraper:
         
         return fallback
     
-    def _trigger_discord_monitor(self):
-        """Trigger Discord monitor to check for changes and send notifications."""
-        import subprocess
-        import sys
-        
-        # Find project root and Discord monitor script
-        project_root = self._find_project_root()
-        discord_monitor_script = project_root / "discord" / "discord_monitor.py"
-        
-        if not discord_monitor_script.exists():
-            logger.warning(f"Discord monitor script not found at {discord_monitor_script}")
-            return
-        
-        # Get Discord config file path
-        config_manager = get_config_manager()
-        discord_config_file = config_manager.get_config_value('discord', 'config_file', default='discord/discord_config.yml')
-        
-        # Resolve config file path relative to project root
-        if not Path(discord_config_file).is_absolute():
-            discord_config_path = project_root / discord_config_file
-        else:
-            discord_config_path = Path(discord_config_file)
-        
-        # Build command to run Discord monitor in check-only mode (no scraping)
-        cmd = [
-            sys.executable,
-            str(discord_monitor_script),
-            '--config', str(discord_config_path),
-            '--check-only'
-        ]
-        
-        logger.info(f"Triggering Discord monitor for character {self.character_id}")
-        logger.debug(f"Discord monitor command: {' '.join(cmd)}")
-        
-        try:
-            # Run Discord monitor as subprocess
-            result = subprocess.run(
-                cmd,
-                cwd=str(project_root),  # Set working directory to project root
-                capture_output=True,
-                text=True,
-                timeout=60  # 60 second timeout
-            )
-            
-            if result.returncode == 0:
-                logger.info("Discord monitor completed successfully")
-                # Capture and display Discord notification content
-                if result.stdout:
-                    stdout_lines = result.stdout.strip().split('\n')
-                    discord_content_started = False
-                    discord_content_lines = []
-                    
-                    for line in stdout_lines:
-                        if "=== Discord Notification Content ===" in line:
-                            discord_content_started = True
-                            continue
-                        elif "=====================================" in line and discord_content_started:
-                            discord_content_started = False
-                            # Print the captured Discord content
-                            if discord_content_lines:
-                                print("\\n" + "="*50)
-                                print("DISCORD NOTIFICATION SENT:")
-                                print("="*50)
-                                for content_line in discord_content_lines:
-                                    print(content_line)
-                                print("="*50 + "\\n")
-                            break
-                        elif discord_content_started:
-                            discord_content_lines.append(line)
-                    
-                    # Also log general Discord activity
-                    for line in stdout_lines:
-                        if line.strip() and ("notification" in line.lower() or "changes detected" in line.lower()):
-                            logger.info(f"Discord: {line.strip()}")
-            else:
-                logger.warning(f"Discord monitor failed with exit code {result.returncode}")
-                if result.stderr:
-                    logger.warning(f"Discord monitor error: {result.stderr.strip()}")
-                    
-        except subprocess.TimeoutExpired:
-            logger.warning("Discord monitor timed out after 60 seconds")
-        except Exception as e:
-            logger.warning(f"Error running Discord monitor: {e}")
-    
     def fetch_character_data(self) -> bool:
         """
         Fetch character data from D&D Beyond API.
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
+            logger.debug("Fetching character data from API")
             self.raw_data = self.client.get_character(int(self.character_id))
             logger.info("Character data fetched successfully")
+
+            # Check for campaign and fetch party inventory if available
+            logger.debug("Checking for campaign data")
+            campaign_data = self.raw_data.get('campaign', {})
+            if campaign_data and campaign_data.get('id'):
+                campaign_id = campaign_data['id']
+                logger.info(f"Character is in campaign {campaign_id}, fetching party inventory")
+
+                try:
+                    logger.debug("Fetching party inventory")
+                    party_inventory = self.client.get_party_inventory(campaign_id)
+                    if party_inventory:
+                        logger.debug("Assigning party inventory to raw data")
+                        self.raw_data['party_inventory'] = party_inventory
+                        logger.info("Party inventory fetched successfully")
+                    else:
+                        logger.info("No party inventory available for this campaign")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch party inventory: {e}")
+                    # Continue without party inventory - this is not a critical failure
+            else:
+                logger.debug("Character is not in a campaign, skipping party inventory")
+
+            # Check if character has Artificer class or subclass before fetching infusions
+            logger.debug("Checking for artificer classes")
+            character_classes = self.raw_data.get('classes', [])
+            artificer_levels = 0
+
+            for cls in character_classes:
+                if cls is None:
+                    logger.warning("Encountered None class in classes array")
+                    continue
+
+                # Safely get class definition
+                definition = cls.get('definition')
+                class_name = definition.get('name', '') if definition else ''
+
+                # Safely get subclass definition
+                subclass_def = cls.get('subclassDefinition')
+                subclass_name = subclass_def.get('name', '') if subclass_def else ''
+
+                # Check for Artificer main class
+                if class_name == 'Artificer':
+                    artificer_levels += cls.get('level', 0)
+                # Check for subclasses that grant infusions (like Armorer Fighter, etc.)
+                elif any(keyword in subclass_name.lower() for keyword in ['artificer', 'infusion']):
+                    artificer_levels += cls.get('level', 0)
+
+            if artificer_levels > 0:
+                logger.info(f"Character has {artificer_levels} Artificer levels, fetching infusion data")
+                character_id = int(self.character_id)
+                try:
+                    # Fetch active infusions
+                    infusions = self.client.get_character_infusions(character_id)
+                    if infusions:
+                        self.raw_data['infusions'] = infusions
+                        logger.info("Character infusions fetched successfully")
+                    else:
+                        logger.debug("No infusions found for character")
+
+                    # Fetch known infusions
+                    known_infusions = self.client.get_known_infusions(character_id)
+                    if known_infusions:
+                        self.raw_data['known_infusions'] = known_infusions
+                        logger.info("Known infusions fetched successfully")
+                    else:
+                        logger.debug("No known infusions found for character")
+
+                except Exception as e:
+                    logger.warning(f"Failed to fetch infusion data: {e}")
+                    # Continue without infusions - this is not a critical failure
+            else:
+                logger.debug("Character has no Artificer levels, skipping infusion data")
+
             return True
         except Exception as e:
             logger.error(f"Failed to fetch character data: {e}")
@@ -346,7 +345,7 @@ class EnhancedDnDScraper:
         
         # Save to primary output path (scraper directory or explicit path)
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(complete_data, f, indent=2, ensure_ascii=False)
+            json.dump(complete_data, f, indent=2, ensure_ascii=False, cls=EnhancedSpellJSONEncoder)
         
         logger.info(f"Character data saved to: {output_path.absolute()}")
         
@@ -357,7 +356,7 @@ class EnhancedDnDScraper:
             discord_path = discord_dir / discord_filename
             
             with open(discord_path, 'w', encoding='utf-8') as f:
-                json.dump(complete_data, f, indent=2, ensure_ascii=False)
+                json.dump(complete_data, f, indent=2, ensure_ascii=False, cls=EnhancedSpellJSONEncoder)
             
             logger.info(f"Discord copy saved to: {discord_path.absolute()}")
         
@@ -421,14 +420,13 @@ def create_argument_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python enhanced_dnd_scraper.py 144986992
-  python enhanced_dnd_scraper.py 144986992 --output vaelith_2024.json
-  python enhanced_dnd_scraper.py 144986992 --session "your_session" --verbose
-  python enhanced_dnd_scraper.py 144986992 --verbose  # Verbose logging
-  python enhanced_dnd_scraper.py 144986992 --force-2024  # Force 2024 rules
-  python enhanced_dnd_scraper.py 144986992 --force-2014  # Force 2014 rules
-  python enhanced_dnd_scraper.py 144986992 --keep-html   # Preserve HTML in descriptions
-  python enhanced_dnd_scraper.py 144986992 --discord-notify --discord-webhook "https://discord.com/api/webhooks/..."
+  python enhanced_dnd_scraper.py YOUR_CHARACTER_ID
+  python enhanced_dnd_scraper.py YOUR_CHARACTER_ID --output my_character.json
+  python enhanced_dnd_scraper.py YOUR_CHARACTER_ID --verbose  # Verbose logging
+  python enhanced_dnd_scraper.py YOUR_CHARACTER_ID --force-2024  # Force 2024 rules
+  python enhanced_dnd_scraper.py YOUR_CHARACTER_ID --force-2014  # Force 2014 rules
+  python enhanced_dnd_scraper.py YOUR_CHARACTER_ID --keep-html   # Preserve HTML in descriptions
+  python enhanced_dnd_scraper.py YOUR_CHARACTER_ID --discord-notify --discord-webhook "https://discord.com/api/webhooks/..."
 
 New in v6.0.0:
   - NEW: Modular architecture with rule-aware calculators
@@ -467,10 +465,6 @@ Local JSON files are not supported.
         help="Output JSON file (default: character name)"
     )
 
-    parser.add_argument(
-        "--session",
-        help="Session cookie for private characters"
-    )
 
     parser.add_argument(
         "--verbose", "-v",
@@ -555,7 +549,7 @@ def perform_quick_compare(character_data: Dict[str, Any], validation_file: str):
             validation_data = json.load(f)
             
         # Use our existing data validator
-        from src.validators.data_validator import DataValidator
+        from scraper.core.validators.data_validator import DataValidator
         validator = DataValidator()
         
         # Quick comparison of key metrics
@@ -635,7 +629,6 @@ def process_batch_characters(batch_file: str, args):
             # Create scraper instance for this character
             scraper = EnhancedDnDScraper(
                 character_id=character_id,
-                session_cookie=args.session,
                 force_rule_version=args.force_rule_version if hasattr(args, 'force_rule_version') else None,
                 discord_config=discord_config,
                 storage_dir="character_data",
@@ -760,7 +753,6 @@ def main():
         # Create scraper instance
         scraper = EnhancedDnDScraper(
             character_id=args.character_id,
-            session_cookie=args.session,
             force_rule_version=force_rule_version,
             discord_config=discord_config,
             storage_dir="character_data",
