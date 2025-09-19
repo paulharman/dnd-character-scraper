@@ -83,11 +83,16 @@ python discord/discord_monitor.py --validate-config
 **Primary Workflow (Recommended)**:
 ```bash
 # Complete pipeline: scrape → parse → Discord notification
-python parser/dnd_json_to_markdown.py CHARACTER_ID
+# Output directly to your Obsidian vault:
+python parser/dnd_json_to_markdown.py CHARACTER_ID "C:\path\to\obsidian\vault\characters\MyCharacter.md"
+
+# Examples:
+python parser/dnd_json_to_markdown.py 12345678 "C:\Users\YourName\Documents\MyVault\characters\Ranger.md"
+python parser/dnd_json_to_markdown.py 12345678 "D:\Obsidian\DnD\characters\Wizard.md"
 
 # The parser automatically:
 # 1. Calls the scraper to get fresh character data
-# 2. Generates Obsidian-compatible markdown
+# 2. Generates Obsidian-compatible markdown in your vault
 # 3. Triggers Discord change monitoring and notifications
 ```
 
