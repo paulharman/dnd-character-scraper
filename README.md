@@ -50,7 +50,6 @@ cd C:\Users\YourUsername\Desktop\dnd-character-scraper
 ```bash
 # Install dependencies (make sure you're in the project directory!)
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # For development
 
 # Create environment file from template
 copy .env.example .env
@@ -262,7 +261,6 @@ python discord/discord_monitor.py --party
 ```bash
 # Install dependencies
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # For development
 
 # Configure the system
 cp config/discord.yaml.example config/discord.yaml
