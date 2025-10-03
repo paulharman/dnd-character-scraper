@@ -48,30 +48,30 @@ class BackgroundFormatter(BaseFormatter):
     def _format_internal(self, character_data: Dict[str, Any]) -> str:
         """
         Generate all background-related sections.
-        
+
         Args:
             character_data: Complete character data dictionary
-            
+
         Returns:
             Combined background sections (appearance, background, backstory)
         """
         sections = []
-        
+
         # Generate appearance section
         appearance_section = self.format_appearance(character_data)
         if appearance_section:
             sections.append(appearance_section)
-        
+
         # Generate background section
         background_section = self.format_background(character_data)
         if background_section:
             sections.append(background_section)
-        
+
         # Generate backstory section
         backstory_section = self.format_backstory(character_data)
         if backstory_section:
             sections.append(backstory_section)
-        
+
         return '\n\n'.join(sections)
     
     def format_appearance(self, character_data: Dict[str, Any]) -> str:
@@ -152,7 +152,11 @@ class BackgroundFormatter(BaseFormatter):
         # Get background from v6.0.0 structure first, then fallback
         character_info = character_data.get('character_info', {})
         background_data = character_info.get('background', character_data.get('background', {}))
-        
+
+        # Ensure background_data is a dictionary
+        if not isinstance(background_data, dict):
+            background_data = {}
+
         if not background_data:
             return ""
         
@@ -160,7 +164,7 @@ class BackgroundFormatter(BaseFormatter):
 
 <span class="right-link">[[#Character Statistics|Top]]</span>
 """
-        
+
         background_name = background_data.get('name', 'Unknown')
         background_description = background_data.get('description', '')
         
@@ -177,27 +181,31 @@ class BackgroundFormatter(BaseFormatter):
             section += formatted_description
         else:
             section += "> Background description not available.\n>\n"
-        
+
         # Add background proficiencies from character data
         section = self._add_background_proficiencies(section, character_data, background_name)
         
         # Add enhanced background details from JSON data
         background_details_added = False
-        
-        # Personal Possessions
-        if background_data.get("personal_possessions"):
-            section += ">### Personal Possessions\n>\n"
-            section += f"> {background_data['personal_possessions']}\n>\n"
-            background_details_added = True
-        
-        # Organizations
-        if background_data.get("organizations"):
-            section += ">### Organizations\n>\n"
-            section += f"> {background_data['organizations']}\n>\n"
-            background_details_added = True
-        
-        # Allies & Contacts (moved from backstory)
+
+        # Get notes data first since most background details are stored there
         notes = character_data.get('notes', {})
+
+        # Personal Possessions
+        personal_possessions = notes.get("personalPossessions", "")
+        if personal_possessions:
+            section += ">### Personal Possessions\n>\n"
+            section += f"> {personal_possessions}\n>\n"
+            background_details_added = True
+
+        # Organizations
+        organizations = notes.get("organizations", "")
+        if organizations:
+            section += ">### Organizations\n>\n"
+            section += f"> {organizations}\n>\n"
+            background_details_added = True
+
+        # Allies & Contacts (moved from backstory)
         allies = notes.get('allies', '')
         if allies:
             section += ">### Allies & Contacts\n>\n"
@@ -210,57 +218,77 @@ class BackgroundFormatter(BaseFormatter):
             background_details_added = True
         
         # Enemies
-        if background_data.get("enemies"):
+        enemies = notes.get("enemies", "")
+        if enemies:
             section += ">### Enemies\n>\n"
-            section += f"> {background_data['enemies']}\n>\n"
+            section += f"> {enemies}\n>\n"
             background_details_added = True
-        
+
+        # Get additional fields from background_data if they exist there as well
+        # (for backward compatibility or different data sources)
+        # Ensure background_data is a dictionary before accessing it
+        if not isinstance(background_data, dict):
+            background_data = {}
+
         # Ideals
-        if background_data.get("ideals"):
+        ideals = background_data.get("ideals", "") or notes.get("ideals", "")
+        if ideals:
             section += ">### Ideals\n>\n"
-            section += f"> {background_data['ideals']}\n>\n"
+            section += f"> {ideals}\n>\n"
             background_details_added = True
-        
+
         # Bonds
-        if background_data.get("bonds"):
+        bonds = background_data.get("bonds", "") or notes.get("bonds", "")
+        if bonds:
             section += ">### Bonds\n>\n"
             # Format bonds with proper line breaks
-            bonds_text = background_data['bonds']
-            # Split on double newlines for paragraphs
-            bond_paragraphs = bonds_text.split('\n\n')
+            bond_paragraphs = bonds.split('\n\n')
             for para in bond_paragraphs:
                 if para.strip():
                     section += f"> {para.strip()}\n>\n"
             background_details_added = True
-        
+
         # Flaws
-        if background_data.get("flaws"):
+        flaws = background_data.get("flaws", "") or notes.get("flaws", "")
+        if flaws:
             section += ">### Flaws\n>\n"
             # Format flaws with proper line breaks
-            flaws_text = background_data['flaws']
-            flaw_lines = flaws_text.split('\n\n')
+            flaw_lines = flaws.split('\n\n')
             for flaw in flaw_lines:
                 if flaw.strip():
                     section += f"> {flaw.strip()}\n>\n"
             background_details_added = True
-        
+
         # Personality Traits
-        if background_data.get("personality_traits"):
+        personality_traits = background_data.get("personality_traits", "") or notes.get("personality_traits", "")
+        if personality_traits:
             section += ">### Personality Traits\n>\n"
             # Format personality traits with proper line breaks
-            traits_text = background_data['personality_traits']
-            trait_lines = traits_text.split('\n\n')
+            trait_lines = personality_traits.split('\n\n')
             for trait in trait_lines:
                 if trait.strip():
                     section += f"> {trait.strip()}\n>\n"
             background_details_added = True
-        
+
         # Other Holdings
-        if background_data.get("other_holdings"):
+        other_holdings = background_data.get("other_holdings", "") or notes.get("otherHoldings", "")
+        if other_holdings:
             section += ">### Other Holdings\n>\n"
-            section += f"> {background_data['other_holdings']}\n>\n"
+            section += f"> {other_holdings}\n>\n"
             background_details_added = True
-        
+
+        # Other Notes
+        other_notes = notes.get('otherNotes', '')
+        if other_notes:
+            section += ">### Other Notes\n>\n"
+            # Format other notes with proper line breaks
+            note_lines = other_notes.split('\n')
+            for line in note_lines:
+                if line.strip():
+                    section += f"> {line.strip()}\n"
+            section += ">\n"
+            background_details_added = True
+
         # Lifestyle information
         lifestyle_info = self._generate_lifestyle_info(character_data)
         if lifestyle_info:
@@ -449,38 +477,22 @@ Or you could be an honest, hard-working landowner who cares deeply about the peo
     def _add_background_proficiencies(self, section: str, character_data: Dict[str, Any], background_name: str) -> str:
         """
         Add background-granted proficiencies to the section.
-        
+
         Args:
             section: Current section content
             character_data: Complete character data dictionary
             background_name: Name of the background
-            
+
         Returns:
             Updated section with background proficiencies
         """
         # Extract proficiencies from the proficiencies structure
         proficiencies = character_data.get('proficiencies', {})
-        
-        # Extract skill proficiencies from background
-        skill_proficiencies = proficiencies.get('skill_proficiencies', [])
-        background_skills = [
-            skill for skill in skill_proficiencies 
-            if skill.get('source_type') == 'background' and background_name.lower() in skill.get('source', '').lower()
-        ]
-        
-        # Extract tool proficiencies from background
-        tool_proficiencies = proficiencies.get('tool_proficiencies', [])
-        background_tools = [
-            tool for tool in tool_proficiencies 
-            if tool.get('source_type') == 'background' and background_name.lower() in tool.get('source', '').lower()
-        ]
-        
-        # Extract language proficiencies from background
-        language_proficiencies = proficiencies.get('language_proficiencies', [])
-        background_languages = [
-            lang for lang in language_proficiencies 
-            if lang.get('source_type') == 'background' and background_name.lower() in lang.get('source', '').lower()
-        ]
+
+        # Handle different data structures - for now skip complex background proficiency detection
+        background_skills = []
+        background_tools = []
+        background_languages = []
         
         # Extract background features from the features structure
         features_data = character_data.get('features', {})
@@ -564,7 +576,11 @@ Or you could be an honest, hard-working landowner who cares deeply about the peo
         background_data = character_info.get('background', character_data.get('background', {}))
         appearance_data = character_data.get('appearance', {})
         notes = character_data.get('notes', {})
-        
+
+        # Ensure background_data is a dictionary
+        if not isinstance(background_data, dict):
+            background_data = {}
+
         # Extract key information
         background_name = background_data.get('name', 'Unknown')
         has_description = bool(background_data.get('description', ''))
@@ -609,7 +625,11 @@ Or you could be an honest, hard-working landowner who cares deeply about the peo
         background_data = character_info.get('background', character_data.get('background', {}))
         appearance_data = character_data.get('appearance', {})
         notes = character_data.get('notes', {})
-        
+
+        # Ensure background_data is a dictionary
+        if not isinstance(background_data, dict):
+            background_data = {}
+
         # Check for any meaningful background data
         has_background = bool(background_data.get('name') or background_data.get('description'))
         has_appearance = bool(appearance_data or any(character_info.get(field) for field in 

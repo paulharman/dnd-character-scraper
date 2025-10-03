@@ -192,7 +192,9 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
 
   const availableCharacters = useAvailableCharacters();
   const [selectedCharacters, setSelectedCharacters] = dc.useState([]);
-  const spellbookData = useSelectedCharactersSpellbooks(selectedCharacters);
+  // Always load all characters' spellbooks for the Characters column, plus any specifically selected ones
+  const allCharactersForSpellbook = selectedCharacters.length > 0 ? selectedCharacters : availableCharacters;
+  const spellbookData = useSelectedCharactersSpellbooks(allCharactersForSpellbook);
   const characterSpellbook = spellbookData.spells;
   const spellToCharacters = spellbookData.spellToCharacters;
   const showSpellbookOnly = selectedCharacters.length > 0;
@@ -353,15 +355,15 @@ if (sortByLevel) {
         );
       }
     },
-    // Add character column only when multiple characters are selected
-    ...(selectedCharacters.length > 1 ? [{
+    // Always show Characters column to display which party members know each spell
+    {
       id: "Characters",
       value: p => {
         const fileName = p.$name;
         const characters = spellToCharacters.get(fileName) || [];
         return characters.length > 0 ? characters.sort().join(", ") : "";
       }
-    }] : []),
+    },
     {
   id: "Level",
   value: p => (
