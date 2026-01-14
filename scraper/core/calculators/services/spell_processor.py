@@ -54,8 +54,8 @@ class EnhancedSpellInfo:
             'source': self.source,
             'description': self.description,
             'isLegacy': self.is_legacy,
-            'is_prepared': self.is_prepared or self.is_always_prepared,
-            'always_prepared': self.is_always_prepared,
+            'is_prepared': self.is_prepared or self.is_always_prepared or not self.uses_spell_slot,
+            'always_prepared': self.is_always_prepared or not self.uses_spell_slot,
             'ritual': False,  # Will be enhanced later if needed
             'concentration': False,  # Will be enhanced later if needed
             # Enhanced metadata
