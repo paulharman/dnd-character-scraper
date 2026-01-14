@@ -547,14 +547,52 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
             asi = asi_bonuses.get(ability, 0)
             item = item_bonuses.get(ability, 0)
             other = other_bonuses.get(ability, 0)
-            set_value = set_modifiers.get(ability, None)
-            
-            # Calculate final score - set modifiers override everything
-            if set_value is not None:
-                final_score = set_value
-                source_breakdown = {'base': base, 'set': set_value}
+            set_modifier_info = set_modifiers.get(ability, None)
+
+            # Calculate score without set modifiers first
+            calculated_score = base + racial + feat + asi + other
+
+            # Handle set modifiers with restrictions
+            if set_modifier_info is not None:
+                set_value = set_modifier_info['value']
+                restriction = set_modifier_info.get('restriction', '')
+
+                # Check if restriction applies
+                if 'if not already higher' in restriction.lower():
+                    # Only apply set if calculated score (without item bonus) is lower
+                    if calculated_score < set_value:
+                        final_score = set_value
+                        source_breakdown = {
+                            'base': base,
+                            'set': set_value
+                        }
+                        if racial != 0:
+                            source_breakdown['racial'] = racial
+                        if feat != 0:
+                            source_breakdown['feat'] = feat
+                        if asi != 0:
+                            source_breakdown['asi'] = asi
+                        if other != 0:
+                            source_breakdown['other'] = other
+                    else:
+                        # Score without item is already higher, don't apply set
+                        final_score = calculated_score
+                        source_breakdown = {'base': base}
+                        if racial != 0:
+                            source_breakdown['racial'] = racial
+                        if feat != 0:
+                            source_breakdown['feat'] = feat
+                        if asi != 0:
+                            source_breakdown['asi'] = asi
+                        if other != 0:
+                            source_breakdown['other'] = other
+                else:
+                    # No restriction or other restriction - apply set unconditionally
+                    final_score = set_value
+                    source_breakdown = {'base': base, 'set': set_value}
             else:
-                final_score = base + racial + feat + asi + item + other
+                # No set modifier, include item bonuses normally
+                final_score = calculated_score + item
                 source_breakdown = {'base': base}
                 if racial != 0:
                     source_breakdown['racial'] = racial
@@ -566,7 +604,7 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
                     source_breakdown['item'] = item
                 if other != 0:
                     source_breakdown['other'] = other
-            
+
             final_score = MathUtils.clamp(final_score, 1, 50)  # Clamp to valid range
             
             # Calculate modifier
@@ -614,7 +652,7 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
         # Check modifiers for racial bonuses first (common in test data)
         modifiers = character_data.get('modifiers', {})
         race_modifiers = modifiers.get('race', [])
-        
+
         for modifier in race_modifiers:
             if self._is_ability_score_modifier(modifier):
                 ability_name, bonus = self._extract_ability_modifier(modifier)
@@ -655,17 +693,28 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
     def _calculate_feat_bonuses(self, character_data: Dict[str, Any]) -> Dict[str, int]:
         """Calculate ability score bonuses from feats."""
         feat_bonuses = {ability: 0 for ability in self.ability_names}
-        
+
         # Check modifiers for feat-based bonuses
         modifiers = character_data.get('modifiers', {})
         feat_modifiers = modifiers.get('feat', [])
-        
+
+        # Check for 2024 background ASI feats (componentId 1789182 = Sailor ASI)
+        # These should only apply in 2024 rules, not 2014 rules
+        rule_version = character_data.get('rule_version', '2014')
+        is_2024_rules = '2024' in str(rule_version)
+
         for modifier in feat_modifiers:
+            # Skip 2024 background ASI if using 2014 rules
+            # ComponentId 1789182 = Sailor Ability Score Improvements (2024 rules)
+            if not is_2024_rules and modifier.get('componentId') == 1789182:
+                logger.debug(f"Skipping 2024 background ASI modifier in 2014 rules: {modifier.get('friendlySubtypeName')}")
+                continue
+
             if self._is_ability_score_modifier(modifier):
                 ability_name, bonus = self._extract_ability_modifier(modifier)
                 if ability_name:
                     feat_bonuses[ability_name] += bonus
-        
+
         return feat_bonuses
     
     def _calculate_asi_bonuses(self, character_data: Dict[str, Any]) -> Dict[str, int]:
@@ -675,7 +724,7 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
         # Check modifiers for class ASI bonuses (common in test data)
         modifiers = character_data.get('modifiers', {})
         class_modifiers = modifiers.get('class', [])
-        
+
         for modifier in class_modifiers:
             if self._is_ability_score_modifier(modifier):
                 ability_name, bonus = self._extract_ability_modifier(modifier)
@@ -735,23 +784,33 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
         
         return other_bonuses
     
-    def _calculate_set_modifiers(self, character_data: Dict[str, Any]) -> Dict[str, Optional[int]]:
-        """Calculate ability score set modifiers (overrides)."""
+    def _calculate_set_modifiers(self, character_data: Dict[str, Any]) -> Dict[str, Optional[Dict[str, Any]]]:
+        """
+        Calculate ability score set modifiers (overrides).
+
+        Returns:
+            Dictionary mapping ability names to set modifier info:
+            {'value': int, 'restriction': str} or None
+        """
         set_modifiers = {ability: None for ability in self.ability_names}
-        
+
         # Check all modifier sources for set modifiers
         modifiers = character_data.get('modifiers', {})
-        
+
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
-                
+
             for modifier in modifier_list:
                 if self._is_ability_score_modifier(modifier) and modifier.get('type') == 'set':
                     ability_name, set_value = self._extract_ability_modifier(modifier)
                     if ability_name:
-                        set_modifiers[ability_name] = set_value
-        
+                        restriction = modifier.get('restriction', '')
+                        set_modifiers[ability_name] = {
+                            'value': set_value,
+                            'restriction': restriction
+                        }
+
         return set_modifiers
     
     def _is_ability_score_modifier(self, modifier: Dict[str, Any]) -> bool:
@@ -760,19 +819,26 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
         modifies_type_id = modifier.get('modifiesTypeId')
         sub_type = modifier.get('subType', '')
         stat_id = modifier.get('statId')
-        
+
         # Traditional ability score modifiers
         if modifies_type_id == 1 and modifies_id in self.ability_id_map:
             return True
-            
-        # New format with subType
-        if sub_type == 'ability-score':
-            return True
-            
-        # Format with statId (common in test data)
+
+        # New format with subType (e.g., 'ability-score', 'strength-score', etc.)
+        if sub_type.endswith('-score'):
+            # Check if it's a valid ability score (not armor-class, saving-throw, etc.)
+            ability_part = sub_type.replace('-score', '')
+            if ability_part in self.ability_names or ability_part == 'ability':
+                return True
+
+        # Format with statId (only for modifiers that appear to be ability-related)
+        # Exclude modifiers that are clearly not ability scores (e.g., armor-class, saving-throws)
         if stat_id in self.ability_id_map:
-            return True
-            
+            # Only consider it an ability score modifier if subType suggests it
+            # or if modifiesTypeId indicates ability score modification
+            if 'score' in sub_type or modifies_type_id == 1:
+                return True
+
         return False
     
     def _extract_ability_modifier(self, modifier: Dict[str, Any]) -> Tuple[Optional[str], int]:
@@ -780,24 +846,32 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
         modifies_id = modifier.get('modifiesId')
         sub_type = modifier.get('subType', '')
         stat_id = modifier.get('statId')
-        bonus = modifier.get('bonus', 0) or modifier.get('value', 0) or modifier.get('fixedValue', 0)
-        
+
+        # Extract value - prefer fixedValue, then value, then bonus
+        bonus = modifier.get('fixedValue')
+        if bonus is None:
+            bonus = modifier.get('value')
+        if bonus is None:
+            bonus = modifier.get('bonus', 0)
+        if bonus is None:
+            bonus = 0
+
         # Traditional format
         if modifies_id in self.ability_id_map:
             ability_name = self.ability_id_map[modifies_id]
             return ability_name, bonus
-            
+
         # Format with statId (common in test data)
         if stat_id in self.ability_id_map:
             ability_name = self.ability_id_map[stat_id]
             return ability_name, bonus
-            
-        # New format
-        if sub_type.endswith('-score'):
-            ability_name = sub_type.replace('-score', '').replace('-', '_')
+
+        # New format with specific ability in subType (e.g., 'strength-score')
+        if sub_type.endswith('-score') and sub_type != 'ability-score':
+            ability_name = sub_type.replace('-score', '')
             if ability_name in self.ability_names:
                 return ability_name, bonus
-        
+
         return None, 0
     
     def _is_asi_choice(self, choice: Dict[str, Any]) -> bool:

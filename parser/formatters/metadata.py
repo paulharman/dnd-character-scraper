@@ -215,7 +215,11 @@ class MetadataFormatter(BaseFormatter):
         armor_class = self._get_armor_class(character_data)
         con_mod = ability_scores.get('constitution', {}).get('modifier', 0)
         max_hp, current_hp, temp_hp = self._get_hit_points(character_data)
-        initiative_str = f"+{dex_mod}" if dex_mod >= 0 else str(dex_mod)
+
+        # Initiative - get from combat data if available
+        combat_data = character_data.get('combat', {})
+        initiative = combat_data.get('initiative_bonus', dex_mod)
+        initiative_str = f"+{initiative}" if initiative >= 0 else str(initiative)
         
         # Spellcasting - check v6.0.0 structure first, then adapted structure
         spellcasting_data = character_data.get('spellcasting', {})
@@ -335,6 +339,9 @@ class MetadataFormatter(BaseFormatter):
         xp_to_next_level = max(0, next_level_xp - experience) if next_level_xp > 0 else 0
         multiclass = False
         
+        # Speed - read from combat section
+        speed = combat_data.get('speed', 30)
+
         # Processed date and metadata
         processed_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
@@ -561,7 +568,7 @@ spell_save_dc: {spell_save_dc}
 character_id: {self._escape_yaml_string(character_id)}
 processed_date: {self._escape_yaml_string(processed_date)}
 scraper_version: {self._escape_yaml_string("6.0.0")}
-speed: {self._escape_yaml_string("30 ft")}
+speed: {self._escape_yaml_string(f"{speed} ft")}
 spell_count: {total_spells}
 highest_spell_level: {highest_spell_level}
 spells:
@@ -713,15 +720,14 @@ ability_modifiers:
         character_level = character_info.get('level', 1)
         con_mod = ability_scores.get('constitution', {}).get('modifier', 0)
         max_hp, current_hp, temp_hp = self._get_hit_points(character_data)
-        
-        # Universal initiative: Dex modifier
-        initiative = dex_mod
+
+        # Speed - read from combat section
+        combat_data = character_data.get('combat', {})
+
+        # Universal initiative - get from combat data if available
+        initiative = combat_data.get('initiative_bonus', dex_mod)
         initiative_str = f"+{initiative}" if initiative >= 0 else str(initiative)
-        
-        # Speed
-        speed_data = character_info.get('speed', {})
-        walking_speed = speed_data.get('walking', {})
-        speed = walking_speed.get('total', 30)
+        speed = combat_data.get('speed', 30)
         
         # Get passive scores from scraper data (calculated by proficiency coordinator)
         passive_perception = character_data.get('passive_perception', 8)

@@ -451,27 +451,41 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
         # Check for rolled HP first (overrideHitPoints in raw data)
         raw_data = character_data.get('_raw_data', {})
         override_hp = raw_data.get('overrideHitPoints', 0) or 0
-        
-        # Get hit point info if available (from data transformer)
+
+        # Get removed HP and temp HP directly from raw data (more reliable than data transformer)
+        removed_hp = raw_data.get('removedHitPoints', 0) or 0
+        temp_hp = raw_data.get('temporaryHitPoints', 0) or 0
+
+        # Get hit point info if available (from data transformer) - use as fallback only
         hp_info = character_data.get('hit_points', character_data.get('hitPointInfo', {}))
-        current_hp = hp_info.get('current', 0) or 0
-        max_hp = hp_info.get('maximum', 0) or 0
-        temp_hp = hp_info.get('temporary', hp_info.get('temp', 0)) or 0
-        
-        # Priority order: overrideHitPoints (rolled) > hitPointInfo.maximum > calculated
+        max_hp_from_info = hp_info.get('maximum', 0) or 0
+
+        # Check if we have baseHitPoints (rolled HP without modifiers)
+        base_hp_raw = raw_data.get('baseHitPoints', 0) or 0
+
+        # Priority order: overrideHitPoints (true override) > calculate from baseHitPoints > hitPointInfo.maximum > calculated
         if override_hp > 0:
+            # True override from DDB
             max_hp = override_hp
+            calculation_method = "rolled_override"
+            base_hp = max_hp - (con_modifier * total_level)
+        elif base_hp_raw > 0:
+            # We have rolled HP (baseHitPoints) - need to add Con and other bonuses
             calculation_method = "rolled"
-            base_hp = max_hp - (con_modifier * total_level)
-            if current_hp == 0:
-                current_hp = max_hp  # Default to full HP if not specified
-        elif max_hp > 0:
+            base_hp = base_hp_raw
+            # Start with base rolled HP, add con modifier
+            max_hp = base_hp + (con_modifier * total_level)
+        elif max_hp_from_info > 0:
+            # Manual override or pre-calculated
             calculation_method = "manual_override"
-            base_hp = max_hp - (con_modifier * total_level)
+            base_hp = max_hp_from_info - (con_modifier * total_level)
+            max_hp = max_hp_from_info
         else:
             # Calculate HP from class and CON
             max_hp, base_hp, calculation_method = self._calculate_max_hp(character_data, total_level, con_modifier)
-            current_hp = max_hp  # Default to full HP if not specified
+
+        # Calculate current HP from max HP and removed HP (always recalculate from raw data)
+        current_hp = max(0, max_hp - removed_hp)
         
         # Get hit dice information
         hit_dice_info = self._calculate_hit_dice_info(character_data)
@@ -480,14 +494,17 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
         hp_breakdown = {
             'base_hp': base_hp or 0,
             'con_bonus': (con_modifier * total_level) or 0,
+            'race_bonus': self._get_race_hp_bonus(character_data, total_level) or 0,
             'class_bonus': self._get_class_hp_bonus(character_data) or 0,
             'feat_bonus': self._get_feat_hp_bonus(character_data) or 0,
             'item_bonus': self._get_item_hp_bonus(character_data) or 0,
             'misc_bonus': self._get_misc_hp_bonus(character_data) or 0
         }
-        
+
         # Adjust max HP with bonuses
-        total_bonuses = hp_breakdown['class_bonus'] + hp_breakdown['feat_bonus'] + hp_breakdown['item_bonus'] + hp_breakdown['misc_bonus']
+        total_bonuses = (hp_breakdown['race_bonus'] + hp_breakdown['class_bonus'] +
+                        hp_breakdown['feat_bonus'] + hp_breakdown['item_bonus'] +
+                        hp_breakdown['misc_bonus'])
         max_hp += total_bonuses
         
         return HitPointsData(
@@ -516,15 +533,73 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
         return total_level, con_modifier
     
     def _get_ability_modifier(self, character_data: Dict[str, Any], ability_id: int) -> int:
-        """Get ability modifier for a specific ability."""
+        """Get ability modifier for a specific ability, including feat/item bonuses."""
+        # Map ability ID to name and subType
+        ability_map = {
+            1: ('strength', 'strength-score'),
+            2: ('dexterity', 'dexterity-score'),
+            3: ('constitution', 'constitution-score'),
+            4: ('intelligence', 'intelligence-score'),
+            5: ('wisdom', 'wisdom-score'),
+            6: ('charisma', 'charisma-score')
+        }
+
+        # First try to get from calculated ability scores (includes bonuses from feats, items, etc.)
+        ability_scores = character_data.get('ability_scores', {})
+        if ability_scores and ability_id in ability_map:
+            ability_name = ability_map[ability_id][0]
+            ability_score = ability_scores.get(ability_name)
+            if isinstance(ability_score, dict):
+                # If it's a dict with score/modifier, use it
+                if 'score' in ability_score:
+                    return DnDMath.ability_modifier(ability_score['score'])
+            elif isinstance(ability_score, int):
+                # If it's just a number, need to check for bonuses
+                score = ability_score
+                # Add bonuses from feats, items, etc.
+                score += self._get_ability_bonuses_from_modifiers(character_data, ability_id, ability_map[ability_id][1])
+                return DnDMath.ability_modifier(score)
+
+        # Fallback: get from raw stats and add bonuses
         stats = character_data.get('stats', [])
-        
+        base_score = 10
         for stat in stats:
             if stat.get('id') == ability_id:
-                score = stat.get('value', 10)
-                return DnDMath.ability_modifier(score)
-        
-        return 0
+                base_score = stat.get('value', 10)
+                break
+
+        # Add bonuses from modifiers
+        if ability_id in ability_map:
+            base_score += self._get_ability_bonuses_from_modifiers(character_data, ability_id, ability_map[ability_id][1])
+
+        return DnDMath.ability_modifier(base_score)
+
+    def _get_ability_bonuses_from_modifiers(self, character_data: Dict[str, Any], ability_id: int, sub_type_pattern: str) -> int:
+        """Get total bonuses to an ability score from all modifier sources."""
+        total_bonus = 0
+        modifiers = character_data.get('modifiers', {})
+
+        for source_type, modifier_list in modifiers.items():
+            if not isinstance(modifier_list, list):
+                continue
+
+            for modifier in modifier_list:
+                # Check if this modifier affects the specific ability
+                mod_sub_type = modifier.get('subType', '')
+                mod_stat_id = modifier.get('statId')
+                mod_type = modifier.get('type', '')
+
+                # Skip "set" type modifiers (those are handled elsewhere)
+                if mod_type == 'set':
+                    continue
+
+                # Check if this modifier matches the ability
+                if mod_sub_type == sub_type_pattern or mod_stat_id == ability_id:
+                    bonus = modifier.get('value', 0) or modifier.get('fixedValue', 0) or modifier.get('bonus', 0)
+                    if bonus:
+                        total_bonus += bonus
+
+        return total_bonus
     
     def _calculate_max_hp(self, character_data: Dict[str, Any], total_level: int, con_modifier: int) -> Tuple[int, int, str]:
         """Calculate maximum hit points from class levels."""
@@ -654,29 +729,74 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
         return bonus
     
     def _get_feat_hp_bonus(self, character_data: Dict[str, Any]) -> int:
-        """Get HP bonus from feats."""
+        """Get HP bonus from feats (e.g., Tough)."""
         modifiers = character_data.get('modifiers', {})
         feat_modifiers = modifiers.get('feat', [])
         bonus = 0
-        
+
+        # Get total level for per-level bonuses
+        classes = character_data.get('classes', [])
+        total_level = sum(cls.get('level', 0) for cls in classes) or 1
+
         for modifier in feat_modifiers:
-            if self._is_hp_modifier(modifier):
-                bonus += modifier.get('value', 0)
-        
+            sub_type = modifier.get('subType', '').lower()
+
+            # Check for hit-points-per-level (e.g., Tough feat: +2 HP per level)
+            if 'hit-point' in sub_type and 'per-level' in sub_type:
+                value_per_level = modifier.get('value', 0) or modifier.get('fixedValue', 0)
+                bonus += value_per_level * total_level
+            # Check for flat HP modifiers
+            elif self._is_hp_modifier(modifier):
+                bonus += modifier.get('value', 0) or modifier.get('fixedValue', 0)
+
         return bonus
     
     def _get_item_hp_bonus(self, character_data: Dict[str, Any]) -> int:
-        """Get HP bonus from magic items."""
+        """Get HP bonus from magic items (only equipped/worn items)."""
         modifiers = character_data.get('modifiers', {})
         item_modifiers = modifiers.get('item', [])
+        inventory = character_data.get('inventory', [])
         bonus = 0
-        
+
         for modifier in item_modifiers:
             if self._is_hp_modifier(modifier):
-                bonus += modifier.get('value', 0)
-        
+                # Get the item component ID to check if it's equipped
+                component_id = modifier.get('componentId')
+
+                # Check if this item is equipped
+                is_equipped = False
+                for item in inventory:
+                    item_def_id = item.get('definition', {}).get('id')
+                    if item_def_id == component_id:
+                        is_equipped = item.get('equipped', False)
+                        break
+
+                # Only add bonus if item is equipped (worn items like rings, belts, etc.)
+                # This excludes potions and other consumables
+                if is_equipped:
+                    bonus += modifier.get('value', 0) or modifier.get('fixedValue', 0)
+
         return bonus
-    
+
+    def _get_race_hp_bonus(self, character_data: Dict[str, Any], total_level: int) -> int:
+        """Get HP bonus from race/species features (e.g., Dwarf Toughness)."""
+        modifiers = character_data.get('modifiers', {})
+        race_modifiers = modifiers.get('race', [])
+        bonus = 0
+
+        for modifier in race_modifiers:
+            sub_type = modifier.get('subType', '').lower()
+
+            # Check for hit-points-per-level (e.g., Dwarf Toughness)
+            if 'hit-point' in sub_type and 'per-level' in sub_type:
+                value_per_level = modifier.get('value', 0) or modifier.get('fixedValue', 0)
+                bonus += value_per_level * total_level
+            # Check for flat HP modifiers
+            elif self._is_hp_modifier(modifier):
+                bonus += modifier.get('value', 0) or modifier.get('fixedValue', 0)
+
+        return bonus
+
     def _get_misc_hp_bonus(self, character_data: Dict[str, Any]) -> int:
         """Get HP bonus from other sources."""
         modifiers = character_data.get('modifiers', {})

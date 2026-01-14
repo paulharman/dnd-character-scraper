@@ -456,9 +456,9 @@ class EnhancedSpeedCalculator(RuleAwareCalculator, ICachedCalculator):
         # Calculate final walking speed
         walking_speed = base_speed + racial_bonus + class_bonus + feat_bonus + item_bonus + spell_bonus + misc_bonus
         walking_speed = max(0, walking_speed)  # Can't be negative
-        
-        # Get special movement speeds
-        climbing_speed = self._get_climbing_speed(character_data)
+
+        # Get special movement speeds (pass walking_speed for races that have climbing speed equal to walking)
+        climbing_speed = self._get_climbing_speed(character_data, walking_speed)
         swimming_speed = self._get_swimming_speed(character_data)
         flying_speed = self._get_flying_speed(character_data)
         burrowing_speed = self._get_burrowing_speed(character_data)
@@ -603,86 +603,236 @@ class EnhancedSpeedCalculator(RuleAwareCalculator, ICachedCalculator):
         
         return bonus
     
-    def _get_climbing_speed(self, character_data: Dict[str, Any]) -> int:
-        """Get climbing speed."""
+    def _get_climbing_speed(self, character_data: Dict[str, Any], walking_speed: int) -> int:
+        """Get climbing speed from race, class features, items, and modifiers.
+
+        Args:
+            character_data: Character data dictionary
+            walking_speed: The character's calculated walking speed (with all bonuses applied)
+
+        Returns:
+            Climbing speed in feet
+        """
         # Check for explicit climbing speed from race or class features
         race_data = character_data.get('race', {})
-        
+
         if race_data:
             race_definition = race_data.get('definition', {})
             speed_info = race_definition.get('movementSpeeds', [])
-            
+
             for speed in speed_info:
                 if speed.get('movementId') == 2:  # Climbing speed ID
                     return speed.get('speed', 0)
-        
+
+            # Parse racial traits for climbing speed information
+            # D&D Beyond stores this in the Speed trait's snippet/description
+            racial_traits = race_data.get('racialTraits', [])
+            for trait in racial_traits:
+                trait_def = trait.get('definition', {})
+                trait_name = trait_def.get('name', '').lower()
+
+                # Check the Speed trait
+                if trait_name == 'speed':
+                    snippet = trait_def.get('snippet', '').lower()
+                    description = trait_def.get('description', '').lower()
+                    text = f'{snippet} {description}'
+
+                    # Parse text for climbing speed
+                    if 'climbing speed' in text:
+                        # Check for "climbing speed equal to your walking speed"
+                        if 'equal to your walking speed' in text or 'equal to walking speed' in text:
+                            # Return the fully calculated walking speed (includes all bonuses like Monk speed)
+                            return walking_speed
+                        # Check for explicit climbing speed value (e.g., "climbing speed of 30 feet")
+                        import re
+                        match = re.search(r'climbing speed (?:of )?(\d+)', text)
+                        if match:
+                            return int(match.group(1))
+
+        # Check modifiers for climbing speed (from race or items)
+        # D&D Beyond stores this as subType: 'innate-speed-climbing'
+        # When fixedValue/value is None, it means climbing speed equals walking speed
+        modifiers = character_data.get('modifiers', {})
+        for source_type, modifier_list in modifiers.items():
+            if not isinstance(modifier_list, list):
+                continue
+
+            for modifier in modifier_list:
+                if modifier.get('subType') == 'innate-speed-climbing' and modifier.get('isGranted', False):
+                    # Check if this is from an equipped item
+                    if source_type == 'item':
+                        component_id = modifier.get('componentId')
+                        if component_id:
+                            # Check if item is equipped
+                            inventory = character_data.get('inventory', [])
+                            item_equipped = False
+                            for item in inventory:
+                                if item.get('definition', {}).get('id') == component_id:
+                                    item_equipped = item.get('equipped', False)
+                                    break
+
+                            if not item_equipped:
+                                continue  # Skip unequipped items
+
+                    # Get climbing speed value
+                    speed_value = modifier.get('fixedValue') or modifier.get('value')
+                    if speed_value is None:
+                        # None means climbing speed equals walking speed
+                        return walking_speed
+                    else:
+                        return speed_value
+
         # Check for class features that grant climbing speed
         classes = character_data.get('classes', [])
         for class_data in classes:
             class_name = class_data.get('definition', {}).get('name', '').lower()
             class_level = class_data.get('level', 1)
-            
+
             # Monk Wall Running (if unarmored)
             if 'monk' in class_name and class_level >= 9:
-                return self._get_base_speed(character_data)  # Equal to walking speed
-        
+                return walking_speed  # Equal to walking speed (with bonuses)
+
         return 0
     
     def _get_swimming_speed(self, character_data: Dict[str, Any]) -> int:
-        """Get swimming speed."""
+        """Get swimming speed from race, items, and modifiers."""
         race_data = character_data.get('race', {})
-        
+
         if race_data:
             race_definition = race_data.get('definition', {})
             race_name = race_definition.get('name', '').lower()
             speed_info = race_definition.get('movementSpeeds', [])
-            
+
             # Check explicit swimming speed
             for speed in speed_info:
                 if speed.get('movementId') == 3:  # Swimming speed ID
                     return speed.get('speed', 0)
-            
+
             # Check racial swimming speeds
             if 'triton' in race_name or 'lizardfolk' in race_name:
                 return 30
-        
+
+        # Check modifiers for swimming speed (from race or items)
+        # D&D Beyond stores this as subType: 'innate-speed-swimming'
+        modifiers = character_data.get('modifiers', {})
+        for source_type, modifier_list in modifiers.items():
+            if not isinstance(modifier_list, list):
+                continue
+
+            for modifier in modifier_list:
+                if modifier.get('subType') == 'innate-speed-swimming' and modifier.get('isGranted', False):
+                    # Check if this is from an equipped item
+                    if source_type == 'item':
+                        component_id = modifier.get('componentId')
+                        if component_id:
+                            # Check if item is equipped
+                            inventory = character_data.get('inventory', [])
+                            item_equipped = False
+                            for item in inventory:
+                                if item.get('definition', {}).get('id') == component_id:
+                                    item_equipped = item.get('equipped', False)
+                                    break
+
+                            if not item_equipped:
+                                continue  # Skip unequipped items
+
+                    # Get swimming speed value
+                    speed_value = modifier.get('fixedValue') or modifier.get('value', 0)
+                    return speed_value
+
         return 0
     
     def _get_flying_speed(self, character_data: Dict[str, Any]) -> int:
-        """Get flying speed."""
+        """Get flying speed from race, items, and modifiers."""
         race_data = character_data.get('race', {})
-        
+
         if race_data:
             race_definition = race_data.get('definition', {})
             race_name = race_definition.get('name', '').lower()
             speed_info = race_definition.get('movementSpeeds', [])
-            
+
             # Check explicit flying speed
             for speed in speed_info:
                 if speed.get('movementId') == 4:  # Flying speed ID
                     return speed.get('speed', 0)
-            
+
             # Check racial flying speeds
             if 'aarakocra' in race_name:
                 return 50
             elif 'aasimar' in race_name:
                 # Some aasimar subraces get temporary flight
                 return 0  # Not permanent
-        
+
+        # Check modifiers for flying speed (from race or items)
+        # D&D Beyond stores this as subType: 'innate-speed-flying'
+        modifiers = character_data.get('modifiers', {})
+        for source_type, modifier_list in modifiers.items():
+            if not isinstance(modifier_list, list):
+                continue
+
+            for modifier in modifier_list:
+                if modifier.get('subType') == 'innate-speed-flying' and modifier.get('isGranted', False):
+                    # Check if this is from an equipped item
+                    if source_type == 'item':
+                        component_id = modifier.get('componentId')
+                        if component_id:
+                            # Check if item is equipped
+                            inventory = character_data.get('inventory', [])
+                            item_equipped = False
+                            for item in inventory:
+                                if item.get('definition', {}).get('id') == component_id:
+                                    item_equipped = item.get('equipped', False)
+                                    break
+
+                            if not item_equipped:
+                                continue  # Skip unequipped items
+
+                    # Get flying speed value
+                    speed_value = modifier.get('fixedValue') or modifier.get('value', 0)
+                    return speed_value
+
         return 0
     
     def _get_burrowing_speed(self, character_data: Dict[str, Any]) -> int:
-        """Get burrowing speed."""
+        """Get burrowing speed from race, items, and modifiers."""
         race_data = character_data.get('race', {})
-        
+
         if race_data:
             race_definition = race_data.get('definition', {})
             speed_info = race_definition.get('movementSpeeds', [])
-            
+
             for speed in speed_info:
                 if speed.get('movementId') == 5:  # Burrowing speed ID
                     return speed.get('speed', 0)
-        
+
+        # Check modifiers for burrowing speed (from race or items)
+        # D&D Beyond stores this as subType: 'innate-speed-burrowing'
+        modifiers = character_data.get('modifiers', {})
+        for source_type, modifier_list in modifiers.items():
+            if not isinstance(modifier_list, list):
+                continue
+
+            for modifier in modifier_list:
+                if modifier.get('subType') == 'innate-speed-burrowing' and modifier.get('isGranted', False):
+                    # Check if this is from an equipped item
+                    if source_type == 'item':
+                        component_id = modifier.get('componentId')
+                        if component_id:
+                            # Check if item is equipped
+                            inventory = character_data.get('inventory', [])
+                            item_equipped = False
+                            for item in inventory:
+                                if item.get('definition', {}).get('id') == component_id:
+                                    item_equipped = item.get('equipped', False)
+                                    break
+
+                            if not item_equipped:
+                                continue  # Skip unequipped items
+
+                    # Get burrowing speed value
+                    speed_value = modifier.get('fixedValue') or modifier.get('value', 0)
+                    return speed_value
+
         return 0
     
     def _has_hover(self, character_data: Dict[str, Any]) -> bool:

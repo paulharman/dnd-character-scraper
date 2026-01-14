@@ -103,17 +103,37 @@ class AbilitiesFormatter(BaseFormatter):
         
         # Get saving throw proficiencies from v6.0.0 structure
         proficiencies_data = character_data.get('proficiencies', {})
-        saving_throw_proficiencies = proficiencies_data.get('saving_throw_proficiencies', [])
+        saving_throw_proficiencies = proficiencies_data.get('saving_throw_proficiencies', {})
         saving_throw_profs = []
-        
-        # Extract saving throw names from v6.0.0 structure
-        for save_prof in saving_throw_proficiencies:
-            if isinstance(save_prof, dict):
-                save_name = save_prof.get('name', '').lower()
-                if save_name in ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']:
-                    saving_throw_profs.append(save_name)
-        
-        # Fallback to legacy format if v6.0.0 data not found
+        save_bonuses = []  # Track item bonuses for saves
+        unique_save_items = {}  # {(name, bonus): [ability_names]}
+
+        # Handle dict format (current scraper output)
+        if isinstance(saving_throw_proficiencies, dict):
+            for ability_name, save_data in saving_throw_proficiencies.items():
+                if isinstance(save_data, dict):
+                    # Check if proficient
+                    if save_data.get('proficient', False):
+                        saving_throw_profs.append(ability_name)
+
+                    # Check for item bonuses (applies to ALL saves, not just proficient)
+                    item_bonus_details = save_data.get('item_bonus_details', [])
+                    if item_bonus_details:
+                        for item_detail in item_bonus_details:
+                            item_key = (item_detail['name'], item_detail['bonus'])
+                            if item_key not in unique_save_items:
+                                unique_save_items[item_key] = []
+                            unique_save_items[item_key].append(ability_name)
+
+        # Handle list format (legacy)
+        elif isinstance(saving_throw_proficiencies, list):
+            for save_prof in saving_throw_proficiencies:
+                if isinstance(save_prof, dict):
+                    save_name = save_prof.get('name', '').lower()
+                    if save_name in ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']:
+                        saving_throw_profs.append(save_name)
+
+        # Fallback to legacy format if no saves found
         if not saving_throw_profs:
             # Try combat structure
             combat_data = character_data.get('combat', {})
@@ -121,11 +141,31 @@ class AbilitiesFormatter(BaseFormatter):
             for ability in ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']:
                 if saving_throws.get(ability, {}).get('proficient', False):
                     saving_throw_profs.append(ability)
-            
+
             # Final fallback to legacy structure
             if not saving_throw_profs:
                 saving_throw_profs = character_data.get('saving_throw_proficiencies', [])
-        
+
+        # Build save bonus entries for Obsidian DnD UI Toolkit
+        for (item_name, bonus_value), affected_abilities in unique_save_items.items():
+            for ability in affected_abilities:
+                save_bonuses.append({
+                    'name': item_name,
+                    'target': ability,
+                    'value': bonus_value
+                })
+
+        # Build bonuses section
+        bonuses_section = ''
+        if save_bonuses:
+            bonuses_lines = []
+            for bonus in save_bonuses:
+                bonuses_lines.append(f"  - name: {bonus['name']}")
+                bonuses_lines.append(f"    target: {bonus['target']}")
+                bonuses_lines.append(f"    value: {bonus['value']}")
+                bonuses_lines.append(f"    modifies: saving_throw")
+            bonuses_section = f"{chr(10)}bonuses:{chr(10)}{chr(10).join(bonuses_lines)}"
+
         # Build ability scores section
         section = f"""```ability
 abilities:
@@ -137,7 +177,7 @@ abilities:
   charisma: {abilities['charisma']}
 
 proficiencies:
-{chr(10).join(f'  - {prof}' for prof in saving_throw_profs) if saving_throw_profs else ''}
+{chr(10).join(f'  - {prof}' for prof in saving_throw_profs) if saving_throw_profs else ''}{bonuses_section}
 ```"""
         
         return section
@@ -179,31 +219,73 @@ items:
         """Generate skills proficiencies section."""
         # Get skill proficiencies from v6.0.0 structure
         proficiencies_data = character_data.get('proficiencies', {})
-        skill_proficiencies = proficiencies_data.get('skill_proficiencies', [])
-        
+        skill_proficiencies = proficiencies_data.get('skill_proficiencies', {})
+
         # Fallback to legacy structure if v6.0.0 data not found
         if not skill_proficiencies:
-            skill_proficiencies = character_data.get('skill_proficiencies', [])
+            skill_proficiencies = character_data.get('skill_proficiencies', {})
+
         ability_scores = self.get_ability_scores(character_data)
         character_info = self.get_character_info(character_data)
-        
+
         # Get proficiency bonus from character_info
         proficiency_bonus = character_info.get('proficiency_bonus', 2)
-        
+
         # Categorize skills
         proficient_skills = []
         expertise_skills = []
-        
-        # Check if we have skills data in the v6.0.0 format
-        # (skills may be stored differently or not present for characters without proficiencies)
-        if skill_proficiencies:
+        skill_bonuses = []  # For item bonuses like Stone of Good Luck
+
+        # Handle skill_proficiencies as dict (current format from scraper)
+        # Collect all unique items that provide bonuses
+        unique_items = {}  # {(name, bonus): [skill_names]}
+
+        if isinstance(skill_proficiencies, dict):
+            for skill_name, skill_data in skill_proficiencies.items():
+                if isinstance(skill_data, dict):
+                    # Check for item bonus details (includes specific item names)
+                    item_bonus_details = skill_data.get('item_bonus_details', [])
+                    if item_bonus_details:
+                        # Track which items affect which skills
+                        for item_detail in item_bonus_details:
+                            item_key = (item_detail['name'], item_detail['bonus'])
+                            if item_key not in unique_items:
+                                unique_items[item_key] = []
+                            unique_items[item_key].append(skill_name)
+
+                    if skill_data.get('proficient', False):
+                        # Get expertise directly from scraper data
+                        has_expertise = skill_data.get('expertise', False)
+
+                        # Convert underscores to spaces for Obsidian
+                        skill_name_formatted = skill_name.replace('_', ' ')
+
+                        if has_expertise:
+                            expertise_skills.append(skill_name_formatted)
+                        else:
+                            proficient_skills.append(skill_name_formatted)
+
+            # Now add bonus entries for each item-skill combination
+            # If an item affects ALL skills (like Stone of Good Luck), add one entry per skill
+            for (item_name, bonus_value), affected_skills in unique_items.items():
+                for skill in affected_skills:
+                    # Convert underscores to spaces for Obsidian
+                    skill_formatted = skill.replace('_', ' ')
+                    skill_bonuses.append({
+                        'name': item_name,
+                        'target': skill_formatted,
+                        'value': bonus_value
+                    })
+
+        # Legacy list format
+        elif isinstance(skill_proficiencies, list):
             for skill in skill_proficiencies:
                 if isinstance(skill, dict) and skill.get('proficient', False):
                     skill_name = skill.get('name', '').lower()
-                    
+
                     # Get expertise directly from scraper data - no detection logic
                     has_expertise = skill.get('expertise', False)
-                    
+
                     if has_expertise:
                         expertise_skills.append(skill_name)
                     else:
@@ -219,13 +301,26 @@ proficiencies:
 
 ```"""
         else:
+            # Build expertise section
+            expertise_section = f'expertise:{chr(10)}{chr(10).join(f"  - {skill}" for skill in expertise_skills)}' if expertise_skills else ''
+
+            # Build bonuses section for Obsidian DnD UI Toolkit
+            bonuses_section = ''
+            if skill_bonuses:
+                bonuses_lines = []
+                for bonus in skill_bonuses:
+                    bonuses_lines.append(f"  - name: {bonus['name']}")
+                    bonuses_lines.append(f"    target: {bonus['target']}")
+                    bonuses_lines.append(f"    value: {bonus['value']}")
+                bonuses_section = f"{chr(10)}bonuses:{chr(10)}{chr(10).join(bonuses_lines)}"
+
             section = f"""<BR>
 
 ```skills
 proficiencies:
 {chr(10).join(f'  - {skill}' for skill in proficient_skills)}
 
-{f'expertise:{chr(10)}{chr(10).join(f"  - {skill}" for skill in expertise_skills)}' if expertise_skills else ''}
+{expertise_section}{bonuses_section}
 ```"""
         
         return section
@@ -253,27 +348,36 @@ proficiencies:
     
     
     def _generate_proficiency_sources(self, character_data: Dict[str, Any]) -> str:
-        """Generate detailed proficiency sources breakdown matching backup original format."""
+        """Generate detailed proficiency sources breakdown with complete bonus calculations."""
         # Get skill proficiencies from v6.0.0 structure
         proficiencies_data = character_data.get('proficiencies', {})
-        skill_proficiencies = proficiencies_data.get('skill_proficiencies', [])
-        
+        skill_proficiencies = proficiencies_data.get('skill_proficiencies', {})
+
         # Fallback to legacy structure if v6.0.0 data not found
         if not skill_proficiencies:
-            skill_proficiencies = character_data.get('skill_proficiencies', [])
-        
+            skill_proficiencies = character_data.get('skill_proficiencies', {})
+
         # Get saving throw proficiencies from v6.0.0 structure
-        saving_throw_proficiencies = proficiencies_data.get('saving_throw_proficiencies', [])
+        saving_throw_proficiencies = proficiencies_data.get('saving_throw_proficiencies', {})
         saving_throw_profs = []
-        
-        # Extract saving throw names from v6.0.0 structure
-        for save_prof in saving_throw_proficiencies:
-            if isinstance(save_prof, dict):
-                save_name = save_prof.get('name', '').lower()
-                if save_name in ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']:
-                    saving_throw_profs.append(save_name)
-        
-        # Fallback to legacy format if v6.0.0 data not found
+        saving_throw_data = {}  # Store full data for each save
+
+        # Handle dict format (current scraper output)
+        if isinstance(saving_throw_proficiencies, dict):
+            for ability_name, save_data in saving_throw_proficiencies.items():
+                if isinstance(save_data, dict) and save_data.get('proficient', False):
+                    saving_throw_profs.append(ability_name)
+                    saving_throw_data[ability_name] = save_data
+
+        # Handle list format (legacy)
+        elif isinstance(saving_throw_proficiencies, list):
+            for save_prof in saving_throw_proficiencies:
+                if isinstance(save_prof, dict):
+                    save_name = save_prof.get('name', '').lower()
+                    if save_name in ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']:
+                        saving_throw_profs.append(save_name)
+
+        # Fallback to legacy format if no saves found
         if not saving_throw_profs:
             # Try combat structure
             combat_data = character_data.get('combat', {})
@@ -281,67 +385,183 @@ proficiencies:
             for ability in ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']:
                 if saving_throws.get(ability, {}).get('proficient', False):
                     saving_throw_profs.append(ability)
-            
+
             # Final fallback to legacy structure
             if not saving_throw_profs:
                 saving_throw_profs = character_data.get('saving_throw_proficiencies', [])
-        
+
         if not skill_proficiencies and not saving_throw_profs:
             return ""
-        
+
         # Get basic character info using proper accessor
         character_info = self.get_character_info(character_data)
         classes = character_info.get('classes', [])
         primary_class = classes[0] if classes else {}
         class_name = primary_class.get('name', 'Unknown')
-        
+
         # Get background and species info from v6.0.0 structure
         background_data = character_info.get('background', character_data.get('background', {}))
         background_name = background_data.get('name', 'Unknown') if isinstance(background_data, dict) else 'Unknown'
-        
+
         species_data = character_info.get('species', character_data.get('species', {}))
         species_name = species_data.get('name', 'Unknown') if isinstance(species_data, dict) else 'Unknown'
-        
+
         # Determine species/race label based on rule version - check multiple indicators
         rule_version = character_info.get('rule_version', 'unknown')
         is_2024_rules = (
-            rule_version == '2024' or 
+            rule_version == '2024' or
             '2024' in str(rule_version) or
             character_info.get('classes', [{}])[0].get('is_2024', False) if character_info.get('classes') else False
         )
         species_or_race_label = 'Species' if is_2024_rules else 'Race'
-        
-        # Get ability modifiers and proficiency bonus for saving throw calculations
+
+        # Get ability modifiers and proficiency bonus for calculations
         ability_scores = self.get_ability_scores(character_data)
         proficiency_bonus = character_info.get('proficiency_bonus', 2)
-        
-        # Build skill bonuses list with proper source formatting
+
+        # Skill to ability mapping
+        skill_abilities = {
+            'acrobatics': 'dexterity',
+            'animal_handling': 'wisdom',
+            'arcana': 'intelligence',
+            'athletics': 'strength',
+            'deception': 'charisma',
+            'history': 'intelligence',
+            'insight': 'wisdom',
+            'intimidation': 'charisma',
+            'investigation': 'intelligence',
+            'medicine': 'wisdom',
+            'nature': 'intelligence',
+            'perception': 'wisdom',
+            'performance': 'charisma',
+            'persuasion': 'charisma',
+            'religion': 'intelligence',
+            'sleight_of_hand': 'dexterity',
+            'stealth': 'dexterity',
+            'survival': 'wisdom'
+        }
+
+        # Build skill bonuses list with detailed breakdown
         skill_bonuses = []
-        for skill in skill_proficiencies:
-            if isinstance(skill, dict) and skill.get('proficient', False):
-                name = skill.get('name', 'Unknown')
-                source = skill.get('source', 'Unknown')
-                
-                # Map source names to match backup original format
-                if source.lower() == 'class':
-                    source = f'Class: {class_name}'
-                elif source.lower() == 'background':
-                    source = f'Background: {background_name}'
-                elif source.lower() in ['species', 'race', 'species/race']:
-                    source = f'{species_or_race_label}: {species_name}'
-                
-                skill_bonuses.append(f"- **{name}** ({source})")
-        
-        # Saving throw bonuses with actual bonus values
+
+        # Handle dict format (current scraper output)
+        if isinstance(skill_proficiencies, dict):
+            for skill_name, skill_data in skill_proficiencies.items():
+                if isinstance(skill_data, dict) and skill_data.get('proficient', False):
+                    name = skill_name.replace('_', ' ').title()
+                    source = skill_data.get('source', 'Unknown')
+
+                    # Map source names
+                    if source.lower() == 'class':
+                        source = f'Class: {class_name}'
+                    elif source.lower() == 'background':
+                        source = f'Background: {background_name}'
+                    elif source.lower() in ['species', 'race', 'species/race']:
+                        source = f'{species_or_race_label}: {species_name}'
+
+                    # Get all the components of the bonus
+                    ability_modifier = skill_data.get('ability_modifier', 0)
+                    prof_bonus = skill_data.get('proficiency_bonus', 0)
+                    has_expertise = skill_data.get('expertise', False)
+                    item_bonus = skill_data.get('item_bonus', 0)
+                    total_bonus = skill_data.get('total_bonus', 0)
+
+                    # Build the breakdown string
+                    breakdown_parts = []
+
+                    # Get ability name
+                    ability_name = skill_abilities.get(skill_name, 'unknown')
+                    breakdown_parts.append(f"{ability_modifier} {ability_name[:3].upper()}")
+
+                    # For expertise, double the proficiency bonus in the display
+                    if has_expertise:
+                        expertise_bonus = prof_bonus * 2
+                        breakdown_parts.append(f"{expertise_bonus} expertise")
+                    elif prof_bonus > 0:
+                        breakdown_parts.append(f"{prof_bonus} proficiency")
+
+                    # Add item bonuses with names
+                    item_bonus_details = skill_data.get('item_bonus_details', [])
+                    if item_bonus_details:
+                        for item_detail in item_bonus_details:
+                            item_name = item_detail['name']
+                            item_value = item_detail['bonus']
+                            breakdown_parts.append(f"{item_value} {item_name}")
+
+                    breakdown = " + ".join(breakdown_parts)
+                    sign = '+' if total_bonus >= 0 else ''
+
+                    skill_bonuses.append(f"- **{name}** {sign}{total_bonus} ({breakdown}) - {source}")
+
+        # Handle list format (legacy)
+        elif isinstance(skill_proficiencies, list):
+            for skill in skill_proficiencies:
+                if isinstance(skill, dict) and skill.get('proficient', False):
+                    name = skill.get('name', 'Unknown')
+                    source = skill.get('source', 'Unknown')
+
+                    # Map source names
+                    if source.lower() == 'class':
+                        source = f'Class: {class_name}'
+                    elif source.lower() == 'background':
+                        source = f'Background: {background_name}'
+                    elif source.lower() in ['species', 'race', 'species/race']:
+                        source = f'{species_or_race_label}: {species_name}'
+
+                    skill_bonuses.append(f"- **{name}** ({source})")
+
+        # Saving throw bonuses with detailed breakdown - show ALL abilities, not just proficient
         save_bonuses = []
-        for save in saving_throw_profs:
-            if isinstance(save, str):
-                ability_data = ability_scores.get(save.lower(), {})
-                ability_mod = ability_data.get('modifier', 0)
-                save_bonus = ability_mod + proficiency_bonus
-                save_name = save.capitalize()
-                save_bonuses.append(f"- **{save_name}** +{save_bonus} (Class: {class_name})")
-        
+
+        # Process all six abilities in standard order
+        all_abilities = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']
+
+        for ability in all_abilities:
+            # Get save data from saving_throw_proficiencies dict (has data for ALL abilities)
+            save_data = {}
+            if isinstance(saving_throw_proficiencies, dict):
+                save_data = saving_throw_proficiencies.get(ability, {})
+
+            if save_data:
+                # Get all components from the save data
+                ability_modifier = save_data.get('ability_modifier', 0)
+                prof_bonus = save_data.get('proficiency_bonus', 0)
+                is_proficient = save_data.get('proficient', False)
+                total_bonus = save_data.get('total_bonus')
+
+                # Fallback to manual calculation if total_bonus not available
+                if total_bonus is None:
+                    ability_data = ability_scores.get(ability, {})
+                    ability_modifier = ability_data.get('modifier', 0)
+                    item_bonus_from_data = save_data.get('item_bonus', 0)
+                    total_bonus = ability_modifier + prof_bonus + item_bonus_from_data
+
+                save_name = ability.capitalize()
+
+                # Build the breakdown string
+                breakdown_parts = []
+                breakdown_parts.append(f"{ability_modifier} {ability[:3].upper()}")
+
+                if prof_bonus > 0:
+                    breakdown_parts.append(f"{prof_bonus} proficiency")
+
+                # Add item bonuses with names
+                item_bonus_details = save_data.get('item_bonus_details', [])
+                if item_bonus_details:
+                    for item_detail in item_bonus_details:
+                        item_name = item_detail['name']
+                        item_value = item_detail['bonus']
+                        breakdown_parts.append(f"{item_value} {item_name}")
+
+                breakdown = " + ".join(breakdown_parts)
+                sign = '+' if total_bonus >= 0 else ''
+
+                # Add source info - show proficiency source if proficient, otherwise just show the bonuses
+                if is_proficient:
+                    save_bonuses.append(f"- **{save_name}** {sign}{total_bonus} ({breakdown}) - Class: {class_name}")
+                else:
+                    save_bonuses.append(f"- **{save_name}** {sign}{total_bonus} ({breakdown})")
+
         section = f"""### Proficiency Sources
 > **Skill Bonuses:**
 {chr(10).join(f'> {bonus}' for bonus in skill_bonuses) if skill_bonuses else '> *None*'}
@@ -350,7 +570,7 @@ proficiencies:
 {chr(10).join(f'> {bonus}' for bonus in save_bonuses) if save_bonuses else '> *None*'}
 >
 > ^proficiency-sources"""
-        
+
         return section
     
     def format_ability_scores_only(self, character_data: Dict[str, Any]) -> str:

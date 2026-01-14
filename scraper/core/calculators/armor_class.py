@@ -512,28 +512,33 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
         return 0  # Default if not found
     
     def _get_equipped_armor_info(self, character_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Get information about equipped armor."""
+        """Get information about equipped armor (excludes shields)."""
         inventory = character_data.get('inventory', [])
-        
+
         for item in inventory:
             if not isinstance(item, dict):
                 continue
-                
+
             if item.get('equipped', False) and item.get('definition', {}).get('filterType') == 'Armor':
                 armor_def = item['definition']
+                armor_name = armor_def.get('name', '').lower()
+
+                # Skip shields - they're handled separately by _get_shield_bonus
+                if 'shield' in armor_name:
+                    continue
+
                 armor_class = armor_def.get('armorClass', 0)
                 armor_type = armor_def.get('armorTypeId', 0)
-                
+
                 # Map armor type ID to type name and properties
                 # D&D Beyond API armor type mapping - verified through testing
-                armor_name = armor_def.get('name', '').lower()
-                
+
                 # Use armor name-based mapping for accuracy, with ID as fallback
                 if any(armor in armor_name for armor in ['padded', 'leather', 'studded leather']):
                     armor_type_name = 'light'
                     dex_cap = None
                 elif any(armor in armor_name for armor in ['hide', 'chain shirt', 'scale mail', 'breastplate', 'half plate']):
-                    armor_type_name = 'medium' 
+                    armor_type_name = 'medium'
                     dex_cap = 2
                 elif any(armor in armor_name for armor in ['ring mail', 'chain mail', 'splint', 'plate']):
                     armor_type_name = 'heavy'
@@ -554,7 +559,7 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
                     else:
                         armor_type_name = 'unknown'
                         dex_cap = None
-                
+
                 return {
                     'equipped': True,
                     'base_ac': armor_class,
@@ -562,7 +567,7 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
                     'dex_cap': dex_cap,
                     'name': armor_def.get('name', 'Unknown Armor')
                 }
-        
+
         return {
             'equipped': False,
             'base_ac': 0,

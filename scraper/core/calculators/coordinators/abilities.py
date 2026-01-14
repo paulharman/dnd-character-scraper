@@ -220,16 +220,29 @@ class AbilitiesCoordinator(ICoordinator):
             save_proficiencies = self._get_save_proficiencies(raw_data)
             
             for ability in self.ability_names:
-                ability_data = ability_scores_data.get(ability, {})
-                score = ability_data.get('score', 10)
-                modifier = ability_data.get('modifier', (score - 10) // 2)
+                ability_data = ability_scores_data.get(ability)
+                if ability_data is None:
+                    # Fallback if ability not found
+                    score = 10
+                    modifier = 0
+                    source_breakdown = {'base': 10}
+                elif hasattr(ability_data, 'score'):
+                    # AbilityScoreData object from enhanced calculator
+                    score = ability_data.score
+                    modifier = ability_data.modifier
+                    source_breakdown = ability_data.source_breakdown
+                else:
+                    # Dictionary format
+                    score = ability_data.get('score', 10)
+                    modifier = ability_data.get('modifier', (score - 10) // 2)
+                    source_breakdown = ability_data.get('source_breakdown', {'base': score})
+
                 save_bonus = self._calculate_save_bonus(ability, modifier, raw_data, proficiency_bonus)
-                source_breakdown = ability_data.get('source_breakdown', {'base': score})
-                
+
                 final_modifiers[ability] = modifier
                 ability_scores[ability] = {
                     'score': score,
-                    'modifier': modifier, 
+                    'modifier': modifier,
                     'save_bonus': save_bonus,
                     'source_breakdown': source_breakdown
                 }
@@ -293,18 +306,22 @@ class AbilitiesCoordinator(ICoordinator):
     def _calculate_final_scores(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Calculate final ability scores with complete source breakdown."""
         self.logger.debug("Calculating final ability scores with breakdown")
-        
-        # Get scores from different sources
+
+        # Get scores from different sources (but not item bonuses yet)
         base_scores = self._calculate_base_scores(raw_data)
         racial_bonuses = self._calculate_racial_bonuses(raw_data)
         feat_bonuses = self._calculate_feat_bonuses(raw_data)
         asi_bonuses = self._calculate_asi_bonuses(raw_data)
-        item_bonuses = self._calculate_item_bonuses(raw_data)
         other_bonuses = self._calculate_other_bonuses(raw_data)
-        
+
+        # Now calculate item bonuses with all other scores available
+        item_bonuses = self._calculate_item_bonuses_with_context(
+            raw_data, base_scores, racial_bonuses, feat_bonuses, asi_bonuses, other_bonuses
+        )
+
         # Build comprehensive breakdown
         breakdown = {}
-        
+
         for ability in self.ability_names:
             base = base_scores.get(ability, 10)
             racial = racial_bonuses.get(ability, 0)
@@ -312,13 +329,13 @@ class AbilitiesCoordinator(ICoordinator):
             asi = asi_bonuses.get(ability, 0)
             item = item_bonuses.get(ability, 0)
             other = other_bonuses.get(ability, 0)
-            
+
             total = base + racial + feat + asi + item + other
-            
+
             # Build source list for detailed tracking
             sources = []
             sources.append({'value': base, 'source': 'Base Score', 'source_type': 'base'})
-            
+
             if racial != 0:
                 sources.append({'value': racial, 'source': 'Species/Race', 'source_type': 'racial'})
             if feat != 0:
@@ -329,7 +346,7 @@ class AbilitiesCoordinator(ICoordinator):
                 sources.append({'value': item, 'source': 'Items', 'source_type': 'item'})
             if other != 0:
                 sources.append({'value': other, 'source': 'Other', 'source_type': 'other'})
-            
+
             breakdown[ability] = {
                 'total': total,
                 'base': base,
@@ -340,9 +357,9 @@ class AbilitiesCoordinator(ICoordinator):
                 'other': other,
                 'sources': sources
             }
-            
+
             self.logger.debug(f"{ability.title()}: {total} (base:{base} racial:{racial} feat:{feat} asi:{asi} item:{item} other:{other})")
-        
+
         return breakdown
     
     def _calculate_base_scores(self, raw_data: Dict[str, Any]) -> Dict[str, int]:
@@ -494,36 +511,73 @@ class AbilitiesCoordinator(ICoordinator):
         
         return asi_bonuses
     
-    def _calculate_item_bonuses(self, raw_data: Dict[str, Any]) -> Dict[str, int]:
-        """Calculate ability score bonuses from magic items."""
+    def _calculate_item_bonuses_with_context(
+        self,
+        raw_data: Dict[str, Any],
+        base_scores: Dict[str, int],
+        racial_bonuses: Dict[str, int],
+        feat_bonuses: Dict[str, int],
+        asi_bonuses: Dict[str, int],
+        other_bonuses: Dict[str, int]
+    ) -> Dict[str, int]:
+        """Calculate ability score bonuses from magic items with context of other bonuses."""
         item_bonuses = {ability: 0 for ability in self.ability_names}
-        item_set_values = {}  # Track "set" type modifiers separately
-        
+        item_set_modifiers = {}  # Track "set" type modifiers separately
+
         # Check modifiers for item-based ability score increases
         modifiers = raw_data.get('modifiers', {})
         item_modifiers = modifiers.get('item', [])
-        
+
         for modifier in item_modifiers:
             if self._is_ability_score_modifier(modifier):
-                ability_name, value = self._extract_ability_modifier(modifier)
-                if ability_name:
-                    if value < -999000:  # Special encoding for "set" type
-                        set_value = value + 999999
-                        item_set_values[ability_name] = set_value
-                        self.logger.debug(f"Item sets {ability_name} to: {set_value}")
-                    else:
+                modifier_type = modifier.get('type', '')
+
+                if modifier_type == 'set':
+                    # Handle set modifiers with restrictions
+                    ability_name = self._extract_ability_name_from_modifier(modifier)
+                    if ability_name:
+                        set_value = modifier.get('fixedValue') or modifier.get('value', 0)
+                        restriction = modifier.get('restriction', '')
+                        item_set_modifiers[ability_name] = {
+                            'value': set_value,
+                            'restriction': restriction
+                        }
+                        self.logger.debug(f"Item sets {ability_name} to: {set_value} (restriction: {restriction})")
+                else:
+                    # Handle bonus modifiers
+                    ability_name, value = self._extract_ability_modifier(modifier)
+                    if ability_name:
                         item_bonuses[ability_name] += value
                         self.logger.debug(f"Item bonus {ability_name}: +{value}")
-        
-        # Apply set values by calculating the difference from base
-        if item_set_values:
-            base_scores = self._calculate_base_scores(raw_data)
-            for ability_name, set_value in item_set_values.items():
+
+        # Apply set values with restriction checking
+        if item_set_modifiers:
+            for ability_name, set_info in item_set_modifiers.items():
+                set_value = set_info['value']
+                restriction = set_info.get('restriction', '')
+
+                # Calculate score without item bonuses
                 base_score = base_scores.get(ability_name, 10)
-                needed_bonus = set_value - base_score
-                item_bonuses[ability_name] = needed_bonus
-                self.logger.debug(f"Item sets {ability_name} from {base_score} to {set_value} (bonus: {needed_bonus})")
-        
+                score_without_item = (base_score +
+                                     racial_bonuses.get(ability_name, 0) +
+                                     feat_bonuses.get(ability_name, 0) +
+                                     asi_bonuses.get(ability_name, 0) +
+                                     other_bonuses.get(ability_name, 0))
+
+                # Check restriction
+                if 'if not already higher' in restriction.lower():
+                    if score_without_item < set_value:
+                        # Apply set: calculate adjustment needed from current score
+                        item_bonuses[ability_name] = set_value - score_without_item
+                        self.logger.debug(f"Item sets {ability_name} from {score_without_item} to {set_value} (adjustment: +{set_value - score_without_item})")
+                    else:
+                        # Score already higher, don't apply set
+                        self.logger.debug(f"Item set for {ability_name} not applied: score {score_without_item} >= {set_value}")
+                else:
+                    # No restriction, apply set unconditionally
+                    item_bonuses[ability_name] = set_value - score_without_item
+                    self.logger.debug(f"Item sets {ability_name} to {set_value} (adjustment: +{set_value - score_without_item})")
+
         return item_bonuses
     
     def _calculate_other_bonuses(self, raw_data: Dict[str, Any]) -> Dict[str, int]:
@@ -566,32 +620,48 @@ class AbilitiesCoordinator(ICoordinator):
             
         return False
     
+    def _extract_ability_name_from_modifier(self, modifier: Dict[str, Any]) -> Optional[str]:
+        """Extract just the ability name from a modifier."""
+        modifies_id = modifier.get('modifiesId')
+        sub_type = modifier.get('subType', '')
+
+        # Method 1: Traditional format with modifiesId
+        if modifies_id in self.ability_id_map:
+            return self.ability_id_map[modifies_id]
+
+        # Method 2: New format with subType ending in "-score"
+        if sub_type.endswith('-score'):
+            ability_name = sub_type.replace('-score', '')
+            if ability_name in self.ability_names:
+                return ability_name
+
+        return None
+
     def _extract_ability_modifier(self, modifier: Dict[str, Any]) -> Tuple[Optional[str], int]:
         """Extract ability name and bonus from a modifier."""
         modifies_id = modifier.get('modifiesId')
         sub_type = modifier.get('subType', '')
-        bonus = modifier.get('bonus', 0) or modifier.get('value', 0) or modifier.get('fixedValue', 0)
-        modifier_type = modifier.get('type', '')
-        
+
+        # Extract value - prefer fixedValue, then value, then bonus
+        bonus = modifier.get('fixedValue')
+        if bonus is None:
+            bonus = modifier.get('value')
+        if bonus is None:
+            bonus = modifier.get('bonus', 0)
+        if bonus is None:
+            bonus = 0
+
         # Method 1: Traditional format with modifiesId
         if modifies_id in self.ability_id_map:
             ability_name = self.ability_id_map[modifies_id]
-            
-            # Handle "set" type modifiers
-            if modifier_type == 'set':
-                return ability_name, -999999 + bonus  # Special encoding
-            else:
-                return ability_name, bonus
-            
+            return ability_name, bonus
+
         # Method 2: New format with subType ending in "-score"
         if sub_type.endswith('-score'):
-            ability_name = sub_type.replace('-score', '').replace('-', '_')
+            ability_name = sub_type.replace('-score', '')
             if ability_name in self.ability_names:
-                if modifier_type == 'set':
-                    return ability_name, -999999 + bonus  # Special encoding
-                else:
-                    return ability_name, bonus
-        
+                return ability_name, bonus
+
         return None, 0
     
     def _is_asi_choice(self, choice: Dict[str, Any]) -> bool:

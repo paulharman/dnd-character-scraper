@@ -328,17 +328,28 @@ else:
         
         # Combat stats - get from v6.0.0 structure first, then fallback
         combat_data = character_data.get('combat', {})
-        
-        # Initiative: use Dex modifier (initiative = dex mod)
+
+        # Initiative: get from combat data if available (includes all bonuses)
         ability_scores = self.get_ability_scores(character_data)
         dex_mod = ability_scores.get('dexterity', {}).get('modifier', 0)
-        initiative = dex_mod
+        initiative = combat_data.get('initiative_bonus', dex_mod)
         initiative_str = f"+{initiative}" if initiative >= 0 else str(initiative)
-        
-        # Speed from species data
-        species_data = character_data.get('character_info', {}).get('species', {})
-        speed = species_data.get('speed', 30)
-        
+
+        # Speed from combat data (includes class bonuses like Monk Unarmored Movement)
+        # Check for new movement format first, fallback to legacy speed
+        movement_data = combat_data.get('movement', {})
+        if isinstance(movement_data, dict):
+            walking_speed = movement_data.get('walking_speed', 30)
+            climbing_speed = movement_data.get('climbing_speed', 0)
+            swimming_speed = movement_data.get('swimming_speed', 0)
+            flying_speed = movement_data.get('flying_speed', 0)
+        else:
+            # Legacy format - just walking speed
+            walking_speed = combat_data.get('speed', 30)
+            climbing_speed = 0
+            swimming_speed = 0
+            flying_speed = 0
+
         # AC from combat section (scraper provides complete calculation)
         ac_data = combat_data.get('armor_class', {})
         if isinstance(ac_data, dict) and 'total' in ac_data:
@@ -358,16 +369,19 @@ else:
                     # Use the detailed breakdown as details
                     ac_details = f'({breakdown.split(": ", 1)[-1]})'
                 else:
-                    # Unarmored character - check for unarmored defense
+                    # Unarmored character - use the detailed breakdown
                     if 'Barbarian' in breakdown:
-                        ac_method = 'Unarmored Defense (Barbarian)'  
-                        ac_details = '(10 + Dex + Con)'
+                        ac_method = 'Unarmored Defense (Barbarian)'
                     elif 'Monk' in breakdown:
                         ac_method = 'Unarmored Defense (Monk)'
-                        ac_details = '(10 + Dex + Wis)'
                     else:
                         ac_method = 'Unarmored'
-                        ac_details = '(10 + Dex)'
+                    # Extract the calculation part from the breakdown
+                    # Format: "Unarmored Defense (Monk): 10 (base) + 3 (dex) + 3 (wis) + 1 (magic) = 17"
+                    if ':' in breakdown:
+                        ac_details = f'({breakdown.split(": ", 1)[-1]})'
+                    else:
+                        ac_details = f'({breakdown})'
             else:
                 # Fallback if no breakdown available
                 ac_method = 'Unarmored'
@@ -396,7 +410,21 @@ else:
         
         # Create character name for state key
         state_key = self._create_state_key(character_name)
-        
+
+        # Build speed entry with all movement types
+        speed_sublabels = []
+        if climbing_speed > 0:
+            speed_sublabels.append(f"Climbing speed - {climbing_speed} ft")
+        if swimming_speed > 0:
+            speed_sublabels.append(f"Swimming speed - {swimming_speed} ft")
+        if flying_speed > 0:
+            speed_sublabels.append(f"Flying speed - {flying_speed} ft")
+
+        speed_entry = f"""  - label: Walking speed
+    value: '{walking_speed} ft'"""
+        if speed_sublabels:
+            speed_entry += f"\n    sublabel: {', '.join(speed_sublabels)}"
+
         section = f"""## Character Statistics
 
 ```stats
@@ -409,8 +437,7 @@ items:
     value: '{subclass_name}'
   - label: Initiative
     value: '{initiative_str}'
-  - label: Speed
-    value: '{speed} ft'
+{speed_entry}
   - label: Armor Class
     sublabel: {ac_method} {ac_details}
     value: {armor_class}
@@ -423,7 +450,7 @@ grid:
 
 ```healthpoints
 state_key: {state_key}_health
-health: {max_hp}
+health: '{{{{ frontmatter.max_hp }}}}'
 hitdice:
   dice: {hit_die}
   value: {character_level}

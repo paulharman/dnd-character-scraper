@@ -70,6 +70,7 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         self.validator = CharacterDataValidator()
         self.cache = {}
         self.cache_stats = {'hits': 0, 'misses': 0}
+        self.logger = logger  # Add instance logger
         
         # Initialize proficiency constants
         self._setup_proficiency_constants()
@@ -242,8 +243,8 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                 rule_version = self.get_rule_version(character_data)
                 logger.debug(f"Calculating proficiencies with {rule_version.version.value} rules")
                 
-                # Calculate proficiencies
-                proficiency_data = self._calculate_proficiencies(character_data, rule_version)
+                # Calculate proficiencies (pass context for access to calculated abilities)
+                proficiency_data = self._calculate_proficiencies(character_data, rule_version, context)
                 
                 # Build result
                 result_data = {
@@ -258,6 +259,10 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                     'half_proficiencies': proficiency_data.half_proficiencies,
                     'double_proficiencies': proficiency_data.double_proficiencies,
                     'rule_version': rule_version.version.value,
+                    # Add passive skills
+                    'passive_perception': getattr(proficiency_data, '_passive_skills', {}).get('perception', 10),
+                    'passive_investigation': getattr(proficiency_data, '_passive_skills', {}).get('investigation', 10),
+                    'passive_insight': getattr(proficiency_data, '_passive_skills', {}).get('insight', 10),
                     # Add change detection compatible data
                     'proficiencies_for_change_detection': self._build_change_detection_data(proficiency_data, character_data)
                 }
@@ -519,22 +524,23 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         }
     
     # Core calculation methods
-    def _calculate_proficiencies(self, character_data: Dict[str, Any], rule_version) -> ProficiencyData:
+    def _calculate_proficiencies(self, character_data: Dict[str, Any], rule_version, context=None) -> ProficiencyData:
         """
         Calculate proficiencies with comprehensive breakdown.
-        
+
         Args:
             character_data: Character data from D&D Beyond
             rule_version: Detected rule version
-            
+            context: Calculation context (contains calculated abilities)
+
         Returns:
             ProficiencyData object with complete breakdown
         """
         # Calculate proficiency bonus
         proficiency_bonus = self._get_proficiency_bonus(character_data)
-        
-        # Get ability modifiers
-        ability_modifiers = self._get_ability_modifiers(character_data)
+
+        # Get ability modifiers (from context if available, otherwise from character_data)
+        ability_modifiers = self._get_ability_modifiers(character_data, context)
         
         # Calculate skill proficiencies
         skill_proficiencies = self._calculate_skill_proficiencies(character_data, ability_modifiers, proficiency_bonus)
@@ -552,8 +558,14 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         expertise_skills = self._get_expertise_skills(character_data)
         half_proficiencies = self._get_half_proficiencies(character_data)
         double_proficiencies = self._get_double_proficiencies(character_data)
-        
-        return ProficiencyData(
+
+        # Calculate passive skills (10 + skill bonus)
+        passive_perception = 10 + skill_proficiencies.get('perception', {}).get('total_bonus', 0)
+        passive_investigation = 10 + skill_proficiencies.get('investigation', {}).get('total_bonus', 0)
+        passive_insight = 10 + skill_proficiencies.get('insight', {}).get('total_bonus', 0)
+        print(f"[DEBUG] Passive skills: Perception={passive_perception}, Investigation={passive_investigation}, Insight={passive_insight}")
+
+        proficiency_data = ProficiencyData(
             proficiency_bonus=proficiency_bonus,
             skill_proficiencies=skill_proficiencies,
             saving_throw_proficiencies=saving_throw_proficiencies,
@@ -565,6 +577,16 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
             half_proficiencies=half_proficiencies,
             double_proficiencies=double_proficiencies
         )
+
+        # Store passive skills in metadata (not part of ProficiencyData dataclass)
+        # These will be added to the result in the calculate() method
+        proficiency_data._passive_skills = {
+            'perception': passive_perception,
+            'investigation': passive_investigation,
+            'insight': passive_insight
+        }
+
+        return proficiency_data
     
     def _get_proficiency_bonus(self, character_data: Dict[str, Any]) -> int:
         """Get character's proficiency bonus based on level."""
@@ -572,40 +594,290 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         total_level = sum(cls.get('level', 0) for cls in classes) or 1
         return DnDMath.proficiency_bonus(total_level)
     
-    def _get_ability_modifiers(self, character_data: Dict[str, Any]) -> Dict[str, int]:
-        """Get all ability modifiers."""
+    def _get_ability_modifiers(self, character_data: Dict[str, Any], context=None) -> Dict[str, int]:
+        """Get all ability modifiers from context, pre-calculated abilities, or fallback to raw stats."""
         ability_modifiers = {}
+
+        # Try to get from context first (from abilities coordinator)
+        if context and hasattr(context, 'metadata') and context.metadata:
+            abilities_data = context.metadata.get('abilities', {})
+            if 'ability_modifiers' in abilities_data:
+                self.logger.debug(f"Using ability modifiers from context: {abilities_data['ability_modifiers']}")
+                return abilities_data['ability_modifiers']
+            elif 'ability_scores' in abilities_data:
+                for ability_name, ability_data in abilities_data['ability_scores'].items():
+                    if isinstance(ability_data, dict) and 'modifier' in ability_data:
+                        ability_modifiers[ability_name] = ability_data['modifier']
+                if ability_modifiers:
+                    self.logger.debug(f"Using ability_scores from context: {ability_modifiers}")
+                    return ability_modifiers
+
+        # Try to get from pre-calculated abilities data in character_data
+        if 'abilities' in character_data:
+            abilities = character_data['abilities']
+            if 'ability_modifiers' in abilities:
+                self.logger.debug(f"Using pre-calculated ability modifiers from abilities: {abilities['ability_modifiers']}")
+                return abilities['ability_modifiers']
+            # Try ability_scores structure
+            elif 'ability_scores' in abilities:
+                for ability_name, ability_data in abilities['ability_scores'].items():
+                    if isinstance(ability_data, dict) and 'modifier' in ability_data:
+                        ability_modifiers[ability_name] = ability_data['modifier']
+                if ability_modifiers:
+                    self.logger.debug(f"Using pre-calculated ability modifiers from ability_scores: {ability_modifiers}")
+                    return ability_modifiers
+
+        # Fallback: calculate from raw stats (base scores only - NOT recommended)
+        self.logger.warning("Falling back to raw stats calculation for ability modifiers - this may not include bonuses from items/feats!")
         stats = character_data.get('stats', [])
-        
+
         for stat in stats:
             ability_id = stat.get('id')
             if ability_id in self.ability_id_map:
                 ability_name = self.ability_id_map[ability_id]
                 score = stat.get('value', 10)
                 ability_modifiers[ability_name] = DnDMath.ability_modifier(score)
-        
+
         return ability_modifiers
-    
+
+    def _get_ability_check_bonus(self, character_data: Dict[str, Any]) -> tuple[int, list[dict]]:
+        """
+        Get bonus to ability checks from modifiers (Stone of Good Luck, etc.).
+        D&D Beyond provides these as modifiers with subType 'ability-checks'.
+        Only counts bonuses from equipped items.
+
+        Args:
+            character_data: Character data from D&D Beyond
+
+        Returns:
+            Tuple of (total_bonus, list of item details with 'name' and 'bonus')
+        """
+        ability_check_bonus = 0
+        item_bonuses = []
+
+        # Check modifiers for ability check bonuses (Stone of Good Luck, etc.)
+        modifiers = character_data.get('modifiers', {})
+        for source_type, modifier_list in modifiers.items():
+            if not isinstance(modifier_list, list):
+                continue
+
+            for modifier in modifier_list:
+                # Look for ability check bonuses
+                if modifier.get('subType') == 'ability-checks' and modifier.get('isGranted', False):
+                    bonus = modifier.get('fixedValue') or modifier.get('value', 0)
+                    if bonus:
+                        # Find item name from componentId and check if equipped
+                        component_id = modifier.get('componentId')
+                        item_name = "Unknown Item"
+                        is_equipped = False
+
+                        if component_id:
+                            # Search inventory for the item - try both raw and enhanced format
+                            inventory = character_data.get('inventory', [])
+                            equipment = character_data.get('equipment', {})
+                            enhanced_equipment = equipment.get('enhanced_equipment', [])
+
+                            # Check raw inventory format
+                            for item in inventory:
+                                if item.get('definition', {}).get('id') == component_id:
+                                    item_name = item['definition'].get('name', 'Unknown Item')
+                                    is_equipped = item.get('equipped', False)
+                                    break
+
+                            # Check enhanced equipment format if not found
+                            if not is_equipped and item_name == "Unknown Item":
+                                for item in enhanced_equipment:
+                                    # Enhanced format uses definition_key like "112130694:4773"
+                                    def_key = item.get('definition_key', '')
+                                    if str(component_id) in def_key:
+                                        item_name = item.get('name', 'Unknown Item')
+                                        is_equipped = item.get('equipped', False)
+                                        break
+
+                        # Only add bonus if item is equipped
+                        if is_equipped:
+                            ability_check_bonus += bonus
+                            item_bonuses.append({'name': item_name, 'bonus': bonus})
+                            self.logger.debug(f"Found ability check bonus from equipped {item_name}: +{bonus}")
+                        else:
+                            self.logger.debug(f"Ignoring ability check bonus from unequipped {item_name}: +{bonus}")
+
+        return ability_check_bonus, item_bonuses
+
+    def _get_saving_throw_bonus(self, character_data: Dict[str, Any]) -> tuple[int, list[dict]]:
+        """
+        Get bonus to saving throws from modifiers (Stone of Good Luck, etc.).
+        D&D Beyond provides these as modifiers with subType 'saving-throws'.
+        Only counts bonuses from equipped items.
+
+        Args:
+            character_data: Character data from D&D Beyond
+
+        Returns:
+            Tuple of (total_bonus, list of item details with 'name' and 'bonus')
+        """
+        saving_throw_bonus = 0
+        item_bonuses = []
+
+        # Check modifiers for saving throw bonuses (Stone of Good Luck, etc.)
+        modifiers = character_data.get('modifiers', {})
+        for source_type, modifier_list in modifiers.items():
+            if not isinstance(modifier_list, list):
+                continue
+
+            for modifier in modifier_list:
+                # Look for saving throw bonuses
+                if modifier.get('subType') == 'saving-throws' and modifier.get('isGranted', False):
+                    bonus = modifier.get('fixedValue') or modifier.get('value', 0)
+                    if bonus:
+                        # Find item name from componentId and check if equipped
+                        component_id = modifier.get('componentId')
+                        item_name = "Unknown Item"
+                        is_equipped = False
+
+                        if component_id:
+                            # Search inventory for the item - try both raw and enhanced format
+                            inventory = character_data.get('inventory', [])
+                            equipment = character_data.get('equipment', {})
+                            enhanced_equipment = equipment.get('enhanced_equipment', [])
+
+                            # Check raw inventory format
+                            for item in inventory:
+                                if item.get('definition', {}).get('id') == component_id:
+                                    item_name = item['definition'].get('name', 'Unknown Item')
+                                    is_equipped = item.get('equipped', False)
+                                    break
+
+                            # Check enhanced equipment format if not found
+                            if not is_equipped and item_name == "Unknown Item":
+                                for item in enhanced_equipment:
+                                    # Enhanced format uses definition_key like "112130694:4773"
+                                    def_key = item.get('definition_key', '')
+                                    if str(component_id) in def_key:
+                                        item_name = item.get('name', 'Unknown Item')
+                                        is_equipped = item.get('equipped', False)
+                                        break
+
+                        # Only add bonus if item is equipped
+                        if is_equipped:
+                            saving_throw_bonus += bonus
+                            item_bonuses.append({'name': item_name, 'bonus': bonus})
+                            self.logger.debug(f"Found saving throw bonus from equipped {item_name}: +{bonus}")
+                        else:
+                            self.logger.debug(f"Ignoring saving throw bonus from unequipped {item_name}: +{bonus}")
+
+        return saving_throw_bonus, item_bonuses
+
+    def _get_skill_specific_bonuses(self, character_data: Dict[str, Any]) -> Dict[str, tuple[int, list[dict]]]:
+        """
+        Get bonuses for specific skills from modifiers (Gloves of Thievery, etc.).
+        D&D Beyond provides these as modifiers with skill-specific subTypes like 'sleight-of-hand'.
+
+        Args:
+            character_data: Character data from D&D Beyond
+
+        Returns:
+            Dict mapping skill name to tuple of (total_bonus, list of item details with 'name' and 'bonus')
+        """
+        skill_bonuses = {}  # skill_name -> (total_bonus, [item_details])
+
+        # Map modifier subTypes to skill names
+        modifier_to_skill = {
+            'acrobatics': 'acrobatics',
+            'animal-handling': 'animal_handling',
+            'arcana': 'arcana',
+            'athletics': 'athletics',
+            'deception': 'deception',
+            'history': 'history',
+            'insight': 'insight',
+            'intimidation': 'intimidation',
+            'investigation': 'investigation',
+            'medicine': 'medicine',
+            'nature': 'nature',
+            'perception': 'perception',
+            'performance': 'performance',
+            'persuasion': 'persuasion',
+            'religion': 'religion',
+            'sleight-of-hand': 'sleight_of_hand',
+            'stealth': 'stealth',
+            'survival': 'survival'
+        }
+
+        # Check equipment for skill-specific modifiers
+        # Try enhanced scraper format first (equipment.enhanced_equipment)
+        equipment = character_data.get('equipment', {})
+        enhanced_equipment = equipment.get('enhanced_equipment', [])
+
+        # If not found, try raw D&D Beyond format (inventory)
+        if not enhanced_equipment:
+            enhanced_equipment = character_data.get('inventory', [])
+
+        for item in enhanced_equipment:
+            if not item.get('equipped', False):
+                continue
+
+            # Handle both formats: enhanced scraper (item.name) and raw D&D Beyond (item.definition.name)
+            item_name = item.get('name')
+            if not item_name:
+                item_name = item.get('definition', {}).get('name', 'Unknown Item')
+
+            # Get modifiers from either format
+            granted_mods = item.get('granted_modifiers', [])
+            if not granted_mods:
+                granted_mods = item.get('definition', {}).get('grantedModifiers', [])
+
+            for modifier in granted_mods:
+                # Look for skill bonuses (type='bonus', subType='<skill-name>')
+                if modifier.get('type') == 'bonus' and modifier.get('isGranted', False):
+                    sub_type = modifier.get('subType', '')
+
+                    # Check if this is a skill-specific bonus
+                    if sub_type in modifier_to_skill:
+                        skill_name = modifier_to_skill[sub_type]
+                        bonus = modifier.get('fixedValue') or modifier.get('value', 0)
+
+                        if bonus:
+                            if skill_name not in skill_bonuses:
+                                skill_bonuses[skill_name] = (0, [])
+
+                            total, items = skill_bonuses[skill_name]
+                            total += bonus
+                            items.append({'name': item_name, 'bonus': bonus})
+                            skill_bonuses[skill_name] = (total, items)
+                            self.logger.debug(f"Found skill-specific bonus: {item_name} +{bonus} to {skill_name}")
+
+        return skill_bonuses
+
     def _calculate_skill_proficiencies(self, character_data: Dict[str, Any], ability_modifiers: Dict[str, int], proficiency_bonus: int) -> Dict[str, Any]:
         """Calculate skill proficiency bonuses with change detection compatibility."""
         skill_proficiencies = {}
-        
-        # Get proficient skills
-        proficient_skills = self._get_proficient_skills(character_data)
+
+        # Get proficient skills with their sources
+        proficient_skills, skill_sources = self._get_proficient_skills(character_data)
         expertise_skills = self._get_expertise_skills(character_data)
         half_prof_skills = self._get_half_proficiencies(character_data)
-        
+
+        # Check for ability check bonuses from modifiers (Stone of Good Luck, etc.)
+        luck_bonus, general_item_bonuses = self._get_ability_check_bonus(character_data)
+        self.logger.debug(f"Ability check bonus from modifiers: {luck_bonus} from {len(general_item_bonuses)} items")
+
+        # Get skill-specific bonuses (Gloves of Thievery, etc.)
+        skill_specific_bonuses = self._get_skill_specific_bonuses(character_data)
+        self.logger.debug(f"Found skill-specific bonuses for {len(skill_specific_bonuses)} skills")
+
         # Calculate bonuses for all skills
         for skill, ability in self.skill_abilities.items():
             ability_mod = ability_modifiers.get(ability, 0)
-            
+
             is_proficient = skill in proficient_skills
             has_expertise = skill in expertise_skills
             has_half_prof = skill in half_prof_skills
-            
+
             if has_expertise:
                 # Expertise: double proficiency bonus
                 bonus = ability_mod + (proficiency_bonus * 2)
+                if skill == 'acrobatics':
+                    print(f"[DEBUG ACROBATICS] ability_mod={ability_mod}, prof_bonus={proficiency_bonus}, expertise_bonus={(proficiency_bonus*2)}, before_luck={bonus}")
             elif is_proficient:
                 # Regular proficiency
                 bonus = ability_mod + proficiency_bonus
@@ -615,7 +887,22 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
             else:
                 # No proficiency
                 bonus = ability_mod
-            
+
+            # Combine general and skill-specific item bonuses
+            all_item_bonuses = list(general_item_bonuses)  # Copy general bonuses
+            total_item_bonus = luck_bonus  # Start with general ability check bonus
+
+            # Add skill-specific bonus if present
+            if skill in skill_specific_bonuses:
+                specific_bonus, specific_items = skill_specific_bonuses[skill]
+                total_item_bonus += specific_bonus
+                all_item_bonuses.extend(specific_items)
+
+            # Add total item bonus
+            bonus += total_item_bonus
+            if skill == 'acrobatics':
+                print(f"[DEBUG ACROBATICS] luck_bonus={luck_bonus}, final_bonus={bonus}")
+
             # Store both total bonus and proficiency flags for change detection compatibility
             skill_proficiencies[skill] = {
                 'total_bonus': bonus,
@@ -623,58 +910,79 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                 'expertise': has_expertise,
                 'half_proficiency': has_half_prof,
                 'ability_modifier': ability_mod,
-                'proficiency_bonus': proficiency_bonus if (is_proficient or has_expertise) else (proficiency_bonus // 2 if has_half_prof else 0)
+                'proficiency_bonus': proficiency_bonus if (is_proficient or has_expertise) else (proficiency_bonus // 2 if has_half_prof else 0),
+                'item_bonus': total_item_bonus,  # Total bonus from all items (general + specific)
+                'item_bonus_details': all_item_bonuses,  # List of items providing bonuses
+                'source': skill_sources.get(skill, 'Unknown')  # Where the proficiency comes from
             }
-        
+
         return skill_proficiencies
     
     def _calculate_saving_throw_proficiencies(self, character_data: Dict[str, Any], ability_modifiers: Dict[str, int], proficiency_bonus: int) -> Dict[str, Any]:
         """Calculate saving throw proficiency bonuses with change detection compatibility."""
         saving_throw_proficiencies = {}
-        
+
         # Get proficient saving throws
         proficient_saves = self._get_proficient_saving_throws(character_data)
-        
+
+        # Check for saving throw bonuses from modifiers (Stone of Good Luck affects saves too)
+        save_bonus, save_item_bonuses = self._get_saving_throw_bonus(character_data)
+        self.logger.debug(f"Saving throw bonus from modifiers: {save_bonus} from {len(save_item_bonuses)} items")
+
         # Calculate bonuses for all abilities
         for ability in self.ability_id_map.values():
             ability_mod = ability_modifiers.get(ability, 0)
             is_proficient = ability in proficient_saves
-            
+
             if is_proficient:
                 bonus = ability_mod + proficiency_bonus
             else:
                 bonus = ability_mod
-            
+
+            # Add item bonus (Stone of Good Luck, etc.)
+            bonus += save_bonus
+
             # Store both total bonus and proficiency flag for change detection compatibility
             saving_throw_proficiencies[ability] = {
                 'total_bonus': bonus,
                 'proficient': is_proficient,
                 'ability_modifier': ability_mod,
-                'proficiency_bonus': proficiency_bonus if is_proficient else 0
+                'proficiency_bonus': proficiency_bonus if is_proficient else 0,
+                'item_bonus': save_bonus,
+                'item_bonus_details': save_item_bonuses
             }
-        
+
         return saving_throw_proficiencies
     
-    def _get_proficient_skills(self, character_data: Dict[str, Any]) -> Set[str]:
-        """Get set of skills the character is proficient in."""
+    def _get_proficient_skills(self, character_data: Dict[str, Any]) -> tuple[Set[str], Dict[str, str]]:
+        """
+        Get set of skills the character is proficient in.
+
+        Returns:
+            Tuple of (set of proficient skills, dict mapping skill->source)
+        """
         proficient_skills = set()
-        
+        skill_sources = {}  # Track where each skill proficiency comes from
+
         # Extract skill proficiencies from modifiers (D&D Beyond API structure)
         modifiers = character_data.get('modifiers', {})
-        
+
         # Process modifiers from all sources
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
-                
+
             for modifier in modifier_list:
                 if self._is_skill_proficiency_modifier(modifier):
                     skill_name = self._extract_skill_from_modifier(modifier)
                     if skill_name:
                         proficient_skills.add(skill_name)
+                        # Store the source (first one wins if multiple sources)
+                        if skill_name not in skill_sources:
+                            skill_sources[skill_name] = source_type
                         logger.debug(f"Found skill proficiency: {skill_name} (source: {source_type})")
-        
-        return proficient_skills
+
+        return proficient_skills, skill_sources
     
     def _is_skill_proficiency_modifier(self, modifier: Dict[str, Any]) -> bool:
         """Check if a modifier grants skill proficiency."""
@@ -1290,7 +1598,7 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
     def _build_change_detection_data(self, proficiency_data: ProficiencyData, character_data: Dict[str, Any]) -> Dict[str, Any]:
         """Build change detection compatible proficiency data."""
         # Get lists of proficient skills, abilities with saving throw proficiency, etc.
-        proficient_skills = self._get_proficient_skills(character_data)
+        proficient_skills, _ = self._get_proficient_skills(character_data)  # Ignore sources here
         expertise_skills = self._get_expertise_skills(character_data)
         saving_throw_proficiencies = self._get_proficient_saving_throws(character_data)
         

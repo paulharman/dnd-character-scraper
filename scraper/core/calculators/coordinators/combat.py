@@ -17,6 +17,7 @@ from ..weapon_attacks import EnhancedWeaponAttackCalculator
 from ..armor_class import EnhancedArmorClassCalculator
 from ..hit_points import EnhancedHitPointsCalculator
 from ..speed import EnhancedSpeedCalculator
+from ..action_attacks import ActionAttackExtractor
 from ..utils.data_transformer import EnhancedCalculatorDataTransformer
 
 logger = logging.getLogger(__name__)
@@ -59,16 +60,10 @@ class CombatCoordinator(ICoordinator):
         """
         self.config_manager = config_manager
         self.logger = logging.getLogger(self.__class__.__name__)
-        
+
         # Initialize enhanced calculators and data transformer
         self.weapon_attack_calculator = EnhancedWeaponAttackCalculator()
-        self.armor_class_calculator = EnhancedArmorClassCalculator(config_manager)
-        self.hit_points_calculator = EnhancedHitPointsCalculator()
-        self.speed_calculator = EnhancedSpeedCalculator()
-        self.data_transformer = EnhancedCalculatorDataTransformer()
-        
-        # Initialize enhanced calculators and data transformer
-        self.weapon_attack_calculator = EnhancedWeaponAttackCalculator()
+        self.action_attack_extractor = ActionAttackExtractor()
         self.armor_class_calculator = EnhancedArmorClassCalculator(config_manager)
         self.hit_points_calculator = EnhancedHitPointsCalculator()
         self.speed_calculator = EnhancedSpeedCalculator()
@@ -140,14 +135,14 @@ class CombatCoordinator(ICoordinator):
             
             # Calculate speed
             try:
-                speed = self._calculate_speed(raw_data)
+                speed = self._calculate_speed(raw_data, context)
                 self.logger.debug(f"Speed calculated: {speed}")
             except Exception as e:
                 self.logger.error(f"Error calculating speed: {e}")
                 raise
             
             # Get scraper-provided attack data
-            weapon_attacks = self._get_scraper_attack_actions(raw_data)
+            weapon_attacks = self._get_scraper_attack_actions(raw_data, context)
             
             # Extract spell attacks
             spell_attacks = self._extract_spell_attacks(raw_data, ability_modifiers, proficiency_bonus)
@@ -172,11 +167,12 @@ class CombatCoordinator(ICoordinator):
             
             # Combine all actions
             all_actions = weapon_attacks + spell_attacks
-            
+
             # Create result data
             result_data = {
                 'initiative_bonus': initiative_bonus,
-                'speed': speed,
+                'speed': speed.get('walking_speed', 30) if isinstance(speed, dict) else speed,  # Legacy format for backward compatibility
+                'movement': speed if isinstance(speed, dict) else {'walking_speed': speed, 'climbing_speed': 0, 'swimming_speed': 0, 'flying_speed': 0},  # Full movement data
                 'armor_class': armor_class,
                 'hit_points': hit_points,
                 'attack_actions': weapon_attacks,
@@ -235,25 +231,42 @@ class CombatCoordinator(ICoordinator):
             abilities_data = context.metadata.get('abilities', {})
             if 'ability_modifiers' in abilities_data:
                 return abilities_data['ability_modifiers']
-        
-        # Fallback: calculate from raw data
+
+        # Try to get from already-calculated abilities data in raw_data
+        if 'abilities' in raw_data:
+            abilities = raw_data['abilities']
+            if 'ability_modifiers' in abilities:
+                self.logger.debug(f"Using pre-calculated ability modifiers from raw_data: {abilities['ability_modifiers']}")
+                return abilities['ability_modifiers']
+            # Try ability_scores structure
+            elif 'ability_scores' in abilities:
+                ability_modifiers = {}
+                for ability_name, ability_data in abilities['ability_scores'].items():
+                    if isinstance(ability_data, dict) and 'modifier' in ability_data:
+                        ability_modifiers[ability_name] = ability_data['modifier']
+                if ability_modifiers:
+                    self.logger.debug(f"Using pre-calculated ability modifiers from ability_scores: {ability_modifiers}")
+                    return ability_modifiers
+
+        # Fallback: calculate from raw data stats (base scores only - NOT recommended)
+        self.logger.warning("Falling back to raw stats calculation - this may not include bonuses from items/feats!")
         ability_modifiers = {}
         stats = raw_data.get('stats', [])
-        
+
         for stat in stats:
             ability_id = stat.get('id')
             ability_score = stat.get('value', 10)
-            
+
             if ability_id in self.ability_id_map:
                 ability_name = self.ability_id_map[ability_id]
                 modifier = (ability_score - 10) // 2
                 ability_modifiers[ability_name] = modifier
-        
+
         # Ensure all abilities are present
         for ability in self.ability_names:
             if ability not in ability_modifiers:
                 ability_modifiers[ability] = 0
-        
+
         return ability_modifiers
     
     def _get_proficiency_bonus(self, raw_data: Dict[str, Any], context: CalculationContext) -> int:
@@ -348,19 +361,19 @@ class CombatCoordinator(ICoordinator):
             else:
                 self.logger.warning(f"Enhanced AC calculator failed: {result.errors}")
                 # Fall back to manual calculation if enhanced calculator fails
-                return self._calculate_ac_primary(raw_data)
-                
+                return self._calculate_ac_primary(raw_data, context)
+
         except Exception as e:
             self.logger.error(f"Error using enhanced AC calculator: {e}")
             # Fall back to manual calculation
-            return self._calculate_ac_primary(raw_data)
+            return self._calculate_ac_primary(raw_data, context)
     
-    def _calculate_ac_primary(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_ac_primary(self, raw_data: Dict[str, Any], context: CalculationContext = None) -> Dict[str, Any]:
         """Primary AC calculation with proper armor, shield, and dex cap handling."""
         self.logger.debug("Using primary AC calculation")
-        
+
         # Get ability modifiers
-        ability_modifiers = self._get_ability_modifiers(raw_data, None)
+        ability_modifiers = self._get_ability_modifiers(raw_data, context)
         dex_mod = ability_modifiers.get('dexterity', 0) or 0
         con_mod = ability_modifiers.get('constitution', 0) or 0
         wis_mod = ability_modifiers.get('wisdom', 0) or 0
@@ -490,7 +503,7 @@ class CombatCoordinator(ICoordinator):
             return {
                 'total': final_ac,
                 'base': armor_ac,  # Base armor AC instead of 10
-                'breakdown': f"AC: {' + '.join(breakdown_parts)} = {final_ac}",
+                'breakdown': f"AC: {' + '.join(breakdown_parts)}",
                 'armor_type': armor_name or armor_type or 'unknown',
                 'has_armor': True,
                 'has_shield': shield_ac > 0
@@ -516,36 +529,43 @@ class CombatCoordinator(ICoordinator):
                 unarmored_type = "Unarmored Defense (Monk)"
                 self.logger.debug(f"Monk unarmored defense: +{wis_mod} WIS")
             
-            final_ac = base_ac + unarmored_bonus + shield_ac
-            self.logger.debug(f"Unarmored AC: {base_ac} (base+dex) + {unarmored_bonus} (unarmored) + {shield_ac} (shield) = {final_ac}")
-            
-            # Create structured result for unarmored AC - format without double signs
-            breakdown_parts = ["10 (base)"]
-            
-            # Add dex without double signs
-            if dex_mod > 0:
-                breakdown_parts.append(f"{dex_mod} (dex)")
-            elif dex_mod < 0:
-                breakdown_parts.append(f"{dex_mod} (dex)")  # Already has negative sign
-            else:
-                breakdown_parts.append("0 (dex)")
-                
-            # Add unarmored bonus without double signs  
+            # Check for magic item AC bonuses (like Cloak of Protection)
+            magic_ac_data = self._get_magic_item_ac_bonus(raw_data)
+            magic_ac_bonus = magic_ac_data['total']
+            magic_items = magic_ac_data['items']
+            self.logger.debug(f"Magic item AC bonus: {magic_ac_bonus} from {magic_items}")
+
+            final_ac = base_ac + unarmored_bonus + shield_ac + magic_ac_bonus
+            self.logger.debug(f"Unarmored AC: {base_ac} (base+dex) + {unarmored_bonus} (unarmored) + {shield_ac} (shield) + {magic_ac_bonus} (magic) = {final_ac}")
+
+            # Create breakdown
+            breakdown_parts = []
+
+            # Base armor value
+            breakdown_parts.append("10")
+
+            # Add dexterity bonus
+            if dex_mod != 0:
+                sign = "+" if dex_mod > 0 else ""
+                breakdown_parts.append(f"{sign}{dex_mod} Dex")
+
+            # Add unarmored defense bonus
             if unarmored_bonus != 0:
-                ability_name = "con" if 'barbarian' in class_names else "wis" if 'monk' in class_names else "special"
-                if unarmored_bonus > 0:
-                    breakdown_parts.append(f"{unarmored_bonus} ({ability_name})")
-                else:
-                    breakdown_parts.append(f"{unarmored_bonus} ({ability_name})")  # Already has negative sign
-                    
-            # Add shield without double signs
+                sign = "+" if unarmored_bonus > 0 else ""
+                breakdown_parts.append(f"{sign}{unarmored_bonus} Unarmored Defense")
+
+            # Add shield
             if shield_ac > 0:
-                breakdown_parts.append(f"{shield_ac} (shield)")
-            
+                breakdown_parts.append(f"+{shield_ac} Shield")
+
+            # Add magic item bonuses with item names
+            for item in magic_items:
+                breakdown_parts.append(f"+{item['bonus']} {item['name']}")
+
             return {
                 'total': final_ac,
                 'base': 10,
-                'breakdown': f"{unarmored_type}: {' + '.join(breakdown_parts)} = {final_ac}",
+                'breakdown': ' | '.join(breakdown_parts),
                 'armor_type': 'unarmored',
                 'has_armor': False,
                 'has_shield': shield_ac > 0
@@ -644,19 +664,19 @@ class CombatCoordinator(ICoordinator):
     def _get_fighting_style_ac_bonus(self, raw_data: Dict[str, Any]) -> int:
         """
         Get AC bonus from fighting styles like Defense.
-        
+
         Args:
             raw_data: Character data from D&D Beyond
-            
+
         Returns:
             AC bonus from fighting styles
         """
         fighting_style_bonus = 0
-        
+
         # Check feats for fighting style bonuses - feats are at root level
         feats_data = raw_data.get('feats', [])
         self.logger.debug(f"Fighting style detection - found {len(feats_data)} feats")
-        
+
         for feat in feats_data:
             if isinstance(feat, dict):
                 # Get feat name from definition
@@ -664,20 +684,111 @@ class CombatCoordinator(ICoordinator):
                 feat_name = definition.get('name', '').lower()
                 description = definition.get('description', '').lower()
                 self.logger.debug(f"Checking feat: {feat_name}")
-                
+
                 # Check for Defense fighting style
                 if 'defense' in feat_name and 'fighting style' in description:
                     # Defense gives +1 AC when wearing armor
                     fighting_style_bonus += 1
                     self.logger.debug("Defense fighting style bonus: +1 AC")
-                
+
                 # Check for other AC-affecting fighting styles or feats
                 elif '+1' in description and 'armor class' in description:
                     fighting_style_bonus += 1
                     self.logger.debug(f"AC bonus from {feat_name}: +1")
-        
+
         self.logger.debug(f"Fighting style bonus calculated: {fighting_style_bonus}")
         return fighting_style_bonus
+
+    def _get_magic_item_ac_bonus(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get AC bonus from magic items like Cloak of Protection, Ring of Protection, etc.
+
+        Args:
+            raw_data: Character data from D&D Beyond
+
+        Returns:
+            Dict with 'total' (int) and 'items' (list of dicts with 'name' and 'bonus')
+        """
+        magic_ac_bonus = 0
+        magic_items = []
+
+        # Check equipment for AC-boosting magic items
+        inventory = raw_data.get('inventory', [])
+        if not inventory:
+            equipment = raw_data.get('equipment', {})
+            inventory = equipment.get('basic_equipment', [])
+
+        self.logger.debug(f"Scanning {len(inventory)} items for magic AC bonuses")
+
+        # Common magic items that provide AC bonuses
+        # Note: Stone of Good Luck provides +1 to ability checks and saves, NOT AC
+        ac_bonus_items = {
+            'cloak of protection': 1,
+            'ring of protection': 1,
+            'ioun stone of protection': 1,
+            'defender': 3,  # Can vary
+            'bracers of defense': 2,  # AC = 10 + DEX + bracers (2)
+        }
+
+        for item in inventory:
+            if not isinstance(item, dict):
+                continue
+
+            # Only check equipped items
+            if not item.get('equipped', False):
+                continue
+
+            # Get item name from either direct property or nested definition
+            item_name = item.get('name', '')
+            item_def = item.get('definition', {})
+            if not item_name:
+                item_name = item_def.get('name', '')
+            item_name_lower = item_name.lower()
+
+            # Check if item requires attunement - check both locations
+            requires_attunement = (
+                item.get('requires_attunement', False) or
+                item.get('requiresAttunement', False) or
+                item_def.get('requiresAttunement', False) or
+                item_def.get('canAttune', False)
+            )
+            is_attuned = item.get('attuned', False) or item.get('isAttuned', False)
+
+            # Skip items that require attunement but aren't attuned
+            if requires_attunement and not is_attuned:
+                self.logger.debug(f"Skipping {item_name} - requires attunement but not attuned")
+                continue
+
+            self.logger.debug(f"Checking magic item: {item_name} (attuned: {is_attuned}, requires: {requires_attunement})")
+
+            # Check for known AC bonus items
+            found_bonus = False
+            for magic_item_name, bonus in ac_bonus_items.items():
+                if magic_item_name in item_name_lower:
+                    magic_ac_bonus += bonus
+                    magic_items.append({'name': item_name, 'bonus': bonus})
+                    self.logger.debug(f"Found AC bonus from {item_name}: +{bonus}")
+                    found_bonus = True
+                    break
+
+            # Also check the description for AC bonuses - check both locations
+            if not found_bonus:
+                description = item.get('description', '') or item_def.get('description', '')
+                description_lower = description.lower()
+
+                # Look for various AC bonus patterns using regex
+                if description_lower:
+                    import re
+                    # Match patterns like "+1 bonus to armor class" or "+2 bonus to AC"
+                    bonus_match = re.search(r'\+(\d+)\s+bonus to (?:armor class|ac)', description_lower)
+                    if bonus_match:
+                        bonus_value = int(bonus_match.group(1))
+                        magic_ac_bonus += bonus_value
+                        magic_items.append({'name': item_name, 'bonus': bonus_value})
+                        self.logger.debug(f"Found AC bonus from {item_name} description: +{bonus_value}")
+
+        self.logger.debug(f"Total magic item AC bonus: {magic_ac_bonus} from {len(magic_items)} items")
+        return {'total': magic_ac_bonus, 'items': magic_items}
     
     def _get_hit_points(self, raw_data: Dict[str, Any], context: CalculationContext) -> Dict[str, Any]:
         """Get hit points from context or calculate using enhanced calculator with fallback."""
@@ -825,92 +936,153 @@ class CombatCoordinator(ICoordinator):
     def _calculate_initiative(self, raw_data: Dict[str, Any], ability_modifiers: Dict[str, int]) -> int:
         """Calculate initiative bonus."""
         initiative_bonus = ability_modifiers.get('dexterity', 0)
-        
+
         # Check for initiative bonuses from modifiers
         modifiers = raw_data.get('modifiers', {})
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
-                
+
             for modifier in modifier_list:
                 if self._is_initiative_modifier(modifier):
                     bonus = modifier.get('value', 0) or modifier.get('bonus', 0)
                     initiative_bonus += bonus
                     self.logger.debug(f"Initiative bonus from {source_type}: +{bonus}")
-        
+
         return initiative_bonus
     
-    def _calculate_speed(self, raw_data: Dict[str, Any]) -> int:
-        """Calculate character speed using enhanced calculator with fallback."""
+    def _calculate_speed(self, raw_data: Dict[str, Any], context: CalculationContext) -> Dict[str, Any]:
+        """Calculate character speed using enhanced calculator with fallback.
+
+        Args:
+            raw_data: Raw character data
+            context: Calculation context with rule version info
+
+        Returns:
+            Dict with keys: walking_speed, climbing_speed, swimming_speed, flying_speed, etc.
+        """
         # Try enhanced calculator first
         try:
             self.logger.debug("Attempting to use enhanced speed calculator")
             transformed_data = self.data_transformer.transform_for_enhanced_calculators(raw_data)
-            enhanced_result = self.speed_calculator.calculate(transformed_data, None)
-            
+            enhanced_result = self.speed_calculator.calculate(transformed_data, context)
+
             if enhanced_result.status == CalculationStatus.COMPLETED:
                 self.logger.info("Successfully used enhanced speed calculator")
                 enhanced_data = enhanced_result.data
-                return enhanced_data.get('total_speed', 30)
+                # Return all movement speeds from enhanced calculator
+                return {
+                    'walking_speed': enhanced_data.get('walking_speed', 30),
+                    'climbing_speed': enhanced_data.get('climbing_speed', 0),
+                    'swimming_speed': enhanced_data.get('swimming_speed', 0),
+                    'flying_speed': enhanced_data.get('flying_speed', 0),
+                    'burrowing_speed': enhanced_data.get('burrowing_speed', 0),
+                    'hover': enhanced_data.get('hover', False),
+                    'speed_breakdown': enhanced_data.get('speed_breakdown', {}),
+                    'special_movement': enhanced_data.get('special_movement', [])
+                }
             else:
                 self.logger.warning(f"Enhanced speed calculator failed: {enhanced_result.errors}")
-                
+
         except Exception as e:
             self.logger.warning(f"Enhanced speed calculator failed, falling back to legacy: {str(e)}")
         
         # Fallback to legacy calculation
         self.logger.debug("Using legacy speed calculation")
-        
+
         # Get base speed from race
         base_speed = 30  # Default
-        
+
         race_data = raw_data.get('race', {})
         if race_data:
             race_def = race_data.get('definition', {})
             base_speed = race_def.get('speed', 30)
-        
+
         # Check for speed modifiers
         total_speed = base_speed
         modifiers = raw_data.get('modifiers', {})
-        
+
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
-                
+
             for modifier in modifier_list:
                 if self._is_speed_modifier(modifier):
                     bonus = modifier.get('value', 0) or modifier.get('bonus', 0)
                     total_speed += bonus
                     self.logger.debug(f"Speed modifier from {source_type}: +{bonus}")
-        
-        return max(0, total_speed)
+
+        # Parse climbing speed from racial traits
+        climbing_speed = 0
+        race_data = raw_data.get('race', {})
+        if race_data:
+            racial_traits = race_data.get('racialTraits', [])
+            for trait in racial_traits:
+                trait_def = trait.get('definition', {})
+                trait_name = trait_def.get('name', '').lower()
+
+                if trait_name == 'speed':
+                    snippet = trait_def.get('snippet', '').lower()
+                    description = trait_def.get('description', '').lower()
+                    text = f'{snippet} {description}'
+
+                    if 'climbing speed' in text:
+                        if 'equal to your walking speed' in text or 'equal to walking speed' in text:
+                            climbing_speed = total_speed  # Equal to walking speed (with bonuses)
+                            self.logger.debug(f"Climbing speed from race: {climbing_speed}")
+                        else:
+                            # Try to parse explicit value
+                            import re
+                            match = re.search(r'climbing speed (?:of )?(\d+)', text)
+                            if match:
+                                climbing_speed = int(match.group(1))
+                                self.logger.debug(f"Climbing speed from race: {climbing_speed}")
+
+        # Return dict format for consistency with enhanced calculator
+        return {
+            'walking_speed': max(0, total_speed),
+            'climbing_speed': climbing_speed,
+            'swimming_speed': 0,
+            'flying_speed': 0,
+            'burrowing_speed': 0,
+            'hover': False,
+            'speed_breakdown': {},
+            'special_movement': []
+        }
     
-    def _get_scraper_attack_actions(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Get scraper-provided attack actions from combat data, or generate from equipped weapons."""
+    def _get_scraper_attack_actions(self, raw_data: Dict[str, Any], context: Optional[CalculationContext] = None) -> List[Dict[str, Any]]:
+        """Get scraper-provided attack actions from combat data, or generate from equipped weapons and actions."""
         weapon_actions = []
-        
+
         try:
             # Get attack actions from combat section
             combat_data = raw_data.get('combat', {})
             attack_actions = combat_data.get('attack_actions', [])
-            
+
             if isinstance(attack_actions, list) and attack_actions:
                 weapon_actions.extend(attack_actions)
                 self.logger.debug(f"Found {len(attack_actions)} scraper-provided attack actions")
             else:
-                # Use enhanced weapon attack calculator
+                # Extract action-based attacks (monk unarmed strikes, racial attacks, etc.)
+                action_attacks = self._get_action_attacks(raw_data, context)
+                if action_attacks:
+                    weapon_actions.extend(action_attacks)
+                    self.logger.debug(f"Extracted {len(action_attacks)} attacks from actions")
+
+                # Use enhanced weapon attack calculator for equipped weapons
                 enhanced_attacks = self._get_enhanced_weapon_attacks(raw_data)
                 if enhanced_attacks:
                     weapon_actions.extend(enhanced_attacks)
                     self.logger.debug(f"Generated {len(enhanced_attacks)} enhanced weapon attacks")
                 else:
                     # Fallback to legacy weapon attack generation
-                    weapon_actions = self._generate_weapon_attacks(raw_data)
-                    self.logger.debug(f"Generated {len(weapon_actions)} weapon attacks from equipped weapons")
-            
+                    legacy_attacks = self._generate_weapon_attacks(raw_data)
+                    weapon_actions.extend(legacy_attacks)
+                    self.logger.debug(f"Generated {len(legacy_attacks)} weapon attacks from equipped weapons")
+
         except Exception as e:
             self.logger.error(f"Error getting scraper attack actions: {e}")
-        
+
         return weapon_actions
     
     def _get_enhanced_weapon_attacks(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -947,7 +1119,72 @@ class CombatCoordinator(ICoordinator):
         except Exception as e:
             self.logger.error(f"Error using enhanced weapon attack calculator: {e}")
             return []
-    
+
+    def _get_action_attacks(self, raw_data: Dict[str, Any], context: Optional[CalculationContext] = None) -> List[Dict[str, Any]]:
+        """Extract attack actions from D&D Beyond actions (monk unarmed strikes, racial attacks, etc.)."""
+        try:
+            # Get calculated ability scores from context
+            calculated_ability_scores = {}
+            if context and hasattr(context, 'metadata') and context.metadata:
+                abilities_data = context.metadata.get('abilities', {})
+                ability_scores_data = abilities_data.get('ability_scores', {})
+                if ability_scores_data:
+                    # Extract just the score values
+                    for ability_name, ability_info in ability_scores_data.items():
+                        if isinstance(ability_info, dict) and 'score' in ability_info:
+                            calculated_ability_scores[ability_name] = ability_info['score']
+
+            # If ability scores not in context, log warning and return empty list
+            if not calculated_ability_scores:
+                self.logger.warning("Calculated ability scores not available in context - cannot extract action attacks")
+                return []
+
+            # Use action attack extractor to get attacks from actions
+            action_attacks = self.action_attack_extractor.extract_attacks(raw_data, calculated_ability_scores)
+
+            # Convert ActionAttack objects to dictionary format
+            attack_dicts = []
+            for action_attack in action_attacks:
+                # Format range string
+                if action_attack.attack_type == 'ranged' and action_attack.range_normal:
+                    if action_attack.range_long:
+                        range_str = f"{action_attack.range_normal}/{action_attack.range_long} ft"
+                    else:
+                        range_str = f"{action_attack.range_normal} ft"
+                elif action_attack.range_normal:
+                    range_str = f"{action_attack.range_normal} ft reach"
+                else:
+                    range_str = "Melee"
+
+                # Format damage string
+                if action_attack.damage_bonus >= 0:
+                    damage_str = f"{action_attack.damage_dice} + {action_attack.damage_bonus}"
+                else:
+                    damage_str = f"{action_attack.damage_dice} - {abs(action_attack.damage_bonus)}"
+
+                attack_dict = {
+                    'name': action_attack.name,
+                    'description': action_attack.description,
+                    'type': 'action_attack',
+                    'attack_type': action_attack.attack_type,
+                    'activation_type': action_attack.activation_type,
+                    'attack_bonus': action_attack.attack_bonus,
+                    'damage_dice': action_attack.damage_dice,
+                    'damage_type': action_attack.damage_type,
+                    'damage_bonus': action_attack.damage_bonus,
+                    'range': range_str,
+                    'snippet': f'{action_attack.attack_type.capitalize()} Attack ({action_attack.activation_type.replace("_", " ").title()}): +{action_attack.attack_bonus} to hit, {damage_str} {action_attack.damage_type} damage',
+                    'source': action_attack.source,
+                    'uses_martial_arts': action_attack.uses_martial_arts
+                }
+                attack_dicts.append(attack_dict)
+
+            return attack_dicts
+
+        except Exception as e:
+            self.logger.error(f"Error extracting action attacks: {e}")
+            return []
+
     def _transform_raw_data_for_calculator(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform raw D&D Beyond data to format expected by enhanced calculator."""
         # Get ability modifiers
