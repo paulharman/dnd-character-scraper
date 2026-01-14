@@ -215,9 +215,25 @@ class CombatFormatter(BaseFormatter):
         properties = attack.get('properties', [])
         range_info = attack.get('range', '')
         breakdown = attack.get('breakdown', {})
-        
+
+        # Check if this is an action attack (unarmed, racial, etc.) vs weapon attack
+        source_type = attack.get('type', 'weapon')
+        activation = attack.get('activation_type', '')
+
         section = f"> #### {name}\n"
-        section += f"> **Type:** {attack_type.title()} Weapon\n"
+
+        # Format type based on whether it's an action attack or weapon attack
+        if source_type == 'action_attack':
+            # For action attacks, show the attack type and activation
+            type_label = f"{attack_type.title()} Attack"
+            if activation:
+                activation_formatted = activation.replace('_', ' ').title()
+                type_label += f" ({activation_formatted})"
+            section += f"> **Type:** {type_label}\n"
+        else:
+            # For weapon attacks, use the traditional format
+            section += f"> **Type:** {attack_type.title()} Weapon\n"
+
         section += f"> **Attack Bonus:** +{attack_bonus}\n"
         
         # Add breakdown if available
