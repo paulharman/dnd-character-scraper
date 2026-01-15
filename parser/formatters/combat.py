@@ -84,27 +84,33 @@ class CombatFormatter(BaseFormatter):
     def _generate_action_economy(self, character_data: Dict[str, Any]) -> str:
         """Generate action economy section with proper formatting."""
         section = "\n### Action Economy\n\n"
-        
+
         # Add explanatory note
         section += ">*Note: Shows cantrips (always available), prepared spells, ritual spells (can be cast unprepared), and always-prepared spells.*\n>\n"
-        
+
         # Get spells data - this is the primary source for actions
         spells_data = character_data.get('spells', {})
         inventory = character_data.get('inventory', [])
         features = character_data.get('features', {})
-        
+        combat_data = character_data.get('combat', {})
+
         # Process all spells to build action lists
         action_spells, bonus_action_list, reaction_list = self._process_spells_for_actions(spells_data)
-        
+
         # Add inventory-based actions
         inventory_bonus_actions, inventory_reactions = self._process_inventory_for_actions(inventory)
         bonus_action_list.extend(inventory_bonus_actions)
         reaction_list.extend(inventory_reactions)
-        
+
         # Add class feature actions
         feature_bonus_actions, feature_reactions = self._process_features_for_actions(features)
         bonus_action_list.extend(feature_bonus_actions)
         reaction_list.extend(feature_reactions)
+
+        # Add attack actions (bonus actions and reactions from combat)
+        attack_bonus_actions, attack_reactions = self._process_attack_actions(combat_data)
+        bonus_action_list.extend(attack_bonus_actions)
+        reaction_list.extend(attack_reactions)
         
         # Sort spells by level then name
         action_spells.sort(key=lambda x: (x[0], x[1]))
@@ -377,7 +383,33 @@ class CombatFormatter(BaseFormatter):
                         reactions.append('Counterspell')
         
         return bonus_actions, reactions
-    
+
+    def _process_attack_actions(self, combat_data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """Process attack actions for bonus actions and reactions."""
+        bonus_actions = []
+        reactions = []
+
+        # Check both attack_actions and weapon_attacks
+        attack_actions = combat_data.get('attack_actions', [])
+
+        for attack in attack_actions:
+            if isinstance(attack, dict):
+                attack_name = attack.get('name', '')
+                activation_type = attack.get('activation_type', '')
+
+                if not attack_name:
+                    continue
+
+                # Check for bonus action attacks
+                if activation_type == 'bonus_action':
+                    bonus_actions.append(attack_name)
+
+                # Check for reaction attacks
+                elif activation_type == 'reaction':
+                    reactions.append(attack_name)
+
+        return bonus_actions, reactions
+
     def _has_bonus_action_capability(self, spell_name: str, description: str, casting_time: str) -> bool:
         """Check if spell has bonus action capabilities."""
         desc_lower = description.lower()
