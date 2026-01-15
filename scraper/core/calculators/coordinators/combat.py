@@ -143,7 +143,10 @@ class CombatCoordinator(ICoordinator):
             
             # Get scraper-provided attack data
             weapon_attacks = self._get_scraper_attack_actions(raw_data, context)
-            
+
+            # Extract special abilities (activation type 8 actions)
+            special_abilities = self._extract_special_abilities(raw_data)
+
             # Extract spell attacks
             spell_attacks = self._extract_spell_attacks(raw_data, ability_modifiers, proficiency_bonus)
             
@@ -177,6 +180,7 @@ class CombatCoordinator(ICoordinator):
                 'hit_points': hit_points,
                 'attack_actions': weapon_attacks,
                 'spell_actions': spell_attacks,
+                'special_abilities': special_abilities,
                 'all_actions': all_actions,
                 'saving_throws': saving_throws,
                 'proficiency_bonus': proficiency_bonus,
@@ -184,6 +188,7 @@ class CombatCoordinator(ICoordinator):
                     'total_actions': len(all_actions),
                     'weapon_attacks': len(weapon_attacks),
                     'spell_attacks': len(spell_attacks),
+                    'special_abilities': len(special_abilities),
                     'has_ranged_attacks': any(self._is_ranged_attack(action) for action in all_actions),
                     'has_melee_attacks': any(self._is_melee_attack(action) for action in all_actions),
                     'character_level': character_level,
@@ -1183,6 +1188,83 @@ class CombatCoordinator(ICoordinator):
 
         except Exception as e:
             self.logger.error(f"Error extracting action attacks: {e}")
+            return []
+
+    def _extract_special_abilities(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Extract special abilities (activation type 8) from character actions.
+
+        These are special abilities like Sneak Attack, Uncanny Metabolism, Feline Agility, etc.
+        that appear in D&D Beyond's "Other" actions section.
+
+        Args:
+            raw_data: Raw D&D Beyond character data
+
+        Returns:
+            List of special ability dictionaries
+        """
+        try:
+            actions_data = raw_data.get('actions', {})
+            if not actions_data:
+                return []
+
+            special_abilities = []
+
+            # Extract special abilities (activation type 8) from all sources
+            for source_type in ['class', 'race', 'feat', 'item']:
+                action_list = actions_data.get(source_type, [])
+                if not isinstance(action_list, list):
+                    continue
+
+                for action in action_list:
+                    activation = action.get('activation', {})
+                    activation_type = activation.get('activationType')
+
+                    # Filter for activation type 8 (special abilities for PCs)
+                    if activation_type == 8:
+                        name = action.get('name', 'Unknown')
+                        snippet = action.get('snippet', '')
+                        description = action.get('description', snippet)
+
+                        # Get activation cost/type
+                        activation_name = activation.get('activationTypeName', 'Special')
+
+                        # Get limited use information
+                        limited_use = action.get('limitedUse')
+                        uses_info = {}
+                        if limited_use:
+                            max_uses = limited_use.get('maxUses')
+                            reset_type = limited_use.get('resetType')
+
+                            reset_map = {
+                                1: 'Short Rest',
+                                2: 'Long Rest',
+                                3: 'Day',
+                                4: 'Movement',  # Feline Agility
+                            }
+
+                            if max_uses:
+                                uses_info = {
+                                    'max_uses': max_uses,
+                                    'reset_type': reset_map.get(reset_type, 'Unknown'),
+                                    'number_used': limited_use.get('numberUsed', 0)
+                                }
+
+                        ability_dict = {
+                            'name': name,
+                            'snippet': snippet,
+                            'description': description,
+                            'activation': activation_name,
+                            'uses': uses_info,
+                            'source': source_type
+                        }
+                        special_abilities.append(ability_dict)
+                        self.logger.debug(f"Extracted special ability: {name} from {source_type}")
+
+            return special_abilities
+
+        except Exception as e:
+            self.logger.error(f"Error extracting special abilities: {e}")
             return []
 
     def _transform_raw_data_for_calculator(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:

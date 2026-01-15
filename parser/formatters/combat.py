@@ -69,7 +69,10 @@ class CombatFormatter(BaseFormatter):
         
         # Action Economy
         sections.append(self._generate_action_economy(character_data))
-        
+
+        # Special Abilities (Other Actions)
+        sections.append(self._generate_special_abilities(character_data))
+
         # Attacks
         sections.append(self._generate_attacks(character_data))
         
@@ -150,9 +153,66 @@ class CombatFormatter(BaseFormatter):
             section += f">- {reaction}\n"
         
         section += ">\n"
-        
+
         return section
-    
+
+    def _generate_special_abilities(self, character_data: Dict[str, Any]) -> str:
+        """
+        Generate special abilities section (activation type 8 actions).
+
+        These are special abilities like Sneak Attack, Uncanny Metabolism, Feline Agility, etc.
+        that appear in D&D Beyond's "Other" actions section for quick reference during combat.
+
+        Args:
+            character_data: Complete character data dictionary
+
+        Returns:
+            Formatted special abilities section, or empty string if none found
+        """
+        # Get special abilities from combat data
+        combat_data = character_data.get('combat', {})
+        special_abilities = combat_data.get('special_abilities', [])
+
+        # If no special abilities found, return empty string
+        if not special_abilities:
+            return ""
+
+        # Build the section
+        section = "\n### Other Actions\n\n>\n"
+        section += ">*Special abilities and passive features available during combat.*\n"
+        section += ">\n"
+
+        for ability in special_abilities:
+            name = ability.get('name', 'Unknown')
+            activation = ability.get('activation', 'Special')
+            snippet = ability.get('snippet', '')
+            uses = ability.get('uses', {})
+
+            section += f"> #### {name}\n"
+
+            # Format uses information
+            uses_text = activation
+            if uses:
+                max_uses = uses.get('max_uses')
+                reset_type = uses.get('reset_type')
+                if max_uses:
+                    uses_text += f" ({max_uses} use{'s' if max_uses > 1 else ''} per {reset_type})"
+
+            section += f"> **Activation:** {uses_text}\n"
+
+            if snippet:
+                # Clean up HTML and formatting
+                clean_snippet = self.text_processor.clean_text(snippet)
+
+                # Truncate snippet to reasonable length for quick reference
+                if len(clean_snippet) > 200:
+                    clean_snippet = clean_snippet[:200] + "..."
+                section += f"> **Effect:** {clean_snippet}\n"
+
+            section += "> \n"
+
+        return section
+
     def _generate_attacks(self, character_data: Dict[str, Any]) -> str:
         """Generate attacks section using enhanced scraper-provided attack data."""
         section = "\n### Attacks\n\n>\n"
