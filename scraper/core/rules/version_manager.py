@@ -199,14 +199,30 @@ class RuleVersionManager:
         
         class_source_id = None
         subclass_source_id = None
-        
+
         # Check class definition source
         if 'definition' in primary_class and primary_class['definition'] is not None:
-            class_source_id = primary_class['definition'].get('sourceId')
-        
+            class_def = primary_class['definition']
+            # Try direct sourceId first (old format)
+            class_source_id = class_def.get('sourceId')
+
+            # If not found, check sources array (new format)
+            if not class_source_id and 'sources' in class_def:
+                sources = class_def.get('sources', [])
+                if sources and isinstance(sources, list) and len(sources) > 0:
+                    class_source_id = sources[0].get('sourceId')
+
         # Check subclass definition source
         if 'subclassDefinition' in primary_class and primary_class['subclassDefinition'] is not None:
-            subclass_source_id = primary_class['subclassDefinition'].get('sourceId')
+            subclass_def = primary_class['subclassDefinition']
+            # Try direct sourceId first (old format)
+            subclass_source_id = subclass_def.get('sourceId')
+
+            # If not found, check sources array (new format)
+            if not subclass_source_id and 'sources' in subclass_def:
+                sources = subclass_def.get('sources', [])
+                if sources and isinstance(sources, list) and len(sources) > 0:
+                    subclass_source_id = sources[0].get('sourceId')
         
         evidence = []
         version = None
@@ -406,19 +422,44 @@ class RuleVersionManager:
         
         # Check for conflicting high-confidence results
         conflicting_results = [
-            r for r in results 
+            r for r in results
             if r.version != best_result.version and r.confidence > 0.7
         ]
-        
+
         if conflicting_results:
-            # High-confidence conflict - be conservative (2014)
+            # High-confidence conflict - prioritize class-based detection over race/items
+            # Class mechanics are more important for determining rule version
+            class_based_results = [
+                r for r in results
+                if r.detection_method in ['primary_class', 'feature_analysis']
+            ]
+
+            if class_based_results:
+                # Use class-based detection when available (mixed content scenario)
+                class_result = max(class_based_results, key=lambda r: r.confidence)
+                all_evidence = []
+                all_warnings = ["Mixed content detected (2024 class with 2014 race/items or vice versa)"]
+
+                for result in results:
+                    all_evidence.extend(result.evidence)
+                    all_warnings.extend(result.warnings)
+
+                return DetectionResult(
+                    version=class_result.version,
+                    confidence=0.85,
+                    detection_method="mixed_content_class_priority",
+                    evidence=all_evidence,
+                    warnings=all_warnings + [f"Prioritizing class-based detection: {class_result.version.value} rules"]
+                )
+
+            # No class-based detection available - be conservative (2014)
             all_evidence = []
             all_warnings = ["Conflicting rule version indicators detected"]
-            
+
             for result in results:
                 all_evidence.extend(result.evidence)
                 all_warnings.extend(result.warnings)
-            
+
             return DetectionResult(
                 version=RuleVersion.RULES_2014,
                 confidence=0.6,
