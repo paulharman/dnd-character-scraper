@@ -127,6 +127,13 @@ class ActionAttackExtractor:
 
     def _is_attack_action(self, action: Dict[str, Any]) -> bool:
         """Check if an action is an attack."""
+        # Filter out legendary actions (type 8) - these are special abilities for PCs, not attacks
+        # Examples: Sneak Attack (damage modifier), Uncanny Metabolism (healing on initiative)
+        activation = action.get('activation', {})
+        activation_type = activation.get('activationType')
+        if activation_type == 8:  # legendary_action
+            return False
+
         # Check displayAsAttack flag
         if action.get('displayAsAttack'):
             return True
