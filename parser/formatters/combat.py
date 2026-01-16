@@ -117,12 +117,34 @@ class CombatFormatter(BaseFormatter):
         
         # Sort spells by level then name
         action_spells.sort(key=lambda x: (x[0], x[1]))
-        
+
+        # Get proficiencies data for weapon mastery
+        proficiencies_data = character_data.get('proficiencies', {})
+
         # Build action lists
         section += ">**Action:**\n"
         for level, spell_name in action_spells:
             section += f">- {spell_name}\n"
-        
+
+        # Add weapon attacks with mastery info
+        weapon_attacks = combat_data.get('weapon_attacks', [])
+        if weapon_attacks:
+            for attack in weapon_attacks:
+                attack_name = attack.get('name', 'Unknown Weapon')
+
+                # Check if this weapon has mastery
+                weapon_masteries = proficiencies_data.get('weapon_masteries', [])
+                mastery_type = None
+                for mastery in weapon_masteries:
+                    if isinstance(mastery, dict) and mastery.get('weapon', '').lower() in attack_name.lower():
+                        mastery_type = mastery.get('mastery')
+                        break
+
+                if mastery_type:
+                    section += f">- {attack_name} ({mastery_type} mastery)\n"
+                else:
+                    section += f">- {attack_name}\n"
+
         # Add standard actions
         section += ">- **Standard Actions:** Attack, Cast a Spell, Dash, Disengage, Dodge, Help, Hide, Ready, Search, Use Object\n>\n"
         
@@ -144,7 +166,6 @@ class CombatFormatter(BaseFormatter):
             section += f">- {ba}\n"
 
         # Add weapon mastery notes (2024 rules)
-        proficiencies_data = character_data.get('proficiencies', {})
         weapon_masteries = proficiencies_data.get('weapon_masteries', [])
         if weapon_masteries:
             # Check for Nick mastery specifically as it affects action economy

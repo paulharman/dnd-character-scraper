@@ -1226,6 +1226,10 @@ class CombatCoordinator(ICoordinator):
                         snippet = action.get('snippet', '')
                         description = action.get('description', snippet)
 
+                        # Process snippet to replace D&D Beyond template variables
+                        if snippet:
+                            snippet = self._process_snippet_templates(snippet, raw_data)
+
                         # Get activation cost/type
                         activation_name = activation.get('activationTypeName', 'Special')
 
@@ -1266,6 +1270,64 @@ class CombatCoordinator(ICoordinator):
         except Exception as e:
             self.logger.error(f"Error extracting special abilities: {e}")
             return []
+
+    def _process_snippet_templates(self, snippet: str, raw_data: Dict[str, Any]) -> str:
+        """
+        Process D&D Beyond template variables in snippets.
+
+        Replaces templates like {{{(classlevel/2)@roundup}}d6 with actual values.
+
+        Args:
+            snippet: The snippet text with potential templates
+            raw_data: Raw character data for context (class level, etc.)
+
+        Returns:
+            Processed snippet with templates replaced
+        """
+        import re
+        import math
+
+        try:
+            # Get total class level
+            classes = raw_data.get('classes', [])
+            total_level = sum(cls.get('level', 0) for cls in classes) or 1
+
+            # Find all template patterns like {{(classlevel/2)@roundup}} or {{{...}}}
+            # Pattern: {{ or {{{ followed by expression, followed by }} or }}}
+            # Match both double and triple braces
+            template_pattern = r'\{\{+([^}]+)\}\}+'
+
+            def replace_template(match):
+                expression = match.group(1)
+
+                # Replace classlevel with actual level
+                expression = expression.replace('classlevel', str(total_level))
+
+                # Handle @roundup modifier
+                if '@roundup' in expression:
+                    expression = expression.replace('@roundup', '')
+                    try:
+                        # Evaluate the expression
+                        result = eval(expression, {"__builtins__": {}}, {})
+                        # Round up
+                        result = math.ceil(result)
+                        return str(int(result))
+                    except:
+                        return match.group(0)  # Return original if evaluation fails
+                else:
+                    try:
+                        result = eval(expression, {"__builtins__": {}}, {})
+                        return str(int(result))
+                    except:
+                        return match.group(0)
+
+            # Replace all templates
+            processed = re.sub(template_pattern, replace_template, snippet)
+            return processed
+
+        except Exception as e:
+            self.logger.warning(f"Error processing snippet templates: {e}")
+            return snippet
 
     def _transform_raw_data_for_calculator(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform raw D&D Beyond data to format expected by enhanced calculator."""
