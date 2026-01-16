@@ -660,7 +660,14 @@ class FeaturesCoordinator(ICoordinator):
         """Process feat data."""
         try:
             definition = feat_data.get('definition', feat_data)
-            
+
+            # Filter out disguise feats (D&D Beyond placeholders for choice points)
+            categories = definition.get('categories', [])
+            for category in categories:
+                if category.get('tagName') == '__DISGUISE_FEAT':
+                    self.logger.debug(f"Filtering out disguise feat: {definition.get('name')}")
+                    return None
+
             feat_id = definition.get('id')
             name = definition.get('name', 'Unknown Feat')
             description = definition.get('description', '')

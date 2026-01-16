@@ -142,7 +142,17 @@ class CombatFormatter(BaseFormatter):
         # Add regular bonus actions
         for ba in regular_bonus_actions:
             section += f">- {ba}\n"
-        
+
+        # Add weapon mastery notes (2024 rules)
+        proficiencies_data = character_data.get('proficiencies', {})
+        weapon_masteries = proficiencies_data.get('weapon_masteries', [])
+        if weapon_masteries:
+            # Check for Nick mastery specifically as it affects action economy
+            nick_weapons = [m.get('weapon') for m in weapon_masteries if isinstance(m, dict) and m.get('mastery') == 'Nick']
+            if nick_weapons:
+                weapons_str = ', '.join(nick_weapons)
+                section += f">- **Nick Mastery ({weapons_str}):** Light weapon extra attack as part of Attack action (not bonus action)\n"
+
         # Add default bonus actions
         section += ">- **Standard:** Two-Weapon Fighting, Off-Hand Attack\n>\n"
         

@@ -222,6 +222,7 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                     'tool_proficiencies': scraper_profs.get('tool_proficiencies', []),
                     'language_proficiencies': scraper_profs.get('language_proficiencies', []),
                     'weapon_proficiencies': scraper_profs.get('weapon_proficiencies', []),
+                    'weapon_masteries': scraper_profs.get('weapon_masteries', []),
                     'armor_proficiencies': armor_proficiencies,
                     'expertise_skills': [],  # Extract from skill_proficiencies
                     'half_proficiencies': [],  # Not in current scraper format
@@ -254,6 +255,7 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                     'tool_proficiencies': proficiency_data.tool_proficiencies,
                     'language_proficiencies': proficiency_data.language_proficiencies,
                     'weapon_proficiencies': proficiency_data.weapon_proficiencies,
+                    'weapon_masteries': getattr(proficiency_data, '_weapon_masteries', []),
                     'armor_proficiencies': proficiency_data.armor_proficiencies,
                     'expertise_skills': proficiency_data.expertise_skills,
                     'half_proficiencies': proficiency_data.half_proficiencies,
@@ -553,7 +555,10 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         language_proficiencies = self._get_language_proficiencies(character_data)
         weapon_proficiencies = self._get_weapon_proficiencies(character_data)
         armor_proficiencies = self._get_armor_proficiencies(character_data)
-        
+
+        # Get weapon masteries (2024 rules feature)
+        weapon_masteries = self._get_weapon_masteries(character_data)
+
         # Get special proficiency types
         expertise_skills = self._get_expertise_skills(character_data)
         half_proficiencies = self._get_half_proficiencies(character_data)
@@ -578,13 +583,14 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
             double_proficiencies=double_proficiencies
         )
 
-        # Store passive skills in metadata (not part of ProficiencyData dataclass)
+        # Store passive skills and weapon masteries in metadata (not part of ProficiencyData dataclass)
         # These will be added to the result in the calculate() method
         proficiency_data._passive_skills = {
             'perception': passive_perception,
             'investigation': passive_investigation,
             'insight': passive_insight
         }
+        proficiency_data._weapon_masteries = weapon_masteries
 
         return proficiency_data
     
@@ -1447,7 +1453,83 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                     logger.debug(f"Weapon proficiency: {weapon_name} (ID: {modifier_subtype_id}, source: {source_type})")
         
         return sorted(weapon_proficiencies)
-    
+
+    def _get_weapon_masteries(self, character_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Extract weapon masteries from character choices (2024 rules feature).
+
+        Weapon masteries allow characters to use special properties like Nick, Cleave, Push, etc.
+        Available starting at Rogue level 1 and Fighter level 1 in 2024 rules.
+
+        Returns:
+            List of dictionaries with 'weapon', 'mastery', and 'description' keys
+        """
+        weapon_masteries = []
+
+        try:
+            choices = character_data.get('choices', {})
+
+            # Get choice definitions that contain mastery options
+            choice_defs = choices.get('choiceDefinitions', [])
+            mastery_choice_def = None
+            mastery_options_map = {}
+
+            # Find the mastery choice definition and build option mapping
+            for choice_def in choice_defs:
+                opts = choice_def.get('options', [])
+
+                # Check if this choice contains mastery options
+                has_mastery = any('mastery' in str(opt.get('label', '')).lower() or
+                                 'mastery' in str(opt.get('description', '')).lower()
+                                 for opt in opts)
+
+                if has_mastery:
+                    mastery_choice_def = choice_def
+
+                    # Build mapping of option ID to mastery info
+                    for opt in opts:
+                        label = opt.get('label', '')
+                        description = opt.get('description', '')
+
+                        # Parse "Weapon (Mastery)" format (e.g., "Scimitar (Nick)")
+                        if '(' in label and ')' in label:
+                            parts = label.split('(')
+                            if len(parts) == 2:
+                                weapon = parts[0].strip()
+                                mastery = parts[1].replace(')', '').strip()
+
+                                # Only include actual weapon mastery options (not ASI options)
+                                mastery_keywords = ['Nick', 'Cleave', 'Graze', 'Push', 'Sap', 'Slow', 'Topple', 'Vex']
+                                if mastery in mastery_keywords:
+                                    mastery_options_map[opt.get('id')] = {
+                                        'weapon': weapon,
+                                        'mastery': mastery,
+                                        'description': description
+                                    }
+
+                    break
+
+            # If no mastery options found, character doesn't have weapon mastery feature
+            if not mastery_options_map:
+                return []
+
+            # Check class choices for selected masteries
+            class_choices = choices.get('class', [])
+            for choice in class_choices:
+                option_value = choice.get('optionValue')
+
+                # If this option ID matches a mastery option, add it
+                if option_value and option_value in mastery_options_map:
+                    mastery_info = mastery_options_map[option_value]
+                    weapon_masteries.append(mastery_info)
+                    self.logger.debug(f"Found weapon mastery: {mastery_info['weapon']} ({mastery_info['mastery']})")
+
+            return weapon_masteries
+
+        except Exception as e:
+            self.logger.error(f"Error extracting weapon masteries: {e}")
+            return []
+
     def _should_allow_weapon_proficiency(self, modifier: Dict[str, Any], character_data: Dict[str, Any]) -> bool:
         """Determine if a weapon proficiency should be allowed based on D&D 5e multiclass rules."""
         available_to_multiclass = modifier.get('availableToMulticlass', True)

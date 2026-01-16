@@ -197,7 +197,46 @@ class ProficiencyFormatter(BaseFormatter):
                     display = str(weapon)
                 sections.append(f"> - {display}")
             sections.append(">")
-        
+
+        # Weapon Masteries (2024 rules feature) - try v6.0.0 structure first, then legacy
+        weapon_masteries = proficiencies_data.get('weapon_masteries', [])
+        if not weapon_masteries:
+            weapon_masteries = character_data.get('weapon_masteries', [])
+
+        if weapon_masteries:
+            sections.append(">### Weapon Masteries")
+            sections.append(">")
+            sections.append(">*Special weapon properties you can use (2024 rules)*")
+            sections.append(">")
+            for mastery in weapon_masteries:
+                if isinstance(mastery, dict):
+                    weapon = mastery.get('weapon', 'Unknown')
+                    mastery_type = mastery.get('mastery', 'Unknown')
+                    description = mastery.get('description', '')
+
+                    sections.append(f"> - **{weapon} ({mastery_type})**")
+
+                    # Add a cleaned snippet of the mastery description
+                    if description:
+                        # Extract the mastery description (after the property name in bold/italic)
+                        clean_desc = self.text_processor.clean_text(description)
+
+                        # Try to find the mastery property description
+                        # Format: "<strong><em>Mastery.</em></strong> Description..."
+                        import re
+                        match = re.search(r'<strong><em>' + mastery_type + r'\.</em></strong>\s*(.*?)(?:<p>|$)', description, re.IGNORECASE | re.DOTALL)
+                        if match:
+                            clean_desc = self.text_processor.clean_text(match.group(1))
+
+                        # Truncate if too long
+                        if len(clean_desc) > 200:
+                            clean_desc = clean_desc[:200] + "..."
+
+                        sections.append(f">   {clean_desc}")
+                else:
+                    sections.append(f"> - {str(mastery)}")
+            sections.append(">")
+
         # Tool proficiencies - try v6.0.0 structure first, then legacy
         tool_proficiencies = proficiencies_data.get('tool_proficiencies', [])
         if not tool_proficiencies:

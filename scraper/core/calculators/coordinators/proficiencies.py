@@ -135,6 +135,7 @@ class ProficienciesCoordinator(ICoordinator):
                 'tool_proficiencies': enhanced_data.get('tool_proficiencies', []),
                 'language_proficiencies': enhanced_data.get('language_proficiencies', []),
                 'weapon_proficiencies': enhanced_data.get('weapon_proficiencies', []),
+                'weapon_masteries': enhanced_data.get('weapon_masteries', []),
                 'proficiency_bonus': enhanced_data.get('proficiency_bonus', 2),
                 'skills_by_ability': enhanced_data.get('skills_by_ability', {}),
                 'metadata': enhanced_data.get('metadata', {}),
