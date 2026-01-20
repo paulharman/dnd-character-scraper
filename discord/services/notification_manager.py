@@ -1219,7 +1219,7 @@ class NotificationManager:
             character_data: Character data that may contain party inventory
 
         Returns:
-            True if notification sent or no changes found, False on error
+            True if changes were detected and notification sent, False if no changes or error
         """
         try:
             # Process character data for party inventory changes
@@ -1227,7 +1227,7 @@ class NotificationManager:
 
             if not party_changes:
                 logger.debug("No party inventory changes detected")
-                return True
+                return False  # No changes detected
 
             # Extract campaign info for virtual character creation
             equipment = character_data.get('equipment', {})
@@ -1238,9 +1238,13 @@ class NotificationManager:
                 logger.warning("Party changes detected but no campaign ID found")
                 return False
 
+            # Get campaign name from character details
+            character_details = character_data.get('character_details', {})
+            campaign_name = character_details.get('campaign_name') if character_details else None
+
             # Create virtual character changeset
             virtual_character_id = self.party_tracker.get_virtual_character_id(str(campaign_id))
-            virtual_character_name = f"Party Inventory (Campaign {campaign_id})"
+            virtual_character_name = f"Party Inventory ({campaign_name})" if campaign_name else f"Party Inventory (Campaign {campaign_id})"
 
             # Create changeset in format expected by notification system
             changeset = CharacterChangeSet(
@@ -1250,10 +1254,11 @@ class NotificationManager:
                 to_version=1,
                 timestamp=datetime.now(),
                 changes=party_changes,
-                summary=f"Party inventory changes for campaign {campaign_id}",
+                summary=f"Party inventory changes for {campaign_name}" if campaign_name else f"Party inventory changes for campaign {campaign_id}",
                 metadata={
                     "is_party_inventory": True,
                     "campaign_id": campaign_id,
+                    "campaign_name": campaign_name,
                     "change_count": len(party_changes)
                 }
             )
@@ -1330,9 +1335,11 @@ class NotificationManager:
 
                     # Add campaign info to footer
                     campaign_id = changeset.metadata.get('campaign_id')
+                    campaign_name = changeset.metadata.get('campaign_name')
                     if campaign_id and 'footer' in embed:
                         current_footer = embed['footer'].get('text', '')
-                        embed['footer']['text'] = f"Campaign {campaign_id} | {current_footer}".strip(' |')
+                        campaign_display = campaign_name if campaign_name else f"Campaign {campaign_id}"
+                        embed['footer']['text'] = f"{campaign_display} | {current_footer}".strip(' |')
 
                     # Use inventory-themed color (brown/leather)
                     embed['color'] = 0x8B4513  # Brown color for party inventory
@@ -1623,9 +1630,11 @@ class NotificationManager:
 
                         # Add campaign info to footer
                         campaign_id = changeset.metadata.get('campaign_id')
+                        campaign_name = changeset.metadata.get('campaign_name')
                         if campaign_id and hasattr(customized_embed, 'footer') and customized_embed.footer:
                             current_footer = customized_embed.footer.get('text', '') if isinstance(customized_embed.footer, dict) else ''
-                            customized_embed.footer['text'] = f"Campaign {campaign_id} | {current_footer}".strip(' |')
+                            campaign_display = campaign_name if campaign_name else f"Campaign {campaign_id}"
+                            customized_embed.footer['text'] = f"{campaign_display} | {current_footer}".strip(' |')
 
                         # Most importantly: enhance the description for party inventory formatting
                         if hasattr(customized_embed, 'description') and customized_embed.description:
