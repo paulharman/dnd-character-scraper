@@ -550,19 +550,26 @@ class FeaturesCoordinator(ICoordinator):
     def _extract_background_features(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract background features from character data."""
         features = []
-        
+
         # Extract from background data
         background_data = raw_data.get('background', {})
         if background_data:
-            background_name = background_data.get('definition', {}).get('name', 'Unknown')
-            
+            # Handle custom backgrounds where definition may be None
+            definition = background_data.get('definition')
+            if definition:
+                background_name = definition.get('name', 'Unknown')
+            else:
+                # Try custom background name
+                custom_bg = background_data.get('customBackground', {})
+                background_name = custom_bg.get('name', 'Unknown')
+
             # Extract background features
             background_features = background_data.get('backgroundFeatures', [])
             for feature_data in background_features:
                 feature = self._process_trait_data(feature_data, background_name, 'background')
                 if feature:
                     features.append(feature)
-        
+
         return features
     
     def _process_feature_data(self, feature_data: Dict[str, Any], source_name: str, is_subclass: bool) -> Optional[Dict[str, Any]]:
