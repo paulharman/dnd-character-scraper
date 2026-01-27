@@ -468,12 +468,14 @@ class BaseFormatter(IFormatter, ABC):
         """
         # Try new v6.0.0 format first (character_info.background), then backup format (background)
         char_info = character_data.get('character_info', {})
-        if 'background' in char_info:
+        if 'background' in char_info and char_info['background'] is not None:
             return char_info['background'].get('name', 'Unknown')
-        
+
         # Fallback to backup format
         background = character_data.get('background', {})
-        return background.get('name', 'Unknown')
+        if background:
+            return background.get('name', 'Unknown')
+        return 'Unknown'
     
     def _validate_internal(self, character_data: Dict[str, Any]) -> bool:
         """
