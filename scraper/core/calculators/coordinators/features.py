@@ -85,7 +85,11 @@ class FeaturesCoordinator(ICoordinator):
         try:
             # Extract class features
             class_features = self._extract_class_features(raw_data)
-            
+
+            # Extract selected class options (invocations, fighting styles, etc.)
+            selected_options = self._extract_selected_class_options(raw_data)
+            class_features.extend(selected_options)
+
             # Deduplicate class features (D&D Beyond API provides same features in multiple places)
             class_features = self._deduplicate_class_features(class_features)
             
@@ -506,7 +510,70 @@ class FeaturesCoordinator(ICoordinator):
                         features.append(feature)
         
         return features
-    
+
+    def _extract_selected_class_options(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract selected class options (invocations, fighting styles, etc.) from choices."""
+        selected_features = []
+
+        # Get choices data
+        choices = raw_data.get('choices', {})
+        class_choices = choices.get('class', [])
+        choice_definitions = choices.get('choiceDefinitions', [])
+
+        # Build a lookup map of option ID -> option definition
+        option_map = {}
+        for choice_def in choice_definitions:
+            for option in choice_def.get('options', []):
+                option_id = option.get('id')
+                if option_id:
+                    option_map[option_id] = option
+
+        # Process each class choice
+        for choice in class_choices:
+            option_value = choice.get('optionValue')
+            if not option_value:
+                continue  # No selection made
+
+            # Find the option definition
+            option_def = option_map.get(option_value)
+            if not option_def:
+                self.logger.warning(f"Could not find option definition for optionValue {option_value}")
+                continue
+
+            # Get class info for source attribution
+            component_id = choice.get('componentId')
+            classes = raw_data.get('classes', [])
+            source_class = 'Unknown'
+            level_required = 1
+
+            # Find which class/feature this choice belongs to
+            for class_data in classes:
+                class_features = class_data.get('classFeatures', [])
+                for feature in class_features:
+                    if feature.get('definition', {}).get('id') == component_id:
+                        source_class = class_data.get('definition', {}).get('name', 'Unknown')
+                        level_required = feature.get('definition', {}).get('requiredLevel', 1)
+                        break
+
+            # Build feature dictionary
+            selected_feature = {
+                'id': option_value,
+                'name': option_def.get('label', 'Unknown Option'),
+                'description': option_def.get('description', ''),  # Keep as raw HTML - parser will clean it
+                'snippet': '',  # Options don't have snippets
+                'source_name': source_class,
+                'level_required': level_required,
+                'is_subclass_feature': False,
+                'is_choice': True,  # Mark as a selected choice
+                'parent_feature_id': component_id,
+                'limited_use': None
+            }
+
+            selected_features.append(selected_feature)
+            self.logger.debug(f"Extracted selected option: {selected_feature['name']}")
+
+        return selected_features
+
     def _extract_racial_traits(self, raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract racial traits from character data."""
         traits = []
