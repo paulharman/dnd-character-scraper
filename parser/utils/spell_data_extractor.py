@@ -55,12 +55,23 @@ class SpellDataExtractor:
         if 'components' in spell:
             components = spell['components']
             if isinstance(components, list):
+                # Convert component IDs to letters if needed
+                # Component IDs: 1=V (Verbal), 2=S (Somatic), 3=M (Material)
+                if components and isinstance(components[0], int):
+                    component_map = {1: 'V', 2: 'S', 3: 'M'}
+                    components = [component_map.get(c, str(c)) for c in components]
+
                 # Join components with proper formatting
                 comp_str = ', '.join(components)
+
                 # Add material component details if available
-                if 'M' in comp_str and 'material_component' in spell:
-                    material = spell['material_component']
-                    comp_str = comp_str.replace('M', f'M ({material})')
+                if 'M' in comp_str:
+                    # Check for components_description field (new API data)
+                    if 'components_description' in spell and spell['components_description']:
+                        return f"{comp_str} ({spell['components_description']})"
+                    elif 'material_component' in spell:
+                        material = spell['material_component']
+                        comp_str = comp_str.replace('M', f'M ({material})')
                 return comp_str
             elif isinstance(components, str):
                 return components
@@ -144,7 +155,7 @@ class SpellDataExtractor:
     def extract_casting_time(self, spell: Dict[str, Any], combat_data: Dict[str, Any] = None) -> str:
         """Extract and clean casting time with v6.0.0 combat data support."""
         name = spell.get('name', '').lower()
-        
+
         # First check if casting time is available from combat data (v6.0.0 format)
         if combat_data:
             spell_actions = combat_data.get('spell_actions', [])
@@ -154,9 +165,26 @@ class SpellDataExtractor:
                     if combat_casting_time:
                         # Capitalize properly: "1 action" -> "1 Action"
                         return combat_casting_time.title()
-        
-        # Fallback to direct spell data or defaults
-        casting_time = spell.get('casting_time', '1 Action')
+
+        # Check for new API casting_time field (integer activation time)
+        casting_time_raw = spell.get('casting_time')
+        if isinstance(casting_time_raw, int):
+            # Activation time codes from D&D Beyond API:
+            # 1 = Action, 2 = No Action, 3 = Reaction, 4 = Minute, 5 = Hour, etc.
+            activation_map = {
+                1: '1 Action',
+                2: 'No Action',
+                3: '1 Reaction',
+                4: '1 Minute',
+                5: '1 Hour',
+                6: '10 Minutes',
+                7: '8 Hours',
+                8: '12 Hours'
+            }
+            casting_time = activation_map.get(casting_time_raw, '1 Action')
+        else:
+            # Fallback to direct spell data or defaults
+            casting_time = spell.get('casting_time', '1 Action')
         
         # Fix specific spells with known casting times
         if 'identify' in name:
@@ -177,7 +205,23 @@ class SpellDataExtractor:
     def extract_range(self, spell: Dict[str, Any], combat_data: Dict[str, Any] = None) -> str:
         """Extract spell range with v6.0.0 combat data support."""
         name = spell.get('name', '').lower()
-        
+
+        # Check for new API range field directly in spell data
+        if 'range' in spell:
+            range_data = spell['range']
+            if isinstance(range_data, dict):
+                range_value = range_data.get('rangeValue')
+                origin = range_data.get('origin', 'Self')
+
+                if range_value and range_value > 0:
+                    return f"{range_value} feet"
+                elif origin == 'Self':
+                    return 'Self'
+                elif origin == 'Touch':
+                    return 'Touch'
+                elif origin:
+                    return origin
+
         # First check if range is available from combat data (v6.0.0 format)
         if combat_data:
             spell_actions = combat_data.get('spell_actions', [])
@@ -187,7 +231,7 @@ class SpellDataExtractor:
                     if range_data:
                         range_value = range_data.get('rangeValue')
                         origin = range_data.get('origin', 'Self')
-                        
+
                         if range_value and range_value > 0:
                             return f"{range_value} feet"
                         elif origin == 'Self':
@@ -254,7 +298,33 @@ class SpellDataExtractor:
     def extract_duration(self, spell: Dict[str, Any], combat_data: Dict[str, Any] = None) -> str:
         """Extract spell duration with v6.0.0 combat data support."""
         name = spell.get('name', '').lower()
-        
+
+        # Check for new API duration field directly in spell data
+        if 'duration' in spell:
+            duration_data = spell['duration']
+            if isinstance(duration_data, dict):
+                duration_type = duration_data.get('durationType', 'Instantaneous')
+                duration_interval = duration_data.get('durationInterval', 0)
+                duration_unit = duration_data.get('durationUnit')
+
+                # Check if spell requires concentration
+                is_concentration = spell.get('concentration', False)
+
+                # Handle different duration types
+                if duration_type == 'Instantaneous':
+                    result = 'Instantaneous'
+                elif duration_interval and duration_unit:
+                    result = f"{duration_interval} {duration_unit}"
+                elif duration_type:
+                    result = duration_type
+                else:
+                    result = 'Instantaneous'
+
+                # Add concentration prefix if needed
+                if is_concentration and result != 'Instantaneous':
+                    return f"Concentration, up to {result}"
+                return result
+
         # First check if duration is available from combat data (v6.0.0 format)
         if combat_data:
             spell_actions = combat_data.get('spell_actions', [])
@@ -265,7 +335,7 @@ class SpellDataExtractor:
                         duration_type = duration_data.get('durationType', 'Instantaneous')
                         duration_interval = duration_data.get('durationInterval', 0)
                         duration_unit = duration_data.get('durationUnit')
-                        
+
                         # Handle different duration types
                         if duration_type == 'Instantaneous':
                             return 'Instantaneous'
