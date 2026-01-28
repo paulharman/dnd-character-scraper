@@ -269,24 +269,33 @@ class CharacterInfoCoordinator(ICoordinator):
         background_data = raw_data.get('background')
         if not background_data:
             return None
-        
+
         try:
-            # Get background definition
-            background_def = background_data.get('definition', {})
-            background_name = background_def.get('name', 'Unknown Background')
-            
-            # Extract detailed description from definition
-            description = background_def.get('description', '')
-            
+            # Check if this is a custom background
+            has_custom = background_data.get('hasCustomBackground', False)
+            background_def = background_data.get('definition')
+
+            if background_def:
+                # Standard background
+                background_name = background_def.get('name', 'Unknown Background')
+                description = background_def.get('description', '')
+            else:
+                # Custom background
+                custom_bg = background_data.get('customBackground', {})
+                background_name = custom_bg.get('name', 'Unknown Background')
+                if has_custom and background_name != 'Unknown Background':
+                    background_name = f"{background_name} (Custom)"
+                description = custom_bg.get('description', '')
+
             # Create Background object
             background = Background(
                 id=background_data.get('id', 0),
                 name=background_name,
                 description=description
             )
-            
+
             return background
-            
+
         except Exception as e:
             self.logger.warning(f"Error extracting background data: {str(e)}")
             return None

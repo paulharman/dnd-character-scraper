@@ -198,6 +198,27 @@ class ProficiencyFormatter(BaseFormatter):
                 sections.append(f"> - {display}")
             sections.append(">")
 
+        # Armor proficiencies - try v6.0.0 structure first, then legacy
+        armor_proficiencies = proficiencies_data.get('armor_proficiencies', [])
+        if not armor_proficiencies:
+            armor_proficiencies = character_data.get('armor_proficiencies', [])
+
+        if armor_proficiencies:
+            sections.append(">### Armor")
+            sections.append(">")
+            for armor in armor_proficiencies:
+                if isinstance(armor, dict):
+                    armor_name = armor.get('name', 'Unknown Armor')
+                    source = armor.get('source', '')
+                    if source:
+                        display = f"{armor_name} ({source})"
+                    else:
+                        display = armor_name
+                else:
+                    display = str(armor)
+                sections.append(f"> - {display}")
+            sections.append(">")
+
         # Weapon Masteries (2024 rules feature) - try v6.0.0 structure first, then legacy
         weapon_masteries = proficiencies_data.get('weapon_masteries', [])
         if not weapon_masteries:
