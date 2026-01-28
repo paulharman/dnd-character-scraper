@@ -44,7 +44,16 @@ class EnhancedSpellInfo:
     # Calculated flags
     is_available: bool  # Whether this spell should be included in output
     availability_reason: str  # Why this spell is available
-    
+
+    # Spell details (range, duration, components, etc.)
+    range_info: Optional[Dict[str, Any]] = None
+    duration: Optional[Dict[str, Any]] = None
+    components: Optional[List[int]] = None
+    components_description: Optional[str] = None
+    casting_time: Optional[int] = None
+    ritual: bool = False
+    concentration: bool = False
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -56,8 +65,8 @@ class EnhancedSpellInfo:
             'isLegacy': self.is_legacy,
             'is_prepared': self.is_prepared or self.is_always_prepared or not self.uses_spell_slot,
             'always_prepared': self.is_always_prepared or not self.uses_spell_slot,
-            'ritual': False,  # Will be enhanced later if needed
-            'concentration': False,  # Will be enhanced later if needed
+            'ritual': self.ritual,
+            'concentration': self.concentration,
             # Enhanced metadata
             'counts_as_known': self.counts_as_known,
             'uses_spell_slot': self.uses_spell_slot,
@@ -65,7 +74,13 @@ class EnhancedSpellInfo:
             'component_id': self.component_id,
             'component_type_id': self.component_type_id,
             'is_available': self.is_available,
-            'availability_reason': self.availability_reason
+            'availability_reason': self.availability_reason,
+            # Spell details
+            'range': self.range_info,
+            'duration': self.duration,
+            'components': self.components,
+            'components_description': self.components_description,
+            'casting_time': self.casting_time
         }
 
 
@@ -182,7 +197,17 @@ class EnhancedSpellProcessor:
             school = str(school_data)
         
         description = spell_def.get('description', '')
-        
+
+        # Extract spell details (range, duration, components, etc.)
+        range_info = spell_def.get('range', {})
+        duration = spell_def.get('duration', {})
+        components = spell_def.get('components', [])
+        components_description = spell_def.get('componentsDescription', '')
+        casting_time_data = spell_def.get('activation', {})
+        casting_time = casting_time_data.get('activationTime') if isinstance(casting_time_data, dict) else None
+        ritual = spell_def.get('ritual', False)
+        concentration = spell_def.get('concentration', False)
+
         # Determine if spell is legacy based on spell definition ID
         # Since sourceId is null in spell definitions, use known legacy spell IDs
         spell_def_id = spell_def.get('id')
@@ -260,7 +285,14 @@ class EnhancedSpellProcessor:
             component_id=component_id,
             component_type_id=component_type_id,
             is_available=is_available,
-            availability_reason=availability_reason
+            availability_reason=availability_reason,
+            range_info=range_info,
+            duration=duration,
+            components=components,
+            components_description=components_description,
+            casting_time=casting_time,
+            ritual=ritual,
+            concentration=concentration
         )
     
     def _determine_spell_availability(self, spell_data: Dict[str, Any], source_type: str, 

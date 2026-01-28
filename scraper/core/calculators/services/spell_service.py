@@ -36,6 +36,8 @@ class SpellInfo:
     casting_time: Optional[str] = None
     range_info: Optional[Dict[str, Any]] = None
     duration: Optional[Dict[str, Any]] = None
+    components: Optional[List[int]] = None
+    components_description: Optional[str] = None
     snippet: Optional[str] = None
 
 
@@ -196,23 +198,24 @@ class SpellProcessingService:
         is_prepared = spell_data.get('prepared', False)
         is_always_prepared = spell_data.get('alwaysPrepared', False)
         
+        # Extract spell details for ALL spells (not just combat spells)
+        casting_time = spell_def.get('activation', {}).get('activationTime')
+        range_info = spell_def.get('range')
+        duration = spell_def.get('duration')
+        components = spell_def.get('components', [])
+        components_description = spell_def.get('componentsDescription', '')
+
         # Combat attack info
         can_be_combat_attack = self._can_spell_be_combat_attack(spell_def)
         attack_bonus = None
         save_dc = None
         spellcasting_ability = None
-        casting_time = None
-        range_info = None
-        duration = None
         snippet = None
-        
+
         if can_be_combat_attack:
             attack_bonus = spell_attack_bonus
             save_dc = spell_save_dc
             spellcasting_ability = spell_data.get('spellcasting_ability')
-            casting_time = spell_def.get('activation', {}).get('activationTime')
-            range_info = spell_def.get('range')
-            duration = spell_def.get('duration')
             snippet = f"Spell Attack: +{attack_bonus} to hit" if attack_bonus else None
         
         return SpellInfo(
@@ -234,6 +237,8 @@ class SpellProcessingService:
             casting_time=casting_time,
             range_info=range_info,
             duration=duration,
+            components=components,
+            components_description=components_description,
             snippet=snippet
         )
     
