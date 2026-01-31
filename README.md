@@ -377,7 +377,8 @@ python scraper/enhanced_dnd_scraper.py <character_id> --raw-output debug.json
 
 ## Version History
 
-- **v6.0.0** (Current): Major overhaul with enhanced spell processing, complete inventory support, and improved portability
+- **v6.1.0** (Current): Combat enhancements (initiative breakdown, weapon mastery, action economy), complete spell details, Obsidian setup documentation
+- **v6.0.0**: Major overhaul with enhanced spell processing, complete inventory support, and improved portability
 - **v5.2.0**: Enhanced Discord integration and rule version detection
 - **v5.0.0**: Modular architecture with calculation pipeline
 
