@@ -258,8 +258,20 @@ else:
     
     def _generate_quick_links(self, character_data: Dict[str, Any]) -> str:
         """Generate quick links navigation table."""
-        meta = character_data.get('meta', {})
-        character_id = meta.get('character_id', '0')
+        # Get character_id using fallback chain (same as metadata formatter)
+        character_info = self.get_character_info(character_data)
+        meta = self.get_meta_info(character_data)
+        character_id = (
+            character_info.get('character_id') or
+            meta.get('character_id') or
+            character_data.get('character_id')
+        )
+
+        # Ensure character_id is converted to string and handle None case
+        if character_id is None:
+            character_id = "0"
+        else:
+            character_id = str(character_id)
         
         # Check if character has spells to include spellcasting link
         spells = character_data.get('spells', {})
@@ -335,6 +347,11 @@ else:
         initiative = combat_data.get('initiative_bonus', dex_mod)
         initiative_str = f"+{initiative}" if initiative >= 0 else str(initiative)
 
+        # Get initiative breakdown if available
+        initiative_breakdown = combat_data.get('initiative_breakdown', '')
+        if not initiative_breakdown:
+            initiative_breakdown = f"Dex {dex_mod:+d}"
+
         # Speed from combat data (includes class bonuses like Monk Unarmored Movement)
         # Check for new movement format first, fallback to legacy speed
         movement_data = combat_data.get('movement', {})
@@ -354,43 +371,38 @@ else:
         ac_data = combat_data.get('armor_class', {})
         if isinstance(ac_data, dict) and 'total' in ac_data:
             armor_class = ac_data['total']  # Use scraper's calculated value directly
-            
-            # Use enhanced AC breakdown from scraper
+
+            # Build clean AC sublabel
             if 'breakdown' in ac_data:
-                # Extract method and details from breakdown
                 breakdown = ac_data['breakdown']
-                if ac_data.get('has_armor', False):
-                    # Armored character
-                    armor_type = ac_data.get('armor_type', 'unknown').title()
-                    if ac_data.get('has_shield', False):
-                        ac_method = f'{armor_type} + Shield'
-                    else:
-                        ac_method = f'{armor_type} Armor'
-                    # Use the detailed breakdown as details
-                    ac_details = f'({breakdown.split(": ", 1)[-1]})'
+                # Parse breakdown string: "AC: 12 (armor) + 4 (dex)" or
+                # "Unarmored Defense (Monk): 10 (base) + 3 (dex) + 3 (wis) + 1 (magic) = 17"
+                # Extract the calculation part after ": "
+                calc_part = breakdown.split(": ", 1)[-1] if ':' in breakdown else breakdown
+                # Remove trailing "= N" if present
+                if '=' in calc_part:
+                    calc_part = calc_part.split('=')[0].strip()
+
+                # Convert "12 (armor) + 4 (dex)" to "Armor +12, Dex +4"
+                import re
+                parts = re.findall(r'(\d+)\s*\((\w+)\)', calc_part)
+                if parts:
+                    ac_breakdown_parts = [f"{label.title()} +{value}" for value, label in parts]
+
+                    # Add shield if present
+                    if ac_data.get('has_shield', False) and not any('shield' in p.lower() for p in ac_breakdown_parts):
+                        ac_breakdown_parts.append("Shield +2")
+
+                    ac_sublabel = ", ".join(ac_breakdown_parts)
                 else:
-                    # Unarmored character - use the detailed breakdown
-                    if 'Barbarian' in breakdown:
-                        ac_method = 'Unarmored Defense (Barbarian)'
-                    elif 'Monk' in breakdown:
-                        ac_method = 'Unarmored Defense (Monk)'
-                    else:
-                        ac_method = 'Unarmored'
-                    # Extract the calculation part from the breakdown
-                    # Format: "Unarmored Defense (Monk): 10 (base) + 3 (dex) + 3 (wis) + 1 (magic) = 17"
-                    if ':' in breakdown:
-                        ac_details = f'({breakdown.split(": ", 1)[-1]})'
-                    else:
-                        ac_details = f'({breakdown})'
+                    # Couldn't parse, use raw breakdown
+                    ac_sublabel = calc_part
             else:
-                # Fallback if no breakdown available
-                ac_method = 'Unarmored'
-                ac_details = '(10 + Dex)'
+                ac_sublabel = "Base 10, Dex " + (f"+{dex_mod}" if dex_mod >= 0 else str(dex_mod))
         else:
             # Fallback only if scraper data is missing
             armor_class = 10 + dex_mod
-            ac_method = 'Unarmored'
-            ac_details = '(10 + Dex)'
+            ac_sublabel = "Base 10, Dex " + (f"+{dex_mod}" if dex_mod >= 0 else str(dex_mod))
         
         # Hit points and hit dice
         hp_data = combat_data.get('hit_points', {})
@@ -436,10 +448,11 @@ items:
   - label: Subclass
     value: '{subclass_name}'
   - label: Initiative
+    sublabel: {initiative_breakdown}
     value: '{initiative_str}'
 {speed_entry}
   - label: Armor Class
-    sublabel: {ac_method} {ac_details}
+    sublabel: {ac_sublabel}
     value: {armor_class}
 
 grid:

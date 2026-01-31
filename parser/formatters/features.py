@@ -84,146 +84,329 @@ class FeaturesFormatter(BaseFormatter):
         return """## Features
 
 <span class="right-link">[[#Character Statistics|Top]]</span>"""
-    
+
+    def _is_reference_feature(self, feature: Dict[str, Any]) -> bool:
+        """
+        Identify if a feature is a reference list (not actually selected).
+
+        Reference features typically contain many options and have keywords
+        like 'Options', 'Available', 'Choose', etc.
+
+        Args:
+            feature: Feature dictionary to check
+
+        Returns:
+            True if this is a reference feature that should be filtered out
+        """
+        name = feature.get('name', '') or ''
+        description = feature.get('description', '') or ''
+
+        # Ensure strings
+        if not isinstance(name, str):
+            name = str(name)
+        if not isinstance(description, str):
+            description = str(description)
+
+        name_lower = name.lower()
+
+        # Common reference feature patterns
+        reference_keywords = [
+            'options',
+            'available',
+            'choose from',
+            'select one',
+            'appears in alphabetical order'  # Invocations reference text
+        ]
+
+        # Check name
+        if any(keyword in name_lower for keyword in reference_keywords):
+            # But exclude if it's a selected choice
+            if feature.get('is_choice', False):
+                return False
+            return True
+
+        # Check if description contains excessive options (heuristic: >1000 chars and mentions "choose")
+        if len(description) > 1000 and 'choose' in description.lower():
+            return True
+
+        return False
+
+    def _get_feature_sort_key(self, feature: Dict[str, Any]) -> tuple:
+        """
+        Get sort key for features within same level.
+
+        Priority:
+        1. Feature tier (core → selected → standard → progression)
+        2. Display order (from D&D Beyond)
+        3. Alphabetical name
+
+        Args:
+            feature: Feature dictionary to get sort key for
+
+        Returns:
+            Tuple of (tier, display_order, name) for sorting
+        """
+        tier = self._get_feature_tier(feature)
+        display_order = feature.get('display_order', 9999)
+        name = feature.get('name', '').lower()
+
+        return (tier, display_order, name)
+
+    def _get_feature_tier(self, feature: Dict[str, Any]) -> int:
+        """
+        Determine feature importance tier.
+
+        1 = Core class features (highest priority)
+        2 = Selected options (pact boons, chosen invocations)
+        3 = Standard features
+        5 = Progression features (ASI)
+
+        Args:
+            feature: Feature dictionary to determine tier for
+
+        Returns:
+            Integer tier (lower = more important)
+        """
+        name = feature.get('name', '').lower()
+        is_choice = feature.get('is_choice', False)
+
+        # Tier 1: Core class features
+        if 'core' in name and 'traits' in name:
+            return 1
+        if name == 'spellcasting':
+            return 1
+
+        # Tier 2: Selected options
+        if is_choice:
+            return 2
+
+        # Tier 5: Progression features (less important during gameplay)
+        if 'ability score improvement' in name:
+            return 5
+
+        # Tier 3: Standard features (default)
+        return 3
+
     def _generate_feats_section(self, character_data: Dict[str, Any]) -> str:
-        """Generate feats section."""
+        """Generate feats section grouped by type."""
         # Get feats from v6.0.0 structure first, then fallback
         features_data = character_data.get('features', {})
         feats = features_data.get('feats', [])
-        
+
         # Fallback to top-level feats if not found
         if not feats:
             feats = character_data.get('feats', [])
-        
+
         if not feats:
             return ""
-        
+
+        # Group feats by type (Origin, General, etc.)
+        origin_feats = []
+        other_feats = []
+
+        for feat in feats:
+            description = feat.get('description', '')
+            # Check if it's an origin feat
+            if 'origin feat' in description.lower() or feat.get('level_required', 0) == 0:
+                origin_feats.append(feat)
+            else:
+                other_feats.append(feat)
+
+        # Sort alphabetically within each group
+        origin_feats.sort(key=lambda f: f.get('name', '').lower())
+        other_feats.sort(key=lambda f: f.get('name', '').lower())
+
         section = ""
-        
-        # Sort feats by name for consistent display
-        sorted_feats = sorted(feats, key=lambda f: f.get('name', '')) if feats else []
-        
-        for feat in sorted_feats:
-            if isinstance(feat, dict):
-                name = feat.get('name', 'Unknown Feat')
-                description = feat.get('description', '')
-                
-                # Determine feat source and type
-                feat_source = self._determine_feat_source(feat)
-                
-                section += f"\n>### {name} ({feat_source})\n>\n"
-                
-                if description:
-                    # Use proper formatting for feat descriptions (similar to spells)
-                    formatted_desc = self.text_processor.format_spell_description(description)
-                    # Add proper blockquote formatting for multiline text
-                    lines = formatted_desc.split('\n')
-                    for line in lines:
-                        if line.strip():
-                            section += f"> {line}\n"
-                        else:
-                            section += ">\n"
-                    
-                    # Add chosen selections display for feats with choices
-                    choices = self.get_feature_choices(character_data, name)
-                    if choices:
-                        formatted_choices = self.format_feature_choices(choices)
-                        for choice in formatted_choices:
-                            section += f"> {choice}\n"
-                        section += ">\n"
-                    
+
+        # Origin feats
+        if origin_feats:
+            section += "\n### Origin Feats (Level 1)\n"
+            for feat in origin_feats:
+                section += self._format_feat(feat, character_data)
+
+        # Other feats (by level)
+        if other_feats:
+            # Group by level
+            feats_by_level = {}
+            for feat in other_feats:
+                level = feat.get('level_required', 1)
+                if level not in feats_by_level:
+                    feats_by_level[level] = []
+                feats_by_level[level].append(feat)
+
+            for level in sorted(feats_by_level.keys()):
+                section += f"\n### Feats (Level {level})\n"
+                for feat in feats_by_level[level]:
+                    section += self._format_feat(feat, character_data)
+
+        return section
+
+    def _format_feat(self, feat: Dict[str, Any], character_data: Dict[str, Any]) -> str:
+        """
+        Format a single feat.
+
+        Args:
+            feat: Feat dictionary to format
+            character_data: Full character data for choices
+
+        Returns:
+            Formatted markdown for the feat
+        """
+        if not isinstance(feat, dict):
+            return ""
+
+        name = feat.get('name', 'Unknown Feat')
+        description = feat.get('description', '')
+
+        # Determine feat source and type
+        feat_source = self._determine_feat_source(feat)
+
+        section = f"\n>### {name} ({feat_source})\n>\n"
+
+        if description:
+            # Use proper formatting for feat descriptions (similar to spells)
+            formatted_desc = self.text_processor.format_spell_description(description)
+            # Add proper blockquote formatting for multiline text
+            lines = formatted_desc.split('\n')
+            for line in lines:
+                if line.strip():
+                    section += f"> {line}\n"
+                else:
                     section += ">\n"
-        
+
+            # Add chosen selections display for feats with choices
+            choices = self.get_feature_choices(character_data, name)
+            if choices:
+                formatted_choices = self.format_feature_choices(choices)
+                for choice in formatted_choices:
+                    section += f"> {choice}\n"
+                section += ">\n"
+
+            section += ">\n"
+
         return section
     
     def _generate_class_features_section(self, character_data: Dict[str, Any]) -> str:
-        """Generate class features section."""
+        """Generate class features section grouped by level."""
         # Get class features from v6.0.0 structure first, then fallback
         features_data = character_data.get('features', {})
         class_features = features_data.get('class_features', [])
-        
+
         # Fallback to top-level class_features if not found
         if not class_features:
             class_features = character_data.get('class_features', [])
         character_info = self.get_character_info(character_data)
         character_level = character_info.get('level', 1)
         character_name = character_info.get('name', 'Unknown Character')
-        
+
         if not class_features:
             return ""
-        
+
+        # Filter out reference features
+        active_features = [
+            f for f in class_features
+            if not self._is_reference_feature(f)
+        ]
+
+        if not active_features:
+            return ""
+
+        # Filter out features above current level
+        available_features = [
+            f for f in active_features
+            if f.get('level_required', 1) <= character_level
+        ]
+
+        if not available_features:
+            return ""
+
+        # Group features by level
+        features_by_level = {}
+        for feature in available_features:
+            level = feature.get('level_required', 1)
+            if level not in features_by_level:
+                features_by_level[level] = []
+            features_by_level[level].append(feature)
+
+        # Sort features within each level
+        for level in features_by_level:
+            features_by_level[level].sort(key=self._get_feature_sort_key)
+
+        # Build markdown
         section = ""
-        
-        # Sort class features by type, then name, then level for better grouping
-        def get_feature_type_priority(feature):
-            # Prioritize subclass features after class features
-            is_subclass = feature.get('is_subclass_feature', False)
-            return 1 if is_subclass else 0
-        
-        sorted_features = sorted(class_features, key=lambda f: (
-            get_feature_type_priority(f),  # Class features first, then subclass
-            f.get('name', ''),             # Then by name (groups progressions)  
-            f.get('level_required', 1)     # Then by level (shows progression order)
-        )) if class_features else []
-        
-        for feature in sorted_features:
-            if isinstance(feature, dict):
-                name = feature.get('name', 'Unknown Feature')
-                description = feature.get('description', '')
-                snippet = feature.get('snippet', '')
-                level_required = feature.get('level_required', 1)
-                is_subclass = feature.get('is_subclass_feature', False)
-                limited_use = feature.get('limited_use')
-                
-                # Skip features above current level
-                if level_required > character_level:
-                    continue
-                
-                section += f"\n>### {name}\n"
-                
-                # Add source and level information
-                feature_type = "Subclass" if is_subclass else "Class"
-                source_name = feature.get('source_name', 'Unknown')
-                section += f"> *{feature_type} Feature (Level {level_required})*\n"
-                if source_name and source_name != 'Unknown':
-                    section += f"> *Source: {source_name}*\n"
-                section += ">\n"
-                
-                # Add limited use information as consumable block
-                if limited_use and isinstance(limited_use, dict):
-                    uses = limited_use.get('uses', 0) or limited_use.get('maxUses', 0)
-                    if uses > 0:
-                        char_key = self._create_state_key(character_name)
-                        feature_key = self._create_state_key(name)
-                        section += f"> ```consumable\n"
-                        section += f"> label: \"\"\n"
-                        section += f"> state_key: {char_key}_{feature_key}\n"
-                        section += f"> uses: {uses}\n"
-                        section += f"> ```\n>\n"
-                
-                # Use description first (more complete), fallback to snippet if no description
-                display_text = description if description else snippet
-                if display_text:
-                    # Use proper formatting for feature descriptions (similar to spells)
-                    formatted_desc = self.text_processor.format_spell_description(display_text)
-                    # Add proper blockquote formatting for multiline text
-                    lines = formatted_desc.split('\n')
-                    for line in lines:
-                        if line.strip():
-                            section += f"> {line}\n"
-                        else:
-                            section += ">\n"
-                    
-                    # Add chosen selections display for class features with choices
-                    choices = self.get_feature_choices(character_data, name)
-                    if choices:
-                        formatted_choices = self.format_feature_choices(choices)
-                        for choice in formatted_choices:
-                            section += f"> {choice}\n"
-                        section += ">\n"
-                    
+        for level in sorted(features_by_level.keys()):
+            level_features = features_by_level[level]
+
+            # Section header
+            if level == 1:
+                section += "\n### Level 1 Features\n"
+            else:
+                section += f"\n### Level {level} Features\n"
+
+            # Features
+            for feature in level_features:
+                section += self._format_class_feature(feature, character_name)
+
+        return section
+
+    def _format_class_feature(self, feature: Dict[str, Any], character_name: str) -> str:
+        """
+        Format a single class feature.
+
+        Args:
+            feature: Feature dictionary to format
+            character_name: Character name for state keys
+
+        Returns:
+            Formatted markdown for the feature
+        """
+        if not isinstance(feature, dict):
+            return ""
+
+        name = feature.get('name', 'Unknown Feature')
+        description = feature.get('description', '')
+        snippet = feature.get('snippet', '')
+        level_required = feature.get('level_required', 1)
+        is_subclass = feature.get('is_subclass_feature', False)
+        limited_use = feature.get('limited_use')
+
+        section = f"\n>### {name}\n"
+
+        # Add source and level information
+        feature_type = "Subclass" if is_subclass else "Class"
+        source_name = feature.get('source_name', 'Unknown')
+        section += f"> *{feature_type} Feature (Level {level_required})*\n"
+        if source_name and source_name != 'Unknown':
+            section += f"> *Source: {source_name}*\n"
+        section += ">\n"
+
+        # Add limited use information as consumable block
+        if limited_use and isinstance(limited_use, dict):
+            uses = limited_use.get('uses', 0) or limited_use.get('maxUses', 0)
+            if uses > 0:
+                char_key = self._create_state_key(character_name)
+                feature_key = self._create_state_key(name)
+                section += f"> ```consumable\n"
+                section += f"> label: \"\"\n"
+                section += f"> state_key: {char_key}_{feature_key}\n"
+                section += f"> uses: {uses}\n"
+                section += f"> ```\n>\n"
+
+        # Use description first (more complete), fallback to snippet if no description
+        display_text = description if description else snippet
+        if display_text:
+            # Use proper formatting for feature descriptions (similar to spells)
+            formatted_desc = self.text_processor.format_spell_description(display_text)
+            # Add proper blockquote formatting for multiline text
+            lines = formatted_desc.split('\n')
+            for line in lines:
+                if line.strip():
+                    section += f"> {line}\n"
+                else:
                     section += ">\n"
-        
+
+            section += ">\n"
+
         return section
     
     def _generate_class_resources_section(self, character_data: Dict[str, Any]) -> str:
@@ -270,9 +453,7 @@ class FeaturesFormatter(BaseFormatter):
                 # Add description if available
                 if description:
                     section += f">   *{description}*\n"
-            
-            section += ">\n"
-        
+
         return section
     
     def _generate_footer(self) -> str:

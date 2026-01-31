@@ -125,10 +125,10 @@ class CombatCoordinator(ICoordinator):
             proficiency_bonus = self._get_proficiency_bonus(raw_data, context)
             character_level = self._get_character_level(raw_data, context)
             
-            # Calculate initiative bonus
+            # Calculate initiative bonus and breakdown
             try:
-                initiative_bonus = self._calculate_initiative(raw_data, ability_modifiers)
-                self.logger.debug(f"Initiative bonus calculated: {initiative_bonus}")
+                initiative_bonus, initiative_breakdown = self._calculate_initiative(raw_data, ability_modifiers, proficiency_bonus)
+                self.logger.debug(f"Initiative bonus calculated: {initiative_bonus} ({initiative_breakdown})")
             except Exception as e:
                 self.logger.error(f"Error calculating initiative: {e}")
                 raise
@@ -174,6 +174,7 @@ class CombatCoordinator(ICoordinator):
             # Create result data
             result_data = {
                 'initiative_bonus': initiative_bonus,
+                'initiative_breakdown': initiative_breakdown,
                 'speed': speed.get('walking_speed', 30) if isinstance(speed, dict) else speed,  # Legacy format for backward compatibility
                 'movement': speed if isinstance(speed, dict) else {'walking_speed': speed, 'climbing_speed': 0, 'swimming_speed': 0, 'flying_speed': 0},  # Full movement data
                 'armor_class': armor_class,
@@ -938,9 +939,22 @@ class CombatCoordinator(ICoordinator):
             'hit_dice_used': raw_data.get('hitDiceUsed', 0)
         }
     
-    def _calculate_initiative(self, raw_data: Dict[str, Any], ability_modifiers: Dict[str, int]) -> int:
-        """Calculate initiative bonus."""
-        initiative_bonus = ability_modifiers.get('dexterity', 0)
+    def _calculate_initiative(self, raw_data: Dict[str, Any], ability_modifiers: Dict[str, int], proficiency_bonus: int = 2) -> tuple:
+        """Calculate initiative bonus and breakdown.
+
+        Args:
+            raw_data: Raw character data from D&D Beyond
+            ability_modifiers: Calculated ability modifiers
+            proficiency_bonus: Character's proficiency bonus
+
+        Returns:
+            tuple: (initiative_bonus: int, breakdown: str)
+        """
+        dex_mod = ability_modifiers.get('dexterity', 0)
+        initiative_bonus = dex_mod
+
+        # Track breakdown components as "Label +N" pairs
+        breakdown_parts = [f"Dex {dex_mod:+d}"]
 
         # Check for initiative bonuses from modifiers
         modifiers = raw_data.get('modifiers', {})
@@ -951,10 +965,36 @@ class CombatCoordinator(ICoordinator):
             for modifier in modifier_list:
                 if self._is_initiative_modifier(modifier):
                     bonus = modifier.get('value', 0) or modifier.get('bonus', 0)
-                    initiative_bonus += bonus
-                    self.logger.debug(f"Initiative bonus from {source_type}: +{bonus}")
+                    bonus_types = modifier.get('bonusTypes', [])
 
-        return initiative_bonus
+                    # bonusTypes [1] means proficiency bonus (e.g. Alert feat)
+                    if 1 in bonus_types and not bonus:
+                        bonus = proficiency_bonus
+                        source_name = self._get_modifier_source_name(raw_data, modifier, source_type)
+                        initiative_bonus += bonus
+                        breakdown_parts.append(f"{source_name} {bonus:+d}")
+                        self.logger.debug(f"Initiative proficiency bonus from {source_type}: +{bonus}")
+                    elif bonus != 0:
+                        source_name = modifier.get('friendlySubtypeName') or modifier.get('friendlyTypeName') or source_type
+                        initiative_bonus += bonus
+                        breakdown_parts.append(f"{source_name} {bonus:+d}")
+                        self.logger.debug(f"Initiative bonus from {source_type}: +{bonus}")
+
+        breakdown = ", ".join(breakdown_parts)
+
+        return initiative_bonus, breakdown
+
+    def _get_modifier_source_name(self, raw_data: Dict[str, Any], modifier: Dict[str, Any], source_type: str) -> str:
+        """Look up the source feat/feature name for a modifier."""
+        component_id = modifier.get('componentId')
+        if component_id and source_type == 'feat':
+            # Look up the feat name from the feats list
+            for feat in raw_data.get('feats', []):
+                if isinstance(feat, dict):
+                    defn = feat.get('definition', {})
+                    if isinstance(defn, dict) and defn.get('id') == component_id:
+                        return defn.get('name', 'Feat')
+        return modifier.get('friendlySubtypeName') or modifier.get('friendlyTypeName') or source_type
     
     def _calculate_speed(self, raw_data: Dict[str, Any], context: CalculationContext) -> Dict[str, Any]:
         """Calculate character speed using enhanced calculator with fallback.
