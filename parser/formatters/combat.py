@@ -187,6 +187,16 @@ class CombatFormatter(BaseFormatter):
 
         return section
 
+    def _is_standard_rule_ability(self, name: str) -> bool:
+        """Check if an ability is a standard rule rather than character-specific."""
+        name_lower = name.lower()
+        standard_patterns = [
+            'circle spell',
+            'circle of power',
+            'cooperative spellcasting',
+        ]
+        return any(pattern in name_lower for pattern in standard_patterns)
+
     def _generate_special_abilities(self, character_data: Dict[str, Any]) -> str:
         """
         Generate special abilities section (activation type 8 actions).
@@ -203,6 +213,12 @@ class CombatFormatter(BaseFormatter):
         # Get special abilities from combat data
         combat_data = character_data.get('combat', {})
         special_abilities = combat_data.get('special_abilities', [])
+
+        # Filter out standard rules that aren't character-specific
+        special_abilities = [
+            a for a in special_abilities
+            if not self._is_standard_rule_ability(a.get('name', ''))
+        ]
 
         # If no special abilities found, return empty string
         if not special_abilities:
@@ -238,6 +254,8 @@ class CombatFormatter(BaseFormatter):
                 # Truncate snippet to reasonable length for quick reference
                 if len(clean_snippet) > 200:
                     clean_snippet = clean_snippet[:200] + "..."
+                # Ensure all lines have blockquote prefix
+                clean_snippet = clean_snippet.replace('\n', '\n> ')
                 section += f"> **Effect:** {clean_snippet}\n"
 
             section += "> \n"
