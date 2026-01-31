@@ -107,6 +107,46 @@ python parser/dnd_json_to_markdown.py CHARACTER_ID --validate-only
 python discord/discord_monitor.py --character-id CHARACTER_ID
 ```
 
+## Obsidian Setup
+
+The generated character sheets rely on several Obsidian community plugins and a theme. You will also need to install the JSX components and CSS snippet from this repository.
+
+### Required Plugins
+
+| Plugin | Purpose |
+|--------|---------|
+| **[Datacore](https://github.com/blacksmithgu/datacore)** | Provides `datacorejsx` code blocks used by the interactive spell list, inventory, and party components |
+| **[D&D UI Toolkit](https://github.com/mProjectsCode/obsidian-dnd-ui-toolkit)** | Renders the `stats`, `healthpoints`, `ability`, `badges`, `skills`, and `consumable` code blocks in the character sheet |
+| **[Execute Code](https://github.com/twibiral/obsidian-execute-code)** | Runs the `run-python` code block that refreshes character data from within Obsidian |
+
+### Required Theme
+
+- **[ITS Theme](https://github.com/SlRvb/Obsidian--ITS-Theme)** - The character sheets are designed around this theme's styling
+
+### JSX Components
+
+The `obsidian/` directory contains Datacore JSX components that power the interactive parts of the character sheet. Copy these into your vault (the path is configured in `parser/formatters/`):
+
+| File | Description |
+|------|-------------|
+| `SpellQuery.jsx` | Interactive spell list with search, level, school, and component filters |
+| `SpellGenerator.jsx` | Extracts spell data from the vault's spell markdown files into structured frontmatter |
+| `InventoryManager.jsx` | Filterable inventory browser with category and attunement filters |
+| `InfusionsManager.jsx` | Artificer infusions viewer for active and known infusions |
+| `PartyInventoryManager.jsx` | Party-wide inventory view across all characters |
+| `PartyLanguages.jsx` | Shows languages known across the party, organized by character |
+| `sessiontracker.jsx` | Session event tracker with categorized events (combat, discovery, plot, social, travel) |
+| `SessionNotesSearch.jsx` | Searchable session notes interface |
+
+### CSS Snippet
+
+Copy `obsidian/dndb-scraper.css` into your vault's `.obsidian/snippets/` directory and enable it in Settings > Appearance > CSS Snippets. This handles:
+
+- Styling the Python refresh button
+- Centering ability score cards
+- Badge row layout
+- Navigation link positioning
+
 ## 🏗️ Architecture
 
 The project uses a clean modular architecture with domain-specific separation:
@@ -119,6 +159,10 @@ The project uses a clean modular architecture with domain-specific separation:
 ├── parser/               # Markdown generation & formatting
 │   ├── formatters/       # Output format handlers
 │   └── templates/        # Obsidian & UI toolkit integration
+├── obsidian/             # Obsidian vault components
+│   ├── *.jsx            # Datacore JSX interactive components
+│   ├── *.css            # CSS snippets for character sheet styling
+│   └── spells/          # Example spell markdown files
 ├── discord/core/         # Change detection & notifications
 │   ├── services/         # Change tracking & notification logic
 │   └── storage/          # Data persistence
@@ -256,6 +300,7 @@ python discord/discord_monitor.py --party
 - Python 3.8+
 - Required packages: `requests`, `pydantic`, `pyyaml`, `beautifulsoup4`
 - Optional: `aiohttp` for async operations
+- Obsidian with Datacore, D&D UI Toolkit, Execute Code plugins, and ITS Theme (see [Obsidian Setup](#obsidian-setup))
 
 ### Setup
 ```bash
