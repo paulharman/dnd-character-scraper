@@ -211,12 +211,26 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   const [filterConcentration, setFilterConcentration] = dc.useState('');
   const [filterRitual, setFilterRitual] = dc.useState('');
   const [filterRange, setFilterRange] = dc.useState('');
+  const [materialCostThreshold, setMaterialCostThreshold] = dc.useState('100');
+  const [materialCostMode, setMaterialCostMode] = dc.useState('gt'); // 'gt' or 'lt'
 
   const allComponents = ["V", "S", "M"];
   const componentNames = { V: "Verbal", S: "Somatic", M: "Material" };
   const componentPropMap = { V: 'verbal', S: 'somatic', M: 'material' };
+
+  // Helper function to extract GP cost from material_desc
+  function extractGoldCost(materialDesc) {
+    if (!materialDesc) return null;
+    // Match patterns like "300 GP", "1,000+ GP", "300 gp", "worth 1,000 gp", etc.
+    // Remove commas from numbers first
+    const match = String(materialDesc).match(/([\d,]+)\+?\s*(?:GP|gp)/i);
+    if (!match) return null;
+    // Remove commas and parse
+    const numStr = match[1].replace(/,/g, '');
+    return parseInt(numStr, 10);
+  }
   
-  const [sortByLevel, setSortByLevel] = dc.useState(false);
+  const [sortBy, setSortBy] = dc.useState('name'); // 'name', 'level', or 'school'
 
   const allClasses = Array.from(
     new Set(
@@ -307,25 +321,33 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   });
 
 // Apply sorting after filtering
-if (sortByLevel) {
-  filteredPages.sort((a, b) => {
-    // By level (numeric, then fallback to name)
-    let lA = Number(a.value("levelint") ?? a.value("level") ?? 0);
-    let lB = Number(b.value("levelint") ?? b.value("level") ?? 0);
-    if (lA !== lB) return lA - lB;
-    // By name/alias as fallback
-    let nA = (a.value("name") ?? a.$name ?? "").toLowerCase();
-    let nB = (b.value("name") ?? b.$name ?? "").toLowerCase();
-    return nA.localeCompare(nB);
-  });
-} else {
-  // Default: sort by name/alias
-  filteredPages.sort((a, b) => {
-    let nA = (a.value("name") ?? a.$name ?? "").toLowerCase();
-    let nB = (b.value("name") ?? b.$name ?? "").toLowerCase();
-    return nA.localeCompare(nB);
-  });
-}
+filteredPages.sort((a, b) => {
+  switch (sortBy) {
+    case 'level':
+      // By level (numeric, then fallback to name)
+      let lA = Number(a.value("levelint") ?? a.value("level") ?? 0);
+      let lB = Number(b.value("levelint") ?? b.value("level") ?? 0);
+      if (lA !== lB) return lA - lB;
+      // By name/alias as fallback
+      let nA = (a.value("name") ?? a.$name ?? "").toLowerCase();
+      let nB = (b.value("name") ?? b.$name ?? "").toLowerCase();
+      return nA.localeCompare(nB);
+    case 'school':
+      // By school, then by name
+      let sA = (a.value("school") ?? "").toLowerCase();
+      let sB = (b.value("school") ?? "").toLowerCase();
+      if (sA !== sB) return sA.localeCompare(sB);
+      // By name/alias as fallback
+      let nASchool = (a.value("name") ?? a.$name ?? "").toLowerCase();
+      let nBSchool = (b.value("name") ?? b.$name ?? "").toLowerCase();
+      return nASchool.localeCompare(nBSchool);
+    default:
+      // Default: sort by name/alias
+      let nADefault = (a.value("name") ?? a.$name ?? "").toLowerCase();
+      let nBDefault = (b.value("name") ?? b.$name ?? "").toLowerCase();
+      return nADefault.localeCompare(nBDefault);
+  }
+});
 
   const columns = [
     {
@@ -373,12 +395,49 @@ if (sortByLevel) {
   )
 },
 
-    { id: "School", value: p => p.value("school") },
+    {
+      id: "School",
+      value: p => {
+        const school = p.value("school") || 'Unknown';
+        return (
+          <span style={`
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            background-color: ${getSchoolColor(school)};
+            color: white;
+          `}>
+            {school}
+          </span>
+        );
+      }
+    },
     {
       id: "Components",
-      value: p => typeof p.value("components") === "string"
-        ? p.value("components")
-        : arr(p.value("components")).join(', ')
+      value: p => {
+        const fm = p.$frontmatter || {};
+        const materialDesc = getFMVal(fm, 'material_desc');
+        const goldCost = extractGoldCost(materialDesc);
+
+        const componentsText = typeof p.value("components") === "string"
+          ? p.value("components")
+          : arr(p.value("components")).join(', ');
+
+        // Determine if we should highlight based on material cost
+        let shouldHighlight = false;
+        if (materialCostThreshold && materialCostMode && goldCost !== null) {
+          const threshold = Number(materialCostThreshold);
+          if (materialCostMode === 'gt' && goldCost > threshold) {
+            shouldHighlight = true;
+          } else if (materialCostMode === 'lt' && goldCost < threshold) {
+            shouldHighlight = true;
+          }
+        }
+
+        return shouldHighlight
+          ? <span style="color: #ff9800; font-weight: 600;">{componentsText}</span>
+          : componentsText;
+      }
     },
     {
       id: "Concentration",
@@ -445,6 +504,8 @@ if (sortByLevel) {
               setFilterConcentration('');
               setFilterRitual('');
               setFilterRange('');
+              setMaterialCostThreshold('');
+              setMaterialCostMode('');
               clearSelectedCharacters();
             }}
           >
@@ -597,7 +658,7 @@ if (sortByLevel) {
               />
             </div>
             
-            <div style="font-weight: 500; margin-bottom: 0.4em;">Components</div>
+            <div style="font-weight: 500; margin-bottom: 0.4em;">Components Filter</div>
             <div style="display: flex; flex-wrap: wrap; gap: 0.2em; margin-bottom: 1em;">
               {allComponents.map(comp => (
                 <button
@@ -624,18 +685,79 @@ if (sortByLevel) {
                 </button>
               ))}
             </div>
+
+            <div style="font-weight: 500; margin-bottom: 0.4em;">Material Cost Highlighting</div>
+            <div style="display: flex; gap: 0.4em; align-items: center; margin-bottom: 0.5em;">
+              <input
+                type="number"
+                min="0"
+                step="10"
+                value={materialCostThreshold}
+                onchange={e => setMaterialCostThreshold(e.target.value)}
+                placeholder="GP threshold"
+                style="max-width: 100px;"
+              />
+              <span style="color: var(--text-muted); font-size: 0.8em;">GP</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.2em; margin-bottom: 1em;">
+              <button
+                onclick={() => setMaterialCostMode('')}
+                style={`
+                  padding: 0.25em 0.4em;
+                  border: 1px solid ${materialCostMode === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                  border-radius: 0.2em;
+                  background-color: ${materialCostMode === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                  color: ${materialCostMode === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                  cursor: pointer;
+                  font-size: 0.75em;
+                  transition: all 0.2s ease;
+                `}
+              >
+                No Highlighting
+              </button>
+              <button
+                onclick={() => setMaterialCostMode('gt')}
+                style={`
+                  padding: 0.25em 0.4em;
+                  border: 1px solid ${materialCostMode === 'gt' ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                  border-radius: 0.2em;
+                  background-color: ${materialCostMode === 'gt' ? 'rgba(255, 152, 0, 0.15)' : 'var(--background-primary, #1e1e1e)'};
+                  color: ${materialCostMode === 'gt' ? '#ff9800' : 'var(--text-normal)'};
+                  cursor: pointer;
+                  font-size: 0.75em;
+                  transition: all 0.2s ease;
+                `}
+              >
+                {'>'} Greater Than
+              </button>
+              <button
+                onclick={() => setMaterialCostMode('lt')}
+                style={`
+                  padding: 0.25em 0.4em;
+                  border: 1px solid ${materialCostMode === 'lt' ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                  border-radius: 0.2em;
+                  background-color: ${materialCostMode === 'lt' ? 'rgba(255, 152, 0, 0.15)' : 'var(--background-primary, #1e1e1e)'};
+                  color: ${materialCostMode === 'lt' ? '#ff9800' : 'var(--text-normal)'};
+                  cursor: pointer;
+                  font-size: 0.75em;
+                  transition: all 0.2s ease;
+                `}
+              >
+                {'<'} Less Than
+              </button>
+            </div>
             
             <div style="padding-top: 0.4em; border-top: 1px solid var(--background-modifier-border, #444);">
               <div style="font-weight: 500; margin-bottom: 0.4em;">Sort Order</div>
               <div style="display: flex; flex-direction: column; gap: 0.2em;">
                 <button
-                  onclick={() => setSortByLevel(false)}
+                  onclick={() => setSortBy('name')}
                   style={`
                     padding: 0.3em 0.5em;
-                    border: 1px solid ${!sortByLevel ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border: 1px solid ${sortBy === 'name' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
                     border-radius: 0.25em;
-                    background-color: ${!sortByLevel ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${!sortByLevel ? '#4fc3f7' : 'var(--text-normal)'};
+                    background-color: ${sortBy === 'name' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${sortBy === 'name' ? '#4fc3f7' : 'var(--text-normal)'};
                     cursor: pointer;
                     font-size: 0.8em;
                     transition: all 0.2s ease;
@@ -644,19 +766,34 @@ if (sortByLevel) {
                   🔤 Sort by Name
                 </button>
                 <button
-                  onclick={() => setSortByLevel(true)}
+                  onclick={() => setSortBy('level')}
                   style={`
                     padding: 0.3em 0.5em;
-                    border: 1px solid ${sortByLevel ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border: 1px solid ${sortBy === 'level' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
                     border-radius: 0.25em;
-                    background-color: ${sortByLevel ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${sortByLevel ? '#4fc3f7' : 'var(--text-normal)'};
+                    background-color: ${sortBy === 'level' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${sortBy === 'level' ? '#4fc3f7' : 'var(--text-normal)'};
                     cursor: pointer;
                     font-size: 0.8em;
                     transition: all 0.2s ease;
                   `}
                 >
                   📈 Sort by Level
+                </button>
+                <button
+                  onclick={() => setSortBy('school')}
+                  style={`
+                    padding: 0.3em 0.5em;
+                    border: 1px solid ${sortBy === 'school' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.25em;
+                    background-color: ${sortBy === 'school' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${sortBy === 'school' ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.8em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  📚 Sort by School
                 </button>
               </div>
             </div>
@@ -807,6 +944,22 @@ if (sortByLevel) {
       <dc.VanillaTable columns={columns} rows={filteredPages} paging={paging} />
     </>
   );
+}
+
+// Helper function for school colors
+function getSchoolColor(school) {
+  const colors = {
+    'Abjuration': '#2196f3',
+    'Conjuration': '#4caf50',
+    'Divination': '#ff9800',
+    'Enchantment': '#e91e63',
+    'Evocation': '#f44336',
+    'Illusion': '#9c27b0',
+    'Necromancy': '#424242',
+    'Transmutation': '#795548',
+    'Unknown': '#757575'
+  };
+  return colors[school] || '#757575';
 }
 
 return { SpellQuery };

@@ -134,8 +134,23 @@ function SpellQuery({ characterName, paging = 50 }) {
   const [filterConcentration, setFilterConcentration] = dc.useState('');
   const [filterRitual, setFilterRitual] = dc.useState('');
   const [filterPrepared, setFilterPrepared] = dc.useState('');
+  const [filterRange, setFilterRange] = dc.useState('');
+  const [materialCostThreshold, setMaterialCostThreshold] = dc.useState('100');
+  const [materialCostMode, setMaterialCostMode] = dc.useState('gt'); // 'gt' or 'lt'
   const [filtersShown, setFiltersShown] = dc.useState(false);
   const [sortBy, setSortBy] = dc.useState('name'); // name, level, school
+
+  // Helper function to extract GP cost from material component description
+  function extractGoldCost(materialDesc) {
+    if (!materialDesc) return null;
+    // Match patterns like "300 GP", "1,000+ GP", "300 gp", "worth 1,000 gp", etc.
+    // Remove commas from numbers first
+    const match = String(materialDesc).match(/([\d,]+)\+?\s*(?:GP|gp)/i);
+    if (!match) return null;
+    // Remove commas and parse
+    const numStr = match[1].replace(/,/g, '');
+    return parseInt(numStr, 10);
+  }
   
   // Extract spell data from character frontmatter
   let spellData = [];
@@ -254,6 +269,13 @@ function SpellQuery({ characterName, paging = 50 }) {
     if (filterPrepared && spell?.prepared !== (filterPrepared === 'true')) {
       return false;
     }
+    // Range filtering
+    if (filterRange) {
+      const spellRange = (spell?.range || '').toLowerCase();
+      if (filterRange === 'touch' && !spellRange.includes('touch')) {
+        return false;
+      }
+    }
     return true;
   });
   
@@ -312,7 +334,28 @@ function SpellQuery({ characterName, paging = 50 }) {
         );
       }
     },
-    { id: "Components", value: spell => spell?.components || '' },
+    {
+      id: "Components",
+      value: spell => {
+        const goldCost = extractGoldCost(spell?.components);
+        const componentsText = spell?.components || '';
+
+        // Determine if we should highlight based on material cost
+        let shouldHighlight = false;
+        if (materialCostThreshold && materialCostMode && goldCost !== null) {
+          const threshold = Number(materialCostThreshold);
+          if (materialCostMode === 'gt' && goldCost > threshold) {
+            shouldHighlight = true;
+          } else if (materialCostMode === 'lt' && goldCost < threshold) {
+            shouldHighlight = true;
+          }
+        }
+
+        return shouldHighlight
+          ? <span style="color: #ff9800; font-weight: 600;">{componentsText}</span>
+          : componentsText;
+      }
+    },
     { id: "Casting Time", value: spell => spell?.casting_time || '' },
     { id: "Range", value: spell => spell?.range || '' },
     { id: "Duration", value: spell => spell?.duration || '' },
@@ -379,6 +422,9 @@ function SpellQuery({ characterName, paging = 50 }) {
             setFilterConcentration('');
             setFilterRitual('');
             setFilterPrepared('');
+            setFilterRange('');
+            setMaterialCostThreshold('100');
+            setMaterialCostMode('gt');
           }}
           title="Clear all filters"
         >
@@ -478,28 +524,92 @@ function SpellQuery({ characterName, paging = 50 }) {
             </div>
           </SpellFilter>
           
-          <SpellFilter 
-            title="Components" 
+          <SpellFilter
+            title="Components"
             icon="lucide-zap"
             onToggle={toggleFilterComponents}
             onClear={clearFilterComponents}
           >
-            {allComponents.map(comp => (
-              <label style="display: block" key={comp}>
-                <input
-                  type="checkbox"
-                  checked={filterComponents.includes(comp)}
-                  onchange={e =>
-                    setFilterComponents(
-                      e.target.checked
-                        ? [...filterComponents, comp]
-                        : filterComponents.filter(x => x !== comp)
-                    )
-                  }
-                />{' '}
-                {componentNames[comp]}
-              </label>
-            ))}
+            <div style="margin-bottom: 1em;">
+              <div style="font-weight: 500; margin-bottom: 0.5em;">Component Types</div>
+              {allComponents.map(comp => (
+                <label style="display: block" key={comp}>
+                  <input
+                    type="checkbox"
+                    checked={filterComponents.includes(comp)}
+                    onchange={e =>
+                      setFilterComponents(
+                        e.target.checked
+                          ? [...filterComponents, comp]
+                          : filterComponents.filter(x => x !== comp)
+                      )
+                    }
+                  />{' '}
+                  {componentNames[comp]}
+                </label>
+              ))}
+            </div>
+
+            <div style="font-weight: 500; margin-bottom: 0.4em;">Material Cost Highlighting</div>
+            <div style="display: flex; gap: 0.4em; align-items: center; margin-bottom: 0.5em;">
+              <input
+                type="number"
+                min="0"
+                step="10"
+                value={materialCostThreshold}
+                onchange={e => setMaterialCostThreshold(e.target.value)}
+                placeholder="GP threshold"
+                style="max-width: 100px;"
+              />
+              <span style="color: var(--text-muted); font-size: 0.8em;">GP</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.25em;">
+              <button
+                onclick={() => setMaterialCostMode('')}
+                style={`
+                  padding: 0.4em 0.6em;
+                  border: 1px solid ${materialCostMode === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                  border-radius: 0.3em;
+                  background-color: ${materialCostMode === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                  color: ${materialCostMode === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                  cursor: pointer;
+                  font-size: 0.9em;
+                  transition: all 0.2s ease;
+                `}
+              >
+                No Highlighting
+              </button>
+              <button
+                onclick={() => setMaterialCostMode('gt')}
+                style={`
+                  padding: 0.4em 0.6em;
+                  border: 1px solid ${materialCostMode === 'gt' ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                  border-radius: 0.3em;
+                  background-color: ${materialCostMode === 'gt' ? 'rgba(255, 152, 0, 0.15)' : 'var(--background-primary, #1e1e1e)'};
+                  color: ${materialCostMode === 'gt' ? '#ff9800' : 'var(--text-normal)'};
+                  cursor: pointer;
+                  font-size: 0.9em;
+                  transition: all 0.2s ease;
+                `}
+              >
+                {'>'} Greater Than
+              </button>
+              <button
+                onclick={() => setMaterialCostMode('lt')}
+                style={`
+                  padding: 0.4em 0.6em;
+                  border: 1px solid ${materialCostMode === 'lt' ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                  border-radius: 0.3em;
+                  background-color: ${materialCostMode === 'lt' ? 'rgba(255, 152, 0, 0.15)' : 'var(--background-primary, #1e1e1e)'};
+                  color: ${materialCostMode === 'lt' ? '#ff9800' : 'var(--text-normal)'};
+                  cursor: pointer;
+                  font-size: 0.9em;
+                  transition: all 0.2s ease;
+                `}
+              >
+                {'<'} Less Than
+              </button>
+            </div>
           </SpellFilter>
           
           <SpellFilter title="Properties" icon="lucide-settings">
@@ -604,8 +714,44 @@ function SpellQuery({ characterName, paging = 50 }) {
                 </button>
               </div>
             </div>
+
+            <div style="margin-top: 1em;">
+              <div style="font-weight: 500; margin-bottom: 0.5em;">Range</div>
+              <div style="display: flex; flex-direction: column; gap: 0.25em;">
+                <button
+                  onclick={() => setFilterRange('')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterRange === '' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterRange === '' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterRange === '' ? '#4fc3f7' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  All Ranges
+                </button>
+                <button
+                  onclick={() => setFilterRange('touch')}
+                  style={`
+                    padding: 0.4em 0.6em;
+                    border: 1px solid ${filterRange === 'touch' ? '#e91e63' : 'var(--background-modifier-border, #444)'};
+                    border-radius: 0.3em;
+                    background-color: ${filterRange === 'touch' ? 'rgba(233, 30, 99, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                    color: ${filterRange === 'touch' ? '#e91e63' : 'var(--text-normal)'};
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    transition: all 0.2s ease;
+                  `}
+                >
+                  👋 Touch Only
+                </button>
+              </div>
+            </div>
           </SpellFilter>
-          
+
           {isWizard && (
             <SpellFilter title="Preparation" icon="lucide-check">
               <div>

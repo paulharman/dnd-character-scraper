@@ -10,6 +10,11 @@ function SessionTracker() {
   const [editText, setEditText] = dc.useState("");
   const [editCategory, setEditCategory] = dc.useState("general");
 
+  // Search/filter state
+  const [filterSearch, setFilterSearch] = dc.useState("");
+  const [filterCategories, setFilterCategories] = dc.useState([]);
+  const [filtersShown, setFiltersShown] = dc.useState(false);
+
   // Categories sorted alphabetically with "general" first
   const categories = ["general", "combat", "discovery", "plot", "social", "travel"];
 
@@ -134,7 +139,7 @@ function SessionTracker() {
   const getCategoryColor = (category) => {
     const colors = {
       combat: "#ff6b6b",
-      travel: "#4ecdc4", 
+      travel: "#4ecdc4",
       social: "#45b7d1",
       discovery: "#96ceb4",
       plot: "#feca57",
@@ -143,10 +148,109 @@ function SessionTracker() {
     return colors[category] || colors.general;
   };
 
+  // Apply filters to events
+  const filteredEvents = events.filter(event => {
+    // Text search filter
+    if (filterSearch && !event?.text?.toLowerCase().includes(filterSearch.toLowerCase())) {
+      return false;
+    }
+    // Category filter
+    if (filterCategories.length > 0 && !filterCategories.includes(event?.category)) {
+      return false;
+    }
+    return true;
+  });
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilterSearch("");
+    setFilterCategories([]);
+  };
+
+  // Toggle category filter
+  const toggleCategory = (cat) => {
+    setFilterCategories(
+      filterCategories.includes(cat)
+        ? filterCategories.filter(c => c !== cat)
+        : [...filterCategories, cat]
+    );
+  };
+
   return (
     <div>
       <h3>📜 What happened?</h3>
-      
+
+      {/* Search and Filter Controls */}
+      <div style="margin-bottom: 1em;">
+        <div style="display: flex; gap: 0.5em; align-items: center; margin-bottom: 0.5em;">
+          <input
+            type="search"
+            placeholder="Search events..."
+            value={filterSearch}
+            oninput={e => setFilterSearch(e.target.value)}
+            style="flex-grow: 1; padding: 6px;"
+          />
+          <button
+            onclick={() => setFiltersShown(!filtersShown)}
+            title="Show/hide category filters"
+            style="padding: 6px 12px;"
+          >
+            ⚙ Filters
+          </button>
+          {(filterSearch || filterCategories.length > 0) && (
+            <button
+              onclick={clearFilters}
+              title="Clear all filters"
+              style="padding: 6px 12px;"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {filtersShown && (
+          <div style="
+            border: 1px solid var(--background-modifier-border, #444);
+            border-radius: 0.5em;
+            padding: 1em;
+            background-color: var(--background-secondary-alt, #23272e);
+            margin-bottom: 1em;
+          ">
+            <div style="font-weight: 600; margin-bottom: 0.5em;">Filter by Category</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5em;">
+              {categories.map(cat => (
+                <label
+                  key={cat}
+                  style={`
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    background-color: ${filterCategories.includes(cat) ? getCategoryColor(cat) : 'transparent'};
+                    border: 1px solid ${getCategoryColor(cat)};
+                    color: ${filterCategories.includes(cat) ? 'white' : getCategoryColor(cat)};
+                    transition: all 0.2s;
+                  `}
+                >
+                  <input
+                    type="checkbox"
+                    checked={filterCategories.includes(cat)}
+                    onchange={() => toggleCategory(cat)}
+                    style="margin-right: 0.25em;"
+                  />
+                  {cat}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style="font-size: 0.9em; color: var(--text-muted, #888); margin-bottom: 0.5em;">
+          Showing {filteredEvents.length} of {events.length} events
+        </div>
+      </div>
+
       {/* Add new event */}
       <div style="margin-bottom: 1em;">
         <select 
@@ -174,9 +278,25 @@ function SessionTracker() {
 
       {/* Events list */}
       <div>
-        {events.slice().reverse().map((event, i) => {
-          const originalIndex = events.length - 1 - i; // Calculate original index for edit/delete operations
-          return (
+        {filteredEvents.length === 0 ? (
+          <div style="
+            padding: 1em;
+            text-align: center;
+            color: var(--text-muted, #888);
+            border: 1px dashed var(--background-modifier-border, #444);
+            border-radius: 0.5em;
+            margin-top: 1em;
+          ">
+            {events.length === 0
+              ? "No events yet. Add your first event above!"
+              : "No events match the current filters."
+            }
+          </div>
+        ) : (
+          filteredEvents.slice().reverse().map((event, i) => {
+            // Calculate original index in the full events array for edit/delete operations
+            const originalIndex = events.indexOf(event);
+            return (
           <div key={i} style={`
             margin-bottom: 0.75em; 
             padding: 0.5em; 
@@ -240,15 +360,16 @@ function SessionTracker() {
                     </button>
                   </div>
                 </div>
-                <div 
+                <div
                   style="line-height: 1.5;"
                   dangerouslySetInnerHTML={{__html: renderMarkdown(event.text)}}
                 />
               </div>
             )}
           </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
