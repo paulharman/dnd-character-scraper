@@ -435,34 +435,38 @@ class SpellcastingFormatter(BaseFormatter):
         """Generate interactive spell list using datacorejsx component."""
         character_info = self.get_character_info(character_data)
         character_name = character_info.get('name', 'Unknown')
-        
+
+        # Sanitize character name for JSX
+        # Replace double quotes with single quotes to match filename sanitization
+        character_name_sanitized = character_name.replace('"', "'")
+
         # Get template settings from config if available
         jsx_components_dir = "z_Templates"
         spell_component = "SpellQuery.jsx"
-        
+
         if self.config_manager:
             jsx_components_dir = self.config_manager.get_template_setting("jsx_components_dir", jsx_components_dir)
             spell_component = self.config_manager.get_template_setting("spell_component", spell_component)
-        
+
         section = f"""
 ### Spell List
 
 ```datacorejsx
 const {{ SpellQuery }} = await dc.require("{jsx_components_dir}/{spell_component}");
 // Use character name approach as fallback since fileName is having datacore API issues
-return <SpellQuery characterName="{character_name}" />;
+return <SpellQuery characterName="{character_name_sanitized}" />;
 ```
 
 ^spelltable"""
-        
+
         return section
     
     def _generate_spell_details(self, character_data: Dict[str, Any]) -> str:
         """Generate detailed spell descriptions."""
         spells = self.get_spells(character_data)
-        
+
         section = "\n### Spell Details\n"
-        
+
         # Organize spells by name (alphabetically) since backup original doesn't group by level
         all_spells = []
         for source, spell_list in spells.items():
@@ -471,15 +475,21 @@ return <SpellQuery characterName="{character_name}" />;
                 spell_dict = self._convert_spell_to_dict(spell)
                 spell_dict['display_source'] = source
                 all_spells.append(spell_dict)
-        
+
         # Sort spells by level first, then alphabetically by name
         all_spells.sort(key=lambda x: (x.get('level', 0), x.get('name', 'Unknown').lower()))
-        
+
         # Generate details for each spell
         for spell in all_spells:
             spell_detail = self._generate_single_spell_detail(spell)
             section += spell_detail
-        
+
+        # Remove trailing <BR> tag and blank lines from the end of the section
+        # This prevents extra spacing before the footer
+        import re
+        section = re.sub(r'\n*<BR>\n*$', '', section)
+        section = section.rstrip()
+
         return section
     
     def _get_spell_source_indicator(self, spell: Dict[str, Any]) -> str:
@@ -821,4 +831,4 @@ return <SpellQuery characterName="{character_name}" />;
     
     def _generate_footer(self) -> str:
         """Generate spellcasting section footer."""
-        return "> ^spells\n\n^spellcasting\n\n---"
+        return ">\n> ^spells\n\n^spellcasting\n\n---"

@@ -216,6 +216,10 @@ class InventoryFormatter(BaseFormatter):
         character_info = self.get_character_info(character_data)
         character_name = character_info.get('name', 'Unknown Character')
 
+        # Sanitize character name for JSX
+        # Replace double quotes with single quotes to match filename sanitization
+        character_name_sanitized = character_name.replace('"', "'")
+
         # Get template settings using proper configuration method
         jsx_dir, _ = self._get_template_settings()
         party_component = "PartyInventoryManager.jsx"
@@ -228,7 +232,7 @@ class InventoryFormatter(BaseFormatter):
 
         section += "```datacorejsx\n"
         section += f"const {{ PartyInventoryQuery }} = await dc.require(\"{jsx_dir}/{party_component}\");\n"
-        section += f"return <PartyInventoryQuery characterName=\"{character_name}\""
+        section += f"return <PartyInventoryQuery characterName=\"{character_name_sanitized}\""
         if campaign_id:
             section += f" campaignId=\"{campaign_id}\""
         section += " />;\n"
@@ -260,6 +264,10 @@ class InventoryFormatter(BaseFormatter):
         character_info = self.get_character_info(character_data)
         character_name = character_info.get('name', 'Unknown Character')
 
+        # Sanitize character name for JSX
+        # Replace double quotes with single quotes to match filename sanitization
+        character_name_sanitized = character_name.replace('"', "'")
+
         # Generate section header
         section = f"### Artificer Infusions"
         if artificer_levels > 0:
@@ -290,7 +298,7 @@ class InventoryFormatter(BaseFormatter):
         jsx_dir = self.DEFAULT_JSX_DIR
         section += "```datacorejsx\n"
         section += f"const {{ InfusionsQuery }} = await dc.require(\"{jsx_dir}/InfusionsManager.jsx\");\n"
-        section += f"return <InfusionsQuery characterName=\"{character_name}\" />;\n"
+        section += f"return <InfusionsQuery characterName=\"{character_name_sanitized}\" />;\n"
         section += "```\n\n"
 
         return section
@@ -365,13 +373,17 @@ class InventoryFormatter(BaseFormatter):
         character_info = self.get_character_info(character_data)
         character_name = character_info.get('name', 'Unknown Character')
 
+        # Sanitize character name for JSX
+        # Replace double quotes with single quotes to match filename sanitization
+        character_name_sanitized = character_name.replace('"', "'")
+
         # Get template settings using proper configuration method
         jsx_dir, inventory_component = self._get_template_settings()
 
         # Generate the DataCore JSX component
         section += "```datacorejsx\n"
         section += f"const {{ InventoryQuery }} = await dc.require(\"{jsx_dir}/{inventory_component}\");\n"
-        section += f"return <InventoryQuery characterName=\"{character_name}\" />;\n"
+        section += f"return <InventoryQuery characterName=\"{character_name_sanitized}\" />;\n"
         section += "```\n\n"
 
         return section

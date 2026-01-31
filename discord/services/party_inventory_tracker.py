@@ -34,10 +34,14 @@ class PartyInventorySnapshot:
         # Create virtual character ID for party inventory
         virtual_character_id = f"party_{self.campaign_id}"
 
+        # Get campaign name from metadata or fall back to campaign ID
+        campaign_name = self.metadata.get('campaign_name')
+        display_name = f"Party Inventory ({campaign_name})" if campaign_name else f"Party Inventory (Campaign {self.campaign_id})"
+
         # Transform party inventory data into character-like structure
         character_data = {
             "basic_info": {
-                "name": f"Party Inventory (Campaign {self.campaign_id})",
+                "name": display_name,
                 "campaign_id": self.campaign_id,
                 "type": "party_inventory"
             },
@@ -56,13 +60,14 @@ class PartyInventorySnapshot:
 
         return CharacterSnapshot(
             character_id=hash(virtual_character_id),  # Generate numeric ID from string
-            character_name=f"Party Inventory (Campaign {self.campaign_id})",
+            character_name=display_name,
             version=int(self.timestamp.timestamp()),
             timestamp=self.timestamp,
             character_data=character_data,
             metadata={
                 "is_party_inventory": True,
                 "campaign_id": self.campaign_id,
+                "campaign_name": campaign_name,
                 "virtual_character_id": virtual_character_id
             }
         )
@@ -116,6 +121,10 @@ class PartyInventoryTracker:
             character_info = character_data.get('character_info', {})
             character_id = character_info.get('id')
 
+            # Extract campaign name from character details
+            character_details = character_data.get('character_details', {})
+            campaign_name = character_details.get('campaign_name') if character_details else None
+
             return PartyInventorySnapshot(
                 campaign_id=str(campaign_id),
                 timestamp=datetime.now(),
@@ -126,6 +135,7 @@ class PartyInventoryTracker:
                 metadata={
                     "source_character": character_info.get('name', 'Unknown'),
                     "source_character_id": character_id,
+                    "campaign_name": campaign_name,
                     "items_count": len(party_items),
                     "currency_total_gp": self._calculate_total_currency_gp(party_currency)
                 }
@@ -671,6 +681,10 @@ class PartyInventoryTracker:
             if not previous_snapshot:
                 logger.info(f"First party inventory snapshot for campaign {current_snapshot.campaign_id}")
 
+                # Get campaign name for better message
+                campaign_name = current_snapshot.metadata.get('campaign_name')
+                campaign_display = campaign_name if campaign_name else f"Campaign {current_snapshot.campaign_id}"
+
                 # Create a special "new party found" change for first-time detection
                 new_party_change = FieldChange(
                     field_path="party_inventory.discovery",
@@ -679,10 +693,11 @@ class PartyInventoryTracker:
                     change_type=ChangeType.ADDED,
                     priority=ChangePriority.HIGH,
                     category=ChangeCategory.EQUIPMENT,
-                    description=f"🎒 New party inventory discovered for Campaign {current_snapshot.campaign_id}! Now monitoring for changes.",
+                    description=f"🎒 New party inventory discovered for {campaign_display}! Now monitoring for changes.",
                     metadata={
                         "is_new_party": True,
                         "campaign_id": current_snapshot.campaign_id,
+                        "campaign_name": campaign_name,
                         "item_count": len(current_snapshot.party_items),
                         "total_currency_gp": sum(current_snapshot.party_currency.get(k, 0) * v for k, v in {
                             'copper': 0.01, 'silver': 0.1, 'electrum': 0.5, 'gold': 1.0, 'platinum': 10.0

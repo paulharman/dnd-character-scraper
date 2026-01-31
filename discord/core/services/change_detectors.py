@@ -3572,10 +3572,10 @@ class SubclassChangeDetector(BaseEnhancedDetector):
     def detect_changes(self, old_data: Dict, new_data: Dict, context: DetectionContext) -> List[FieldChange]:
         """Detect subclass changes with enhanced multiclass support."""
         changes = []
-        
+
         try:
-            old_classes = extract_classes_list_data(old_data)
-            new_classes = extract_classes_list_data(new_data)
+            old_classes = extract_character_classes_data(old_data)
+            new_classes = extract_character_classes_data(new_data)
             
             # Also extract subclass information from features (D&D Beyond sometimes stores it there)
             old_subclasses_from_features = extract_subclasses_from_features_data(old_data)
@@ -5663,37 +5663,33 @@ class BackgroundChangeDetector(BaseEnhancedDetector):
                                        context: DetectionContext) -> List[FieldChange]:
         """Detect changes in background traits (personality, ideals, bonds, flaws)."""
         changes = []
-        
+
         try:
+            # extract_background_traits_data returns a list, not a dict
             old_traits = extract_background_traits_data(old_background)
             new_traits = extract_background_traits_data(new_background)
-            
-            trait_types = ['personality_traits', 'ideals', 'bonds', 'flaws']
-            
-            for trait_type in trait_types:
-                old_trait = old_traits.get(trait_type, [])
-                new_trait = new_traits.get(trait_type, [])
-                
-                if old_trait != new_trait:
-                    change_type = ChangeType.MODIFIED
-                    if not old_trait and new_trait:
-                        change_type = ChangeType.ADDED
-                    elif old_trait and not new_trait:
-                        change_type = ChangeType.REMOVED
-                    
-                    change = self._create_field_change(
-                        field_path=f'character.background.traits.{trait_type}',
-                        old_value=old_trait,
-                        new_value=new_trait,
-                        change_type=change_type,
-                        category=ChangeCategory.FEATURES,
-                        description=f"Changed {trait_type.replace('_', ' ')}"
-                    )
-                    changes.append(change)
-        
+
+            # Compare the trait lists directly
+            if old_traits != new_traits:
+                change_type = ChangeType.MODIFIED
+                if not old_traits and new_traits:
+                    change_type = ChangeType.ADDED
+                elif old_traits and not new_traits:
+                    change_type = ChangeType.REMOVED
+
+                change = self._create_field_change(
+                    field_path='character.background.traits',
+                    old_value=old_traits,
+                    new_value=new_traits,
+                    change_type=change_type,
+                    category=ChangeCategory.FEATURES,
+                    description="Changed background traits"
+                )
+                changes.append(change)
+
         except Exception as e:
             self.logger.error(f"Error detecting background trait changes: {e}")
-        
+
         return changes
     
     def _detect_background_feature_changes(self, old_background: Dict, new_background: Dict,
@@ -7248,11 +7244,16 @@ class RaceSpeciesChangeDetector(BaseEnhancedDetector):
                                    context: DetectionContext) -> List[FieldChange]:
         """Detect changes to racial traits."""
         changes = []
-        
+
         try:
-            old_traits = extract_racial_traits_data(old_race_data)
-            new_traits = extract_racial_traits_data(new_race_data)
-            
+            # extract_racial_traits_data returns List[Dict], convert to dict keyed by name
+            old_traits_list = extract_racial_traits_data(old_race_data)
+            new_traits_list = extract_racial_traits_data(new_race_data)
+
+            # Convert lists to dicts keyed by trait name
+            old_traits = {trait.get('name', f'trait_{i}'): trait for i, trait in enumerate(old_traits_list)}
+            new_traits = {trait.get('name', f'trait_{i}'): trait for i, trait in enumerate(new_traits_list)}
+
             # Detect added traits
             for trait_name, trait_data in new_traits.items():
                 if trait_name not in old_traits:
@@ -7264,15 +7265,15 @@ class RaceSpeciesChangeDetector(BaseEnhancedDetector):
                         category=ChangeCategory.FEATURES,
                         description=f"Gained racial trait: {trait_name}"
                     )
-                    
+
                     change.metadata.update({
                         'trait_name': trait_name,
                         'trait_data': trait_data,
                         'causation_trigger': 'race_change'
                     })
-                    
+
                     changes.append(change)
-            
+
             # Detect removed traits
             for trait_name, trait_data in old_traits.items():
                 if trait_name not in new_traits:
@@ -7284,15 +7285,15 @@ class RaceSpeciesChangeDetector(BaseEnhancedDetector):
                         category=ChangeCategory.FEATURES,
                         description=f"Lost racial trait: {trait_name}"
                     )
-                    
+
                     change.metadata.update({
                         'trait_name': trait_name,
                         'trait_data': trait_data,
                         'causation_trigger': 'race_change'
                     })
-                    
+
                     changes.append(change)
-            
+
             # Detect modified traits
             for trait_name in old_traits.keys() & new_traits.keys():
                 if old_traits[trait_name] != new_traits[trait_name]:
@@ -7304,19 +7305,19 @@ class RaceSpeciesChangeDetector(BaseEnhancedDetector):
                         category=ChangeCategory.FEATURES,
                         description=f"Modified racial trait: {trait_name}"
                     )
-                    
+
                     change.metadata.update({
                         'trait_name': trait_name,
                         'old_trait_data': old_traits[trait_name],
                         'new_trait_data': new_traits[trait_name],
                         'causation_trigger': 'race_change'
                     })
-                    
+
                     changes.append(change)
-        
+
         except Exception as e:
             self.logger.error(f"Error detecting racial trait changes: {e}", exc_info=True)
-        
+
         return changes
     
     def _detect_racial_bonus_changes(self, old_race_data: Dict, new_race_data: Dict,

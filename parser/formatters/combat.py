@@ -414,29 +414,31 @@ class CombatFormatter(BaseFormatter):
         
         for item in inventory:
             if isinstance(item, dict):
-                item_name = item.get('name', '')
-                description = item.get('description', '')
-                item_type = item.get('type', '')
-                
+                item_name = item.get('name', '') or ''
+                description = item.get('description', '') or ''
+                item_type = str(item.get('type', '') or '')
+
                 if not item_name or not description:
                     continue
-                
+
                 desc_lower = description.lower()
-                
+                item_type_lower = item_type.lower()
+                item_name_lower = item_name.lower()
+
                 # Check for bonus action items
                 if 'bonus action' in desc_lower:
-                    if 'potion' in item_type.lower() and 'healing' in item_name.lower():
+                    if 'potion' in item_type_lower and 'healing' in item_name_lower:
                         bonus_actions.append('Potion of Healing')
-                    elif 'fire breath' in item_name.lower():
+                    elif 'fire breath' in item_name_lower:
                         bonus_actions.append('Fire Breath Potion')
-                    elif 'antitoxin' in item_name.lower():
+                    elif 'antitoxin' in item_name_lower:
                         bonus_actions.append('Antitoxin')
-                    elif 'cloak' in item_name.lower() and 'elvenkind' in item_name.lower():
+                    elif 'cloak' in item_name_lower and 'elvenkind' in item_name_lower:
                         bonus_actions.append('Cloak of Elvenkind')
-                
+
                 # Check for reaction items
                 if 'reaction' in desc_lower:
-                    if 'ring' in item_type.lower() or 'amulet' in item_type.lower():
+                    if 'ring' in item_type_lower or 'amulet' in item_type_lower:
                         reactions.append(item_name)
         
         return bonus_actions, reactions
@@ -449,28 +451,29 @@ class CombatFormatter(BaseFormatter):
         class_features = features.get('class_features', [])
         for feature in class_features:
             if isinstance(feature, dict):
-                feature_name = feature.get('name', '')
-                description = feature.get('description', '')
-                
+                feature_name = feature.get('name', '') or ''
+                description = feature.get('description', '') or ''
+
                 if not feature_name or not description:
                     continue
-                
+
                 desc_lower = description.lower()
-                
+                feature_name_lower = feature_name.lower()
+
                 # Check for bonus action features
                 if 'bonus action' in desc_lower:
-                    if 'cunning action' in feature_name.lower():
+                    if 'cunning action' in feature_name_lower:
                         bonus_actions.append('Cunning Action')
-                    elif 'healing word' in feature_name.lower():
+                    elif 'healing word' in feature_name_lower:
                         bonus_actions.append('Healing Word')
-                    elif 'bardic inspiration' in feature_name.lower():
+                    elif 'bardic inspiration' in feature_name_lower:
                         bonus_actions.append('Bardic Inspiration')
-                
+
                 # Check for reaction features
                 if 'reaction' in desc_lower:
-                    if 'uncanny dodge' in feature_name.lower():
+                    if 'uncanny dodge' in feature_name_lower:
                         reactions.append('Uncanny Dodge')
-                    elif 'counterspell' in feature_name.lower():
+                    elif 'counterspell' in feature_name_lower:
                         reactions.append('Counterspell')
         
         return bonus_actions, reactions
@@ -503,6 +506,11 @@ class CombatFormatter(BaseFormatter):
 
     def _has_bonus_action_capability(self, spell_name: str, description: str, casting_time: str) -> bool:
         """Check if spell has bonus action capabilities."""
+        # Guard against None values
+        description = str(description or '')
+        casting_time = str(casting_time or '')
+        spell_name = str(spell_name or '')
+
         desc_lower = description.lower()
         cast_lower = casting_time.lower()
         name_lower = spell_name.lower()
@@ -533,6 +541,11 @@ class CombatFormatter(BaseFormatter):
     
     def _has_reaction_capability(self, spell_name: str, description: str, casting_time: str) -> bool:
         """Check if spell has reaction capabilities."""
+        # Guard against None values
+        description = str(description or '')
+        casting_time = str(casting_time or '')
+        spell_name = str(spell_name or '')
+
         desc_lower = description.lower()
         cast_lower = casting_time.lower()
         name_lower = spell_name.lower()
@@ -583,6 +596,11 @@ class CombatFormatter(BaseFormatter):
     
     def _is_conditional_bonus_spell(self, spell_name: str, description: str, casting_time: str) -> Tuple[bool, Optional[str]]:
         """Dynamically detect if a spell provides conditional bonus actions."""
+        # Guard against None values
+        spell_name = str(spell_name or '')
+        description = str(description or '')
+        casting_time = str(casting_time or '')
+
         name_lower = spell_name.lower()
         desc_lower = description.lower()
         cast_lower = casting_time.lower()
@@ -636,9 +654,9 @@ class CombatFormatter(BaseFormatter):
     
     def _is_weapon(self, item: Dict[str, Any]) -> bool:
         """Check if an item is a weapon based on type and description."""
-        item_type = (item.get('type') or '').lower()
-        item_name = (item.get('name') or '').lower()
-        description = (item.get('description') or '').lower()
+        item_type = str(item.get('type') or '').lower()
+        item_name = str(item.get('name') or '').lower()
+        description = str(item.get('description') or '').lower()
         
         # Exclude ammunition and non-weapon items
         non_weapon_items = [

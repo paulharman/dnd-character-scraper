@@ -1227,7 +1227,23 @@ tags: {tags}"""
     def _extract_components(self, spell: Dict[str, Any]) -> str:
         """Extract spell components with detailed material descriptions."""
         components = spell.get('components', {})
-        if isinstance(components, dict):
+
+        # Handle new API format (list of integers: 1=V, 2=S, 3=M)
+        if isinstance(components, list):
+            component_map = {1: 'V', 2: 'S', 3: 'M'}
+            comp_list = [component_map.get(c, str(c)) for c in components if isinstance(c, int)]
+
+            # Add material description if available and M is present
+            if 3 in components:
+                material_desc = spell.get('components_description', '')
+                if material_desc:
+                    # Replace 'M' with 'M (description)'
+                    comp_list = [c if c != 'M' else f'M ({material_desc})' for c in comp_list]
+
+            return ', '.join(comp_list)
+
+        # Handle legacy dict format
+        elif isinstance(components, dict):
             comp_list = []
             if components.get('verbal', False):
                 comp_list.append('V')
@@ -1241,6 +1257,7 @@ tags: {tags}"""
                 else:
                     comp_list.append('M')
             return ', '.join(comp_list)
+
         return str(components) if components else ''
     
     def _initialize_spell_extractor(self, character_data: Dict[str, Any]):
@@ -1371,8 +1388,11 @@ tags: {tags}"""
         
         import re
         for feature in class_features:
-            description = feature.get('description', '')
+            description = feature.get('description', '') or ''
             # Look for patterns like "D6 per Wizard level", "d8 per level", etc.
+            # Skip if description is None
+            if not description:
+                continue
             hit_die_match = re.search(r'([Dd]\d+)\s+per\s+\w+\s+level', description)
             if hit_die_match:
                 hit_die = hit_die_match.group(1).lower()
@@ -1384,7 +1404,10 @@ tags: {tags}"""
         grouped_features = character_data.get('grouped_features', {})
         for source, feature_list in grouped_features.items():
             for feature in feature_list:
-                description = feature.get('description', '')
+                description = feature.get('description', '') or ''
+                # Skip if description is None
+                if not description:
+                    continue
                 hit_die_match = re.search(r'([Dd]\d+)\s+per\s+\w+\s+level', description)
                 if hit_die_match:
                     hit_die = hit_die_match.group(1).lower()
