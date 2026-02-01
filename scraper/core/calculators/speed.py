@@ -563,19 +563,19 @@ class EnhancedSpeedCalculator(RuleAwareCalculator, ICachedCalculator):
         
         for modifier in feat_modifiers:
             if self._is_speed_modifier(modifier):
-                bonus += modifier.get('value', 0)
-        
+                bonus += (modifier.get('value') or 0)
+
         return bonus
-    
+
     def _get_item_speed_bonus(self, character_data: Dict[str, Any]) -> int:
         """Get speed bonuses from magic items."""
         modifiers = character_data.get('modifiers', {})
         item_modifiers = modifiers.get('item', [])
         bonus = 0
-        
+
         for modifier in item_modifiers:
             if self._is_speed_modifier(modifier):
-                bonus += modifier.get('value', 0)
+                bonus += (modifier.get('value') or 0)
         
         return bonus
     
@@ -599,7 +599,7 @@ class EnhancedSpeedCalculator(RuleAwareCalculator, ICachedCalculator):
                 
             for modifier in modifier_list:
                 if self._is_speed_modifier(modifier):
-                    bonus += modifier.get('value', 0)
+                    bonus += (modifier.get('value') or 0)
         
         return bonus
     
@@ -872,16 +872,15 @@ class EnhancedSpeedCalculator(RuleAwareCalculator, ICachedCalculator):
         return special_movement
     
     def _is_speed_modifier(self, modifier: Dict[str, Any]) -> bool:
-        """Check if modifier affects speed."""
-        modifies_type_id = modifier.get('modifiesTypeId')
-        sub_type = modifier.get('subType', '').lower()
-        
-        # Speed modifier type ID
-        if modifies_type_id == 8:  # Assuming 8 is speed in D&D Beyond
+        """Check if modifier affects walking speed only.
+
+        Swimming, flying, and climbing speeds are handled by dedicated methods,
+        so this excludes sub-types like speed-swimming, speed-flying, speed-climbing.
+        """
+        sub_type = (modifier.get('subType') or '').lower()
+
+        # Only match walking speed modifiers, not swimming/flying/climbing
+        if sub_type in ('speed', 'movement', 'innate-speed-walking', 'unarmored-movement'):
             return True
-            
-        # Check subtype for speed modifiers
-        if 'speed' in sub_type or 'movement' in sub_type:
-            return True
-            
+
         return False

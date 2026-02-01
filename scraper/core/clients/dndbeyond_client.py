@@ -15,33 +15,44 @@ from requests.packages.urllib3.util.retry import Retry
 from scraper.core.interfaces.character_client import CharacterClientInterface
 from shared.config.settings import Settings
 from .exceptions import (
-    CharacterNotFoundError, PrivateCharacterError, APIError, 
+    CharacterNotFoundError, PrivateCharacterError, APIError,
     ValidationError, RateLimitError, TimeoutError
 )
 
 logger = logging.getLogger(__name__)
+
+AUTH_SERVICE_URL = "https://auth-service.dndbeyond.com/v1/cobalt-token"
+# Refresh bearer token 30 seconds before it expires
+TOKEN_REFRESH_BUFFER = 30
 
 
 class DNDBeyondClient(CharacterClientInterface):
     """
     D&D Beyond API client with robust error handling and rate limiting.
     """
-    
-    def __init__(self, user_agent: Optional[str] = None):
+
+    def __init__(self, user_agent: Optional[str] = None, cobalt_token: Optional[str] = None):
         self.settings = Settings()
         if user_agent:
             self.settings.user_agent = user_agent
-        
+
+        # Cobalt session token: explicit param > env var/config
+        self.cobalt_token = cobalt_token or self.settings.cobalt_token or ''
+
+        # Bearer token cache (obtained via auth-service token exchange)
+        self._bearer_token = None
+        self._bearer_expires_at = 0
+
         # Create session with retry strategy
         self.session = requests.Session()
         self._setup_session()
-        
+
         # Rate limiting
         self.last_request_time = 0
         self.min_delay = self.settings.min_request_delay
-        
+
         logger.info(f"DNDBeyond client initialized with base URL: {self.settings.api_base_url}")
-    
+
     def _setup_session(self):
         """Configure session with retry strategy and headers."""
         # Configure retry strategy
@@ -51,47 +62,120 @@ class DNDBeyondClient(CharacterClientInterface):
             allowed_methods=["HEAD", "GET", "OPTIONS"],  # newer urllib3 uses allowed_methods
             backoff_factor=1.0
         )
-        
+
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
-        
+
         # Set default headers
         self.session.headers.update({
             'User-Agent': self.settings.user_agent,
             'Accept': 'application/json',
             'Accept-Language': 'en-US,en;q=0.9'
         })
-    
+
+        if self.cobalt_token:
+            logger.info("Cobalt session token configured (private character access enabled)")
+
+    def _get_bearer_token(self) -> Optional[str]:
+        """
+        Get a valid bearer token, refreshing via auth-service if needed.
+
+        The CobaltSession cookie is exchanged for a short-lived JWT bearer
+        token (TTL ~300s) via D&D Beyond's auth service. The bearer token
+        is then used in Authorization headers for character-service requests.
+
+        Returns:
+            Bearer token string, or None if no cobalt token configured
+        """
+        if not self.cobalt_token:
+            return None
+
+        # Return cached token if still valid
+        if self._bearer_token and time.time() < self._bearer_expires_at:
+            return self._bearer_token
+
+        logger.info("Exchanging CobaltSession for bearer token via auth-service")
+
+        try:
+            response = requests.post(
+                AUTH_SERVICE_URL,
+                headers={
+                    'Cookie': f'CobaltSession={self.cobalt_token}',
+                    'Content-Type': 'application/json',
+                    'User-Agent': self.settings.user_agent,
+                },
+                timeout=self.settings.api_timeout
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                self._bearer_token = data.get('token', '')
+                ttl = data.get('ttl', 300)
+                self._bearer_expires_at = time.time() + ttl - TOKEN_REFRESH_BUFFER
+                logger.info(f"Bearer token obtained (TTL: {ttl}s)")
+                return self._bearer_token
+            else:
+                logger.error(
+                    f"Auth-service token exchange failed (HTTP {response.status_code}): "
+                    f"{response.text[:200]}"
+                )
+                return None
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Auth-service request failed: {e}")
+            return None
+
+    def _get_auth_headers(self) -> Dict[str, str]:
+        """Get authorization headers for API requests."""
+        bearer = self._get_bearer_token()
+        if bearer:
+            return {'Authorization': f'Bearer {bearer}'}
+        return {}
+
+    def _raise_private_error(self, character_id: int):
+        """Raise PrivateCharacterError with context-aware message."""
+        if self.cobalt_token:
+            raise PrivateCharacterError(
+                character_id,
+                f"Character {character_id} access denied. Your cobalt session token may be "
+                f"expired - get a fresh one from browser DevTools."
+            )
+        raise PrivateCharacterError(
+            character_id,
+            f"Character {character_id} is private. Set DNDBEYOND_COBALT_TOKEN in your .env "
+            f"file or config/scraper.yaml to access private characters."
+        )
+
     def _apply_rate_limiting(self):
         """Apply rate limiting between requests."""
         current_time = time.time()
         time_since_last = current_time - self.last_request_time
-        
+
         if time_since_last < self.min_delay:
             sleep_time = self.min_delay - time_since_last
             # Add small random jitter
             jitter = random.uniform(
-                self.settings.jitter_min, 
+                self.settings.jitter_min,
                 self.settings.jitter_max
             )
             sleep_time += jitter
-            
+
             logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f} seconds")
             time.sleep(sleep_time)
-        
+
         self.last_request_time = time.time()
-    
+
     async def fetch_character_data(self, character_id: int) -> Dict[str, Any]:
         """
         Fetch character data from D&D Beyond API.
-        
+
         Args:
             character_id: The character ID to fetch
-            
+
         Returns:
             Raw character data dictionary
-            
+
         Raises:
             CharacterNotFoundError: Character doesn't exist
             PrivateCharacterError: Character is private
@@ -100,27 +184,25 @@ class DNDBeyondClient(CharacterClientInterface):
             TimeoutError: Request timed out
         """
         logger.info(f"Fetching character data for ID: {character_id}")
-        
+
         # Apply rate limiting
         self._apply_rate_limiting()
-        
+
         # Prepare request
         url = f"{self.settings.api_base_url.rstrip('/')}/{character_id}?includeCustomItems=true"
-        headers = {}
-        
+
         try:
-            # Make request
+            # Make request with bearer auth
             logger.debug(f"Making request to: {url}")
             response = self.session.get(
-                url,
-                headers=headers,
-                timeout=self.settings.api_timeout
+                url, timeout=self.settings.api_timeout,
+                headers=self._get_auth_headers()
             )
-            
+
             # Handle response
             if response.status_code == 200:
                 wrapper_data = response.json()
-                
+
                 # Extract character data from wrapper
                 if isinstance(wrapper_data, dict) and 'data' in wrapper_data:
                     data = wrapper_data['data']
@@ -128,43 +210,43 @@ class DNDBeyondClient(CharacterClientInterface):
                 else:
                     data = wrapper_data
                     logger.debug("Using response data directly (no wrapper detected)")
-                
+
                 # Validate data
                 if not self.validate_character_data(data):
                     raise ValidationError(f"Character {character_id} data failed validation")
-                
+
                 logger.info(f"Successfully fetched character {character_id}")
                 return data
-                
+
             elif response.status_code == 404:
                 raise CharacterNotFoundError(character_id)
-                
+
             elif response.status_code == 403:
-                raise PrivateCharacterError(character_id)
-                
+                self._raise_private_error(character_id)
+
             elif response.status_code == 429:
                 retry_after = int(response.headers.get('Retry-After', 60))
                 raise RateLimitError(retry_after)
-                
+
             else:
                 raise APIError(response.status_code, response.text)
-                
+
         except requests.exceptions.Timeout:
             raise TimeoutError(f"Request timed out after {self.settings.api_timeout} seconds")
-            
+
         except requests.exceptions.RequestException as e:
             raise APIError(0, f"Request failed: {str(e)}")
-    
+
     def get_character(self, character_id: int) -> Dict[str, Any]:
         """
         Fetch character data from D&D Beyond API (synchronous).
-        
+
         Args:
             character_id: The character ID to fetch
-            
+
         Returns:
             Raw character data dictionary
-            
+
         Raises:
             CharacterNotFoundError: Character doesn't exist
             PrivateCharacterError: Character is private
@@ -173,27 +255,25 @@ class DNDBeyondClient(CharacterClientInterface):
             TimeoutError: Request timed out
         """
         logger.info(f"Fetching character data for ID: {character_id}")
-        
+
         # Apply rate limiting
         self._apply_rate_limiting()
-        
+
         # Prepare request
         url = f"{self.settings.api_base_url.rstrip('/')}/{character_id}?includeCustomItems=true"
-        headers = {}
-        
+
         try:
-            # Make request
+            # Make request with bearer auth
             logger.debug(f"Making request to: {url}")
             response = self.session.get(
-                url,
-                headers=headers,
-                timeout=self.settings.api_timeout
+                url, timeout=self.settings.api_timeout,
+                headers=self._get_auth_headers()
             )
-            
+
             # Handle response
             if response.status_code == 200:
                 wrapper_data = response.json()
-                
+
                 # Extract character data from wrapper
                 if isinstance(wrapper_data, dict) and 'data' in wrapper_data:
                     data = wrapper_data['data']
@@ -201,30 +281,30 @@ class DNDBeyondClient(CharacterClientInterface):
                 else:
                     data = wrapper_data
                     logger.debug("Using response data directly (no wrapper detected)")
-                
+
                 # Validate data
                 if not self.validate_character_data(data):
                     raise ValidationError(f"Character {character_id} data failed validation")
-                
+
                 logger.info(f"Successfully fetched character {character_id}")
                 return data
-                
+
             elif response.status_code == 404:
                 raise CharacterNotFoundError(character_id)
-                
+
             elif response.status_code == 403:
-                raise PrivateCharacterError(character_id)
-                
+                self._raise_private_error(character_id)
+
             elif response.status_code == 429:
                 retry_after = int(response.headers.get('Retry-After', 60))
                 raise RateLimitError(retry_after)
-                
+
             else:
                 raise APIError(response.status_code, response.text)
-                
+
         except requests.exceptions.Timeout:
             raise TimeoutError(f"Request timed out after {self.settings.api_timeout} seconds")
-            
+
         except requests.exceptions.RequestException as e:
             raise APIError(0, f"Request failed: {str(e)}")
 
@@ -253,15 +333,13 @@ class DNDBeyondClient(CharacterClientInterface):
 
         # Prepare request
         url = f"https://character-service.dndbeyond.com/character/v5/party/inventory/{campaign_id}"
-        headers = {}
 
         try:
-            # Make request
+            # Make request with bearer auth
             logger.debug(f"Making request to: {url}")
             response = self.session.get(
-                url,
-                headers=headers,
-                timeout=self.settings.api_timeout
+                url, timeout=self.settings.api_timeout,
+                headers=self._get_auth_headers()
             )
 
             # Handle response
@@ -322,15 +400,13 @@ class DNDBeyondClient(CharacterClientInterface):
 
         # Prepare request
         url = f"https://character-service.dndbeyond.com/character/v5/infusion/items/{character_id}"
-        headers = {}
 
         try:
-            # Make request
+            # Make request with bearer auth
             logger.debug(f"Making request to: {url}")
             response = self.session.get(
-                url,
-                headers=headers,
-                timeout=self.settings.api_timeout
+                url, timeout=self.settings.api_timeout,
+                headers=self._get_auth_headers()
             )
 
             # Handle response
@@ -391,15 +467,13 @@ class DNDBeyondClient(CharacterClientInterface):
 
         # Prepare request
         url = f"https://character-service.dndbeyond.com/character/v5/known-infusions/{character_id}"
-        headers = {}
 
         try:
-            # Make request
+            # Make request with bearer auth
             logger.debug(f"Making request to: {url}")
             response = self.session.get(
-                url,
-                headers=headers,
-                timeout=self.settings.api_timeout
+                url, timeout=self.settings.api_timeout,
+                headers=self._get_auth_headers()
             )
 
             # Handle response
@@ -442,45 +516,45 @@ class DNDBeyondClient(CharacterClientInterface):
     def validate_character_data(self, data: Dict[str, Any]) -> bool:
         """
         Validate that character data contains required fields.
-        
+
         Args:
             data: Raw character data dictionary
-            
+
         Returns:
             True if data is valid, False otherwise
         """
         if not isinstance(data, dict):
             logger.error("Character data is not a dictionary")
             return False
-        
+
         # Required top-level fields
         required_fields = ['id', 'name', 'classes']
-        
+
         for field in required_fields:
             if field not in data:
                 logger.error(f"Missing required field: {field}")
                 return False
-        
+
         # Validate character has at least one class
         if not data.get('classes') or len(data['classes']) == 0:
             logger.error("Character has no classes")
             return False
-        
+
         # Validate character ID is correct
         if not isinstance(data.get('id'), int) or data['id'] <= 0:
             logger.error(f"Invalid character ID: {data.get('id')}")
             return False
-        
+
         logger.debug("Character data validation passed")
         return True
-    
+
     def get_character_summary(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Extract basic character summary from raw data.
-        
+
         Args:
             data: Raw character data dictionary
-            
+
         Returns:
             Dictionary with basic character info
         """
@@ -488,19 +562,19 @@ class DNDBeyondClient(CharacterClientInterface):
             # Calculate total level from classes directly
             classes = data.get('classes', [])
             total_level = sum(cls.get('level', 0) for cls in classes)
-            
+
             # Get primary class
             primary_class = None
             if classes:
                 # Find highest level class
                 primary_class = max(classes, key=lambda c: c.get('level', 0))
-            
+
             # Get species/race
             race = data.get('race', {})
             species = data.get('species', {})
-            race_name = (race.get('fullName') or race.get('baseName') or 
+            race_name = (race.get('fullName') or race.get('baseName') or
                         species.get('fullName') or species.get('baseName') or 'Unknown')
-            
+
             summary = {
                 'id': data.get('id'),
                 'name': data.get('name', 'Unknown'),
@@ -517,10 +591,10 @@ class DNDBeyondClient(CharacterClientInterface):
                 'primary_class': primary_class.get('definition', {}).get('name') if primary_class else None,
                 'is_multiclass': len(classes) > 1
             }
-            
+
             logger.debug(f"Generated summary for character: {summary['name']} (Level {summary['level']} {summary['primary_class']})")
             return summary
-            
+
         except Exception as e:
             logger.error(f"Error generating character summary: {str(e)}")
             return {
@@ -528,15 +602,15 @@ class DNDBeyondClient(CharacterClientInterface):
                 'name': data.get('name', 'Unknown'),
                 'error': f"Failed to generate summary: {str(e)}"
             }
-    
+
     def close(self):
         """Close the session."""
         if self.session:
             self.session.close()
             logger.debug("Client session closed")
-    
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()

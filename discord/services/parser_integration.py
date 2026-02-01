@@ -217,7 +217,7 @@ class DiscordParserIntegration:
             if success:
                 logger.info("Party inventory notification processed successfully")
             else:
-                logger.warning("Party inventory notification failed")
+                logger.debug("No party inventory changes detected")
 
             return success
 

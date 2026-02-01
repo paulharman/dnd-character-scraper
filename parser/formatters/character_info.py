@@ -108,20 +108,20 @@ vault_path = @vault_path
 note_path = @note_path
 full_path = os.path.join(vault_path, note_path)
 
-# Configure Windows-1252 encoding for console output compatibility
-os.environ['PYTHONIOENCODING'] = 'windows-1252'
-os.environ['PYTHONLEGACYWINDOWSSTDIO'] = '1'
+# Configure UTF-8 encoding for proper Unicode support (accented characters in names, etc.)
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+os.environ['PYTHONUTF8'] = '1'
 
 # Reconfigure current process stdio for immediate effects
 try:
-    sys.stdout.reconfigure(encoding='windows-1252', errors='replace')
-    sys.stderr.reconfigure(encoding='windows-1252', errors='replace')
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 except AttributeError:
     # Fallback for older Python versions
     pass
 
 cmd = ['python', 'parser/dnd_json_to_markdown.py', '{character_id}', full_path]
-result = subprocess.run(cmd, capture_output=True, text=True, encoding='windows-1252', errors='replace')
+result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
 
 # Capture and display Discord changes if present
 if result.returncode == 0:

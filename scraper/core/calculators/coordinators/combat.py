@@ -1395,7 +1395,7 @@ class CombatCoordinator(ICoordinator):
                 item_def = item.get('definition', {})
                 if self._is_weapon(item_def):
                     # Transform weapon data to expected format
-                    weapon_type = item_def.get('type', 'simple').lower()
+                    weapon_type = (item_def.get('type') or 'simple').lower()
                     # Extract just 'martial' or 'simple' from 'martial weapon' or 'simple weapon'
                     if 'martial' in weapon_type:
                         weapon_category = 'martial'
@@ -1543,12 +1543,12 @@ class CombatCoordinator(ICoordinator):
     def _is_weapon(self, item_def: Dict[str, Any]) -> bool:
         """Check if an item is a weapon."""
         # Check weapon type
-        item_type = item_def.get('type', '').lower()
+        item_type = (item_def.get('type') or '').lower()
         if 'weapon' in item_type:
             return True
-            
+
         # Check filter type
-        filter_type = item_def.get('filterType', '').lower()
+        filter_type = (item_def.get('filterType') or '').lower()
         if filter_type == 'weapon':
             return True
             
@@ -1569,7 +1569,7 @@ class CombatCoordinator(ICoordinator):
                     return 'ranged'
         
         # Check weapon type
-        weapon_type = item_def.get('type', '').lower()
+        weapon_type = (item_def.get('type') or '').lower()
         if 'ranged' in weapon_type or 'crossbow' in weapon_type or 'bow' in weapon_type:
             return 'ranged'
             
@@ -1631,8 +1631,8 @@ class CombatCoordinator(ICoordinator):
     
     def _is_weapon_proficient(self, item_def: Dict[str, Any], raw_data: Dict[str, Any]) -> bool:
         """Check if character is proficient with weapon."""
-        weapon_name = item_def.get('name', '').lower()
-        weapon_type = item_def.get('type', '').lower()
+        weapon_name = (item_def.get('name') or '').lower()
+        weapon_type = (item_def.get('type') or '').lower()
         
         # Check class weapon proficiencies
         classes = raw_data.get('classes', [])

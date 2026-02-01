@@ -6,18 +6,26 @@ import os
 from typing import Optional, Dict, Any
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 class Settings:
     """Configuration settings with environment variable support."""
-    
+
     def __init__(self):
         """Initialize settings with defaults and environment overrides."""
-        
+
+        # Load .env file (won't override existing environment variables)
+        load_dotenv()
+
         # API Configuration
         self.api_base_url = os.getenv('DNDBEYOND_API_BASE_URL', 'https://character-service.dndbeyond.com/character/v5/character')
         self.api_timeout = int(os.getenv('DNDBEYOND_API_TIMEOUT', '30'))
         self.api_retries = int(os.getenv('DNDBEYOND_API_RETRIES', '3'))
         self.api_retry_delay = float(os.getenv('DNDBEYOND_API_RETRY_DELAY', '30.0'))  # 30 second minimum
         self.user_agent = os.getenv('DNDBEYOND_USER_AGENT', 'DnDBeyond-Enhanced-Scraper/6.0.0')
+
+        # Authentication (optional - for private characters)
+        self.cobalt_token = os.getenv('DNDBEYOND_COBALT_TOKEN', '')
         
         # Rate Limiting (respecting 30-second minimum)
         self.min_request_delay = float(os.getenv('DNDBEYOND_MIN_DELAY', '30.0'))  # 30 seconds minimum

@@ -50,6 +50,12 @@ discord/discord_config.yml
 .DS_Store
 Thumbs.db
 desktop.ini
+nul
+
+# Claude temp files and debug scripts
+tmpclaude-*
+check_*.py
+*_MIGRATION_PLAN.md
 
 # Obsidian vault internal config
 .obsidian/

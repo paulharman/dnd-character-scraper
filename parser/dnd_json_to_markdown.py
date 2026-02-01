@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import subprocess
+import unicodedata
 import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -651,7 +652,24 @@ async def main():
             parser_dir.mkdir(exist_ok=True, parents=True)
             output_path = parser_dir / args.output_path
             logger.info(f"Parser:   Using relative path in parser dir: {output_path}")
-        
+
+        # Unicode-aware path resolution: if the target file doesn't exist but
+        # a file with equivalent name (ignoring accents/diacritics) does, use that.
+        # This handles cases where special characters (e.g. ü) get stripped when
+        # the path passes through subprocess encoding or Obsidian's Execute Code plugin.
+        if not output_path.exists() and output_path.parent.exists():
+            def _strip_accents(s: str) -> str:
+                return ''.join(
+                    c for c in unicodedata.normalize('NFKD', s)
+                    if not unicodedata.combining(c)
+                )
+            target_stripped = _strip_accents(output_path.name.lower())
+            for existing_file in output_path.parent.iterdir():
+                if existing_file.is_file() and _strip_accents(existing_file.name.lower()) == target_stripped:
+                    logger.info(f"Parser:   Found Unicode-variant match: {existing_file.name}")
+                    output_path = existing_file
+                    break
+
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
         

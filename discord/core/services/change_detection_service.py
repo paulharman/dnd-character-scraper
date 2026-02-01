@@ -323,7 +323,9 @@ class EnhancedChangeDetectionService:
                             return False
                     
                     success = sync_log_changes()
-                    if success:
+                    if success is None:
+                        self.logger.debug(f"Change logging scheduled asynchronously for character {character_id}")
+                    elif success:
                         self.logger.info(f"Successfully logged {len(changes)} changes for character {character_id}")
                     else:
                         self.logger.warning(f"Change logging failed for character {character_id}")

@@ -68,12 +68,29 @@ python discord/discord_monitor.py --validate-config
 
 ### 5. Character Setup
 
-**⚠️ IMPORTANT**: Your D&D Beyond character must be set to **PUBLIC** for the scraper to access it.
+Note your character ID from the URL: `dndbeyond.com/characters/[CHARACTER_ID]`
 
+**Option A: Public Character (Simple)**
 1. Go to your character on D&D Beyond
 2. Click **"Edit"** → **"Manage"** → **"Privacy"**
 3. Set to **"Public"** (anyone can view)
-4. Note your character ID from the URL: `dndbeyond.com/characters/[CHARACTER_ID]`
+
+**Option B: Private Character (Cobalt Session Token)**
+
+If you don't want to make your character public, you can authenticate with your D&D Beyond session:
+
+1. Open your character on D&D Beyond in Chrome/Edge
+2. Press **F12** to open DevTools → **Network** tab
+3. Refresh the page
+4. Find any request to `character-service.dndbeyond.com`
+5. In the request headers, find the **Cookie** header
+6. Copy the value after `cobalt-session=` (up to the next `;`)
+7. Add it to your `.env` file:
+   ```
+   DNDBEYOND_COBALT_TOKEN=your_token_here
+   ```
+
+> **Note:** Cobalt session tokens expire periodically. If you get a 403 error, get a fresh token from your browser.
 
 ### 6. Usage
 

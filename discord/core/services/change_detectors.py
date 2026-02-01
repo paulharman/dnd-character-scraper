@@ -1350,24 +1350,36 @@ def extract_subclass_name_data(subclass_data: Any) -> str:
         return 'Unknown Subclass'
 
 
-def extract_spell_list_data(character_data: Dict) -> List[Dict]:
-    """Universal spell list extraction utility."""
+def extract_spell_list_data(character_data: Dict, spell_type: str = None) -> Dict[str, Dict]:
+    """Universal spell list extraction utility.
+
+    Args:
+        character_data: Character data dictionary
+        spell_type: Optional filter ('known', 'prepared') - currently unused
+
+    Returns:
+        Dictionary mapping spell name to spell data
+    """
     try:
-        spell_list = []
-        
+        spell_dict = {}
+
         # Get spells data
         spells_data = extract_spells_data(character_data)
-        
-        # Flatten spell levels into a single list
+
+        # Flatten spell levels into a dict keyed by spell name
         for level_name, spells in spells_data.items():
             if isinstance(spells, list):
-                spell_list.extend(spells)
-        
-        return spell_list
-        
+                for spell in spells:
+                    if isinstance(spell, dict):
+                        name = spell.get('name', spell.get('definition', {}).get('name', ''))
+                        if name:
+                            spell_dict[name] = spell
+
+        return spell_dict
+
     except Exception as e:
         logger.warning(f"Error extracting spell list: {e}")
-        return []
+        return {}
 
 
 def extract_spell_slot_usage_data(character_data: Dict) -> Dict[str, Dict[str, int]]:

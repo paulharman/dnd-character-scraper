@@ -17,6 +17,17 @@ api:
   retry_delay: 30                                                             # Delay between retry attempts (seconds)
 
 # ===================================================================
+# AUTHENTICATION (OPTIONAL)
+# ===================================================================
+# Cobalt session token for accessing private D&D Beyond characters.
+# Without this, only public characters can be scraped.
+# Get from browser DevTools: Network tab → any request to
+# character-service.dndbeyond.com → Cookie header → cobalt-session value.
+# Can also be set via DNDBEYOND_COBALT_TOKEN environment variable or .env file.
+authentication:
+  cobalt_token: ""
+
+# ===================================================================
 # RATE LIMITING CONFIGURATION
 # ===================================================================
 # IMPORTANT: The 30-second delay respects D&D Beyond's API limits and should not be modified
