@@ -4164,39 +4164,36 @@ class EnhancedSpellsChangeDetector(BaseEnhancedDetector):
     def _detect_spell_modifications(self, old_data: Dict, new_data: Dict) -> List[FieldChange]:
         """Detect modifications to existing spells (changes in spell properties)."""
         changes = []
-        
+
         try:
-            # Check both known and prepared spells for modifications
-            for spell_type in ['known', 'prepared']:
-                old_spells = extract_spell_list_data(old_data, spell_type)
-                new_spells = extract_spell_list_data(new_data, spell_type)
-                
-                # Find spells that exist in both old and new data
-                common_spell_ids = set(old_spells.keys()) & set(new_spells.keys())
-                
-                for spell_id in common_spell_ids:
-                    old_spell = old_spells[spell_id]
-                    new_spell = new_spells[spell_id]
-                    
-                    # Compare spell properties
-                    spell_changes = self._compare_spell_properties(
-                        old_spell, new_spell, spell_id, spell_type
-                    )
-                    changes.extend(spell_changes)
-                    
+            old_spells = extract_spell_list_data(old_data)
+            new_spells = extract_spell_list_data(new_data)
+
+            # Find spells that exist in both old and new data
+            common_spell_names = set(old_spells.keys()) & set(new_spells.keys())
+
+            for spell_name in common_spell_names:
+                old_spell = old_spells[spell_name]
+                new_spell = new_spells[spell_name]
+
+                spell_changes = self._compare_spell_properties(
+                    old_spell, new_spell, spell_name, 'spell'
+                )
+                changes.extend(spell_changes)
+
         except Exception as e:
             self.logger.warning(f"Error detecting spell modifications: {e}")
-        
+
         return changes
     
-    def _compare_spell_properties(self, old_spell: Dict, new_spell: Dict, 
+    def _compare_spell_properties(self, old_spell: Dict, new_spell: Dict,
                                 spell_id: str, spell_type: str) -> List[FieldChange]:
         """Compare properties of a spell to detect modifications."""
         changes = []
-        
+
         try:
             spell_name = self._extract_spell_name(new_spell)
-            
+
             # Properties to check for changes
             properties_to_check = [
                 ('level', 'spell level'),
@@ -4210,25 +4207,76 @@ class EnhancedSpellsChangeDetector(BaseEnhancedDetector):
                 ('prepared', 'preparation status'),
                 ('always_prepared', 'always prepared status')
             ]
-            
+
             for prop_key, prop_display in properties_to_check:
                 old_value = old_spell.get(prop_key) if isinstance(old_spell, dict) else None
                 new_value = new_spell.get(prop_key) if isinstance(new_spell, dict) else None
-                
+
+                # Skip changes where a field was simply added by a scraper update
+                # (None -> value transitions for complex data types)
+                if old_value is None and new_value is not None and isinstance(new_value, (dict, list)):
+                    continue
+
                 if old_value != new_value and (old_value is not None or new_value is not None):
+                    old_display = self._format_spell_property(prop_key, old_value)
+                    new_display = self._format_spell_property(prop_key, new_value)
                     changes.append(self._create_field_change(
                         field_path=f'character.spells.{spell_type}.{spell_id}.{prop_key}',
                         old_value=old_value,
                         new_value=new_value,
                         change_type=ChangeType.MODIFIED,
                         category=ChangeCategory.SPELLS,
-                        description=f"Modified {spell_name} {prop_display}: {old_value} → {new_value}"
+                        description=f"Modified {spell_name} {prop_display}: {old_display} → {new_display}"
                     ))
-                    
+
         except Exception as e:
             self.logger.warning(f"Error comparing spell properties for {spell_id}: {e}")
-        
+
         return changes
+
+    @staticmethod
+    def _format_spell_property(prop_key: str, value: Any) -> str:
+        """Format a spell property value for human-readable display."""
+        if value is None:
+            return 'None'
+
+        # Component IDs to names
+        if prop_key == 'components' and isinstance(value, list):
+            component_map = {1: 'V', 2: 'S', 3: 'M'}
+            parts = [component_map.get(c, str(c)) for c in value]
+            return ', '.join(parts) if parts else 'None'
+
+        # Range dict
+        if prop_key == 'range' and isinstance(value, dict):
+            origin = value.get('origin', '')
+            range_val = value.get('rangeValue', 0)
+            if range_val and range_val > 0:
+                return f"{origin} ({range_val} ft)"
+            return origin or 'None'
+
+        # Duration dict
+        if prop_key == 'duration' and isinstance(value, dict):
+            interval = value.get('durationInterval', '')
+            unit = value.get('durationUnit', '')
+            dur_type = value.get('durationType', '')
+            parts = []
+            if interval and unit:
+                parts.append(f"{interval} {unit}")
+            if dur_type and dur_type != 'Time':
+                parts.append(dur_type)
+            return ', '.join(parts) if parts else 'None'
+
+        # Casting time (action count)
+        if prop_key == 'casting_time' and isinstance(value, (int, float)):
+            if value == 1:
+                return '1 Action'
+            return f"{value} Actions"
+
+        # Boolean properties
+        if isinstance(value, bool):
+            return 'Yes' if value else 'No'
+
+        return str(value)
     
     def _detect_spell_slot_usage_changes(self, old_data: Dict, new_data: Dict) -> List[FieldChange]:
         """Detect changes in spell slot usage (used vs available)."""
@@ -4509,77 +4557,126 @@ class EnhancedInventoryChangeDetector(BaseEnhancedDetector):
         return all_items
     
     def _detect_true_item_additions_removals(self, old_all_items: Dict, new_all_items: Dict, old_data: Dict, new_data: Dict, context: DetectionContext) -> List[FieldChange]:
-        """Detect items that are truly added or removed (not just moved)."""
+        """Detect items that are truly added or removed (not just moved).
+
+        Uses name+quantity reconciliation to handle D&D Beyond item ID
+        reassignment (observed during backend migrations where all item IDs
+        change). Only reports the net difference after cancelling out items
+        that appear in both old and new data with the same name and quantity.
+        """
         changes = []
-        
+
         try:
-            # Find truly new items (not in old data at all)
+            from collections import Counter
+
+            # Collect candidate additions (new IDs not in old)
+            candidate_additions = []
             for item_id, item_data in new_all_items.items():
                 if item_id not in old_all_items:
-                    item_name = extract_item_name_data(item_data)
-                    section = item_data.get('_section', 'unknown')
-                    container = item_data.get('_container', 'character')
-                    quantity = item_data.get('quantity', 1)
-                    
-                    # Get human-readable container name
-                    container_name = self._get_container_name(container, new_data)
-                    
-                    # Create enhanced description with quantity and pluralization
-                    description = self._create_inventory_change_description(
-                        ChangeType.ADDED, item_name, container_name, quantity
-                    )
-                    
-                    change = self._create_field_change(
-                        field_path=f'equipment.{section}.{item_id}',
-                        old_value=None,
-                        new_value={k: v for k, v in item_data.items() if not k.startswith('_')},
-                        change_type=ChangeType.ADDED,
-                        category=ChangeCategory.INVENTORY,
-                        description=description
-                    )
-                    change.metadata.update({
-                        'item_name': item_name,
-                        'equipment_section': section,
-                        'container': container,
-                        'causation_trigger': 'new_item_acquisition'
-                    })
-                    changes.append(change)
-            
-            # Find truly removed items (not in new data at all)
+                    candidate_additions.append((item_id, item_data))
+
+            # Collect candidate removals (old IDs not in new)
+            candidate_removals = []
             for item_id, item_data in old_all_items.items():
                 if item_id not in new_all_items:
-                    item_name = extract_item_name_data(item_data)
-                    section = item_data.get('_section', 'unknown')
-                    container = item_data.get('_container', 'character')
-                    quantity = item_data.get('quantity', 1)
-                    
-                    # Get human-readable container name
-                    container_name = self._get_container_name(container, old_data)
-                    
-                    # Create enhanced description with quantity and pluralization
-                    description = self._create_inventory_change_description(
-                        ChangeType.REMOVED, item_name, container_name, quantity
-                    )
-                    
-                    change = self._create_field_change(
-                        field_path=f'equipment.{section}.{item_id}',
-                        old_value={k: v for k, v in item_data.items() if not k.startswith('_')},
-                        new_value=None,
-                        change_type=ChangeType.REMOVED,
-                        category=ChangeCategory.INVENTORY,
-                        description=description
-                    )
-                    change.metadata.update({
-                        'item_name': item_name,
-                        'equipment_section': section,
-                        'container': container,
-                        'causation_trigger': 'item_removal'
-                    })
-                    changes.append(change)
-        
+                    candidate_removals.append((item_id, item_data))
+
+            # Reconcile by name+quantity to filter out ID reassignments
+            added_names = Counter()
+            removed_names = Counter()
+            added_by_name = {}
+            removed_by_name = {}
+
+            for item_id, item_data in candidate_additions:
+                name = extract_item_name_data(item_data)
+                qty = item_data.get('quantity', 1)
+                key = (name, qty)
+                added_names[key] += 1
+                added_by_name.setdefault(key, []).append((item_id, item_data))
+
+            for item_id, item_data in candidate_removals:
+                name = extract_item_name_data(item_data)
+                qty = item_data.get('quantity', 1)
+                key = (name, qty)
+                removed_names[key] += 1
+                removed_by_name.setdefault(key, []).append((item_id, item_data))
+
+            # Cancel out matching name+quantity pairs (same item, different ID)
+            all_keys = set(added_names.keys()) | set(removed_names.keys())
+            net_additions = []
+            net_removals = []
+
+            for key in all_keys:
+                add_count = added_names.get(key, 0)
+                remove_count = removed_names.get(key, 0)
+                net = add_count - remove_count
+
+                if net > 0:
+                    items = added_by_name.get(key, [])
+                    net_additions.extend(items[:net])
+                elif net < 0:
+                    items = removed_by_name.get(key, [])
+                    net_removals.extend(items[:abs(net)])
+
+            # Create change entries for net additions
+            for item_id, item_data in net_additions:
+                item_name = extract_item_name_data(item_data)
+                section = item_data.get('_section', 'unknown')
+                container = item_data.get('_container', 'character')
+                quantity = item_data.get('quantity', 1)
+                container_name = self._get_container_name(container, new_data)
+
+                description = self._create_inventory_change_description(
+                    ChangeType.ADDED, item_name, container_name, quantity
+                )
+
+                change = self._create_field_change(
+                    field_path=f'equipment.{section}.{item_id}',
+                    old_value=None,
+                    new_value={k: v for k, v in item_data.items() if not k.startswith('_')},
+                    change_type=ChangeType.ADDED,
+                    category=ChangeCategory.INVENTORY,
+                    description=description
+                )
+                change.metadata.update({
+                    'item_name': item_name,
+                    'equipment_section': section,
+                    'container': container,
+                    'causation_trigger': 'new_item_acquisition'
+                })
+                changes.append(change)
+
+            # Create change entries for net removals
+            for item_id, item_data in net_removals:
+                item_name = extract_item_name_data(item_data)
+                section = item_data.get('_section', 'unknown')
+                container = item_data.get('_container', 'character')
+                quantity = item_data.get('quantity', 1)
+                container_name = self._get_container_name(container, old_data)
+
+                description = self._create_inventory_change_description(
+                    ChangeType.REMOVED, item_name, container_name, quantity
+                )
+
+                change = self._create_field_change(
+                    field_path=f'equipment.{section}.{item_id}',
+                    old_value={k: v for k, v in item_data.items() if not k.startswith('_')},
+                    new_value=None,
+                    change_type=ChangeType.REMOVED,
+                    category=ChangeCategory.INVENTORY,
+                    description=description
+                )
+                change.metadata.update({
+                    'item_name': item_name,
+                    'equipment_section': section,
+                    'container': container,
+                    'causation_trigger': 'item_removal'
+                })
+                changes.append(change)
+
         except Exception as e:
             self.logger.error(f"Error detecting true item additions/removals: {e}")
-        
+
         return changes
     
     def _detect_item_moves_and_reorganization(self, old_equipment: Dict, new_equipment: Dict, old_data: Dict, new_data: Dict, context: DetectionContext) -> List[FieldChange]:
