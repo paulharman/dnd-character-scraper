@@ -571,7 +571,7 @@ class CombatCoordinator(ICoordinator):
             return {
                 'total': final_ac,
                 'base': 10,
-                'breakdown': ' | '.join(breakdown_parts),
+                'breakdown': ', '.join(breakdown_parts),
                 'armor_type': 'unarmored',
                 'has_armor': False,
                 'has_shield': shield_ac > 0
