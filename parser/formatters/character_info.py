@@ -123,26 +123,16 @@ except AttributeError:
 cmd = ['python', 'parser/dnd_json_to_markdown.py', '{character_id}', full_path]
 result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
 
-# Capture and display Discord changes if present
 if result.returncode == 0:
-    if result.stdout and ('DISCORD CHANGES DETECTED:' in result.stdout or 'DISCORD STATUS:' in result.stdout):
-        # Extract and display Discord content
-        lines = result.stdout.split('\\n')
-        discord_started = False
-        for line in lines:
-            if 'DISCORD CHANGES DETECTED:' in line or 'DISCORD STATUS:' in line:
-                discord_started = True
-                print(line)
-                continue
-            elif discord_started:
-                # Print all content until we reach the end or another section
-                if line.startswith('====') or line.startswith('SUCCESS:'):
-                    break
-                else:
-                    print(line)
-    
-    print('SUCCESS: Character refreshed!')
-    print('Reload file to see changes.')
+    # Show all parser status output (skipping internal markers)
+    if result.stdout:
+        for line in result.stdout.split('\\n'):
+            stripped = line.strip()
+            if stripped and not stripped.startswith('PARSER_'):
+                print(stripped)
+    else:
+        print('Character refreshed!')
+        print('Reload file to see changes.')
 else:
     print(f'ERROR: {{result.stderr}}')
 ```

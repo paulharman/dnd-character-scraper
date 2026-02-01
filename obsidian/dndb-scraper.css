@@ -1,7 +1,36 @@
 /* D&D Character Scraper - Obsidian CSS Snippet */
 /* Refresh Character Data Button Styling */
-
 /* Main container - styled box with border */
+.copy-code-button {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  opacity: 0;
+  pointer-events: none;
+  transition: none !important;
+  z-index: 10;
+}
+pre:hover .copy-code-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+.block-language-run-python {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 2.5em;
+}
+.block-language-run-python > .code-title,
+.block-language-run-python > .obsidian-code-title {
+  align-self: flex-start;
+  margin-top: 0;
+  padding-top: 0;
+  line-height: 1.2;
+}
+
+/* +++++++++++++ PYTHON BLOCK CLEANUP +++++++++++++ */
+/* Main container styling */
 .markdown-preview-view pre:has(code.language-python) {
     position: relative;
     min-height: 2.5em;
@@ -11,26 +40,28 @@
     background: var(--background-secondary);
 }
 
-/* Hide the Python code content */
-.markdown-preview-view pre code.language-python {
-    color: transparent !important;
-    font-size: 0px !important;
-    line-height: 0 !important;
+/* Hide the Python code content completely */
+.markdown-preview-view pre:has(code.language-python) code.language-python {
+    display: none !important;
 }
+
+/* Hide the output/result block (hr, etc) 
+.markdown-preview-view pre:has(code.language-python) > code.language-output {
+    display: none !important;
+}*/
 
 /* Refresh label - left side of container */
 .markdown-preview-view pre:has(code.language-python)::before {
     content: "🔄 Refresh Character Data";
     position: absolute;
     left: 0.8em;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 1.2em; /* 👈 literal offset from the top */
+    transform: none; /* remove vertical centering */
     font-size: 0.85em;
     font-weight: 500;
     color: var(--text-normal);
     z-index: 5;
 }
-
 /* Run button - right side, vertically centered */
 .markdown-preview-view .run-code-button,
 .markdown-preview-view .execute-code-button {
@@ -49,7 +80,6 @@
     font-weight: 600 !important;
     cursor: pointer !important;
 }
-
 /* Clear button - positioned below Run button */
 .markdown-preview-view pre:has(code.language-python) .clear-button,
 .markdown-preview-view pre:has(code.language-python) button.clear-button {
@@ -75,7 +105,6 @@
     text-rendering: optimizeLegibility !important;
     -webkit-font-smoothing: antialiased !important;
 }
-
 /* Hide hover checkbox - make it nearly invisible */
 .markdown-preview-view pre:has(code.language-python) input[type="checkbox"] {
     width: 1px !important;
@@ -87,6 +116,9 @@
     z-index: 1 !important;
 }
 
+/* +++++++++++++ END PYTHON BLOCK CLEANUP +++++++++++++ */
+
+
 /* Center abilities block - works with any number of items */
 .ability-scores-grid {
     display: flex !important;
@@ -96,7 +128,6 @@
     width: 100% !important;
     margin: 0 auto !important;
 }
-
 /* Remove manual positioning and preserve original size */
 .ability-score-card:nth-child(1),
 .ability-score-card:nth-child(2),
@@ -108,8 +139,6 @@
     min-width: 107.7px !important;
     flex-shrink: 0 !important;
 }
-
-
 .badges-row:has(> .badge-item:nth-child(3):last-child) {
   /* This targets rows with exactly 3 badge items */
   display: flex;
@@ -118,41 +147,34 @@
   margin: 1rem auto;
   width: fit-content;
 }
-
 /* Target exactly 4 badges */
 .badges-row:has(> .badge-item:nth-child(4):last-child) {
   display: flex;
   gap: 1rem;
   margin: 1rem auto;
 }
-
 /* Hide the 3rd badge */
 .badges-row:has(> .badge-item:nth-child(4):last-child) > .badge-item:nth-child(3) {
   display: none;
 }
-
 /* Optional: push the now-3rd badge (originally the 4th) to the right */
 .badges-row:has(> .badge-item:nth-child(4):last-child) > .badge-item:nth-child(4) {
   margin-left: auto;
 }
-
 /* Target exactly 5 badges */
 .badges-row:has(> .badge-item:nth-child(5):last-child) {
   display: flex;
   gap: 1rem;
   margin: 1rem auto;
 }
-
 /* Hide badge 4 */
 .badges-row:has(> .badge-item:nth-child(5):last-child) > .badge-item:nth-child(4) {
   display: none;
 }
-
 /* Push badge 5 (now effectively the 4th visible item) to the right */
 .badges-row:has(> .badge-item:nth-child(5):last-child) > .badge-item:nth-child(5) {
   margin-left: auto;
 }
-
 .right-link {
   display: block;
   text-align: right;

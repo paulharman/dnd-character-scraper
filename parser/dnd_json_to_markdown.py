@@ -22,7 +22,6 @@ import re
 import sys
 import subprocess
 import unicodedata
-import uuid
 from pathlib import Path
 from typing import Dict, Any, Optional
 import functools
@@ -302,160 +301,6 @@ async def trigger_discord_notifications(character_data: Dict[str, Any], characte
         return {'character': False, 'party_inventory': False}
 
 
-def trigger_discord_monitor_legacy(character_id: str, parser_config_manager = None, verbose: bool = False) -> None:
-    """
-    Execute Discord monitor to check for character changes and send notifications.
-    
-    Args:
-        character_id: The character ID to monitor
-        parser_config_manager: Parser configuration manager (optional)
-        verbose: Enable verbose logging in Discord monitor
-    """
-    try:
-        # Check if Discord integration is enabled in parser config
-        discord_enabled = True  # Default to enabled
-        if parser_config_manager:
-            discord_enabled = parser_config_manager.get_parser_config("parser", "discord", "enabled", default=True)
-        
-        if not discord_enabled:
-            logger.debug("Parser:   Discord integration disabled in parser config")
-            return
-        
-        # Locate project root and Discord monitor script
-        current_path = Path(__file__).parent
-        project_root = current_path.parent  # Go up from parser/ to project root
-        
-        # Fallback search if not in expected structure
-        if not (project_root / "discord" / "discord_monitor.py").exists():
-            # Try current working directory
-            if (Path.cwd() / "discord" / "discord_monitor.py").exists():
-                project_root = Path.cwd()
-            else:
-                # Search upward from current working directory
-                search_path = Path.cwd()
-                while search_path != search_path.parent:
-                    if (search_path / "discord" / "discord_monitor.py").exists():
-                        project_root = search_path
-                        break
-                    search_path = search_path.parent
-        
-        discord_monitor_script = project_root / "discord" / "discord_monitor.py"
-        
-        if not discord_monitor_script.exists():
-            logger.warning(f"Parser:   Discord monitor script not found at {discord_monitor_script}")
-            return
-        
-        # Get Discord config file path
-        discord_config_file = project_root / "config" / "discord.yaml"
-        
-        if not discord_config_file.exists():
-            logger.warning(f"Parser:   Discord config file not found at {discord_config_file}")
-            return
-        
-        # Execute Discord monitor in check-only mode with character ID
-        # Use --check-only to skip scraping since parser already created the file
-        cmd = [
-            sys.executable,
-            str(discord_monitor_script),
-            '--config', str(discord_config_file),
-            '--check-only',
-            '--character-id', character_id
-        ]
-        
-        # Add verbose flag if requested
-        if verbose:
-            cmd.append('--verbose')
-        
-        run_id = str(uuid.uuid4())[:8]
-        logger.info(f"Parser:   Triggering Discord monitor for character {character_id} (run_id: {run_id})")
-        logger.debug(f"Parser:   Discord monitor command: {' '.join(cmd)}")
-        
-        # Run Discord monitor as subprocess
-        logger.debug(f"Parser:   Running Discord monitor from directory: {project_root}")
-        
-        # Pass current environment variables to subprocess
-        import os
-        env = os.environ.copy()
-        
-        result = subprocess.run(
-            cmd,
-            cwd=str(project_root),
-            capture_output=True,
-            text=True,
-            timeout=60,
-            encoding='utf-8',
-            errors='replace',
-            env=env  # Pass environment variables to subprocess
-        )
-        
-        # Parse Discord monitor output
-        changes_detected = 0
-        notification_sent = False
-        change_details = []
-        
-        # Check both stdout and stderr for Discord activity
-        all_output = (result.stdout or "") + "\n" + (result.stderr or "")
-        
-        # Show verbose output if requested
-        if verbose:
-            logger.debug("Parser:   Discord monitor output:")
-            for line in all_output.split('\n'):
-                if line.strip():
-                    # Remove timestamp from Discord output to avoid duplication
-                    # Discord logs have format: "HH:MM:SS - LEVEL - message"
-                    clean_line = line
-                    if ' - ' in line and len(line.split(' - ')) >= 3:
-                        # Strip timestamp and level, keep just the message
-                        parts = line.split(' - ', 2)
-                        if len(parts) >= 3:
-                            clean_line = parts[2]  # Just the message part
-                    logger.debug(f"Discord:   {clean_line}")
-        
-        for line in all_output.split('\n'):
-            # Look for the authoritative PARSER_CHANGES output from notification manager
-            if line.startswith('PARSER_CHANGES:'):
-                try:
-                    # Extract number from PARSER_CHANGES:X format
-                    changes_detected = int(line.split(':')[1])
-                except (ValueError, IndexError, AttributeError):
-                    changes_detected = 0  # Default if parsing fails
-            
-            if 'notification sent' in line.lower() or 'discord notification' in line.lower():
-                notification_sent = True
-            
-            if line.strip() and not line.startswith('['):
-                change_details.append(line.strip())
-        
-        # Display Discord results
-        try:
-            if changes_detected > 0:
-                print("\nDISCORD CHANGES DETECTED:", flush=True)
-                print(f"[SUCCESS] {changes_detected} change(s) detected for character {character_id}", flush=True)
-                if notification_sent:
-                    print("[NOTIFICATION] Discord notification sent successfully", flush=True)
-                
-                # Show change details if available
-                if change_details:
-                    print("Change details:", flush=True)
-                    for detail in change_details[-5:]:  # Show last 5 details
-                        if detail and len(detail) > 5:
-                            print(f"  {detail}", flush=True)
-            else:
-                print("\nDISCORD STATUS:", flush=True)
-                print("[INFO] No character changes detected", flush=True)
-        except Exception as discord_display_error:
-            print("\n" + "="*60, flush=True)
-            print("DISCORD CHANGES DETECTED:", flush=True)
-            print("="*60, flush=True)
-            print(f"[ERROR] Display error: {discord_display_error}", flush=True)
-            print("="*60, flush=True)
-                
-    except subprocess.TimeoutExpired:
-        logger.warning("Parser:   Discord monitor timed out after 60 seconds")
-    except Exception as e:
-        logger.warning(f"Parser:   Error running Discord monitor: {e}")
-
-
 async def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(
@@ -653,22 +498,34 @@ async def main():
             output_path = parser_dir / args.output_path
             logger.info(f"Parser:   Using relative path in parser dir: {output_path}")
 
-        # Unicode-aware path resolution: if the target file doesn't exist but
-        # a file with equivalent name (ignoring accents/diacritics) does, use that.
-        # This handles cases where special characters (e.g. ü) get stripped when
-        # the path passes through subprocess encoding or Obsidian's Execute Code plugin.
+        # Unicode-aware path resolution: if the target file doesn't exist,
+        # try to find the correct file despite encoding corruption.
+        # Obsidian's Execute Code plugin can mangle Unicode characters in paths
+        # (e.g. ü → Ã¼) when UTF-8 bytes pass through a Latin-1 encoding step.
         if not output_path.exists() and output_path.parent.exists():
-            def _strip_accents(s: str) -> str:
-                return ''.join(
-                    c for c in unicodedata.normalize('NFKD', s)
-                    if not unicodedata.combining(c)
-                )
-            target_stripped = _strip_accents(output_path.name.lower())
-            for existing_file in output_path.parent.iterdir():
-                if existing_file.is_file() and _strip_accents(existing_file.name.lower()) == target_stripped:
-                    logger.info(f"Parser:   Found Unicode-variant match: {existing_file.name}")
-                    output_path = existing_file
-                    break
+            # First try: fix UTF-8 mojibake (ü mangled to Ã¼)
+            try:
+                fixed_name = output_path.name.encode('latin-1').decode('utf-8')
+                fixed_path = output_path.parent / fixed_name
+                if fixed_path.exists():
+                    logger.info(f"Parser:   Fixed mojibake path: {output_path.name} -> {fixed_name}")
+                    output_path = fixed_path
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                pass
+
+            # Second try: accent-stripping fallback
+            if not output_path.exists():
+                def _strip_accents(s: str) -> str:
+                    return ''.join(
+                        c for c in unicodedata.normalize('NFKD', s)
+                        if not unicodedata.combining(c)
+                    )
+                target_stripped = _strip_accents(output_path.name.lower())
+                for existing_file in output_path.parent.iterdir():
+                    if existing_file.is_file() and _strip_accents(existing_file.name.lower()) == target_stripped:
+                        logger.info(f"Parser:   Found Unicode-variant match: {existing_file.name}")
+                        output_path = existing_file
+                        break
 
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
@@ -708,35 +565,32 @@ async def main():
                     if detail:
                         change_details.append(detail)
 
-            # Format output for Obsidian run-python integration
+            # Print status summary to stdout (visible in Obsidian console)
             if character_changes or party_changes or change_count > 0:
-                print("DISCORD CHANGES DETECTED:")
-
                 if change_count > 0:
-                    print(f"Character changes found: {change_count}")
-                    for detail in change_details[:10]:  # Limit to first 10 details
+                    print(f"{change_count} change(s) detected:")
+                    for detail in change_details[:10]:
                         print(f"  - {detail}")
                     if len(change_details) > 10:
-                        print(f"  ... and {len(change_details) - 10} more changes")
+                        print(f"  ... and {len(change_details) - 10} more")
+                else:
+                    print("Changes detected.")
 
                 if party_changes:
-                    print("Party inventory changes detected")
+                    print("Party inventory changes detected.")
 
-                print("====")
-
-                # Also output the notification messages to stdout for run-python
-                if '[NOTIFICATION]' in notification_output:
-                    for line in notification_output.split('\n'):
-                        if '[NOTIFICATION]' in line:
-                            print(line)
+                print("Discord notification sent.")
             else:
-                print("DISCORD STATUS: No changes detected")
-                print("====")
+                print("No changes detected.")
+
+            print("Character refreshed!")
+            print("Reload file to see changes.")
 
         except Exception as e:
             logger.warning(f"Parser:   Failed to trigger Discord notifications: {e}")
-            print("DISCORD STATUS: Discord notification failed")
-            print("====")
+            print("Discord notification failed.")
+            print("Character refreshed!")
+            print("Reload file to see changes.")
         
     except Exception as e:
         logger.error(f"Parser:   Error processing character: {e}")
