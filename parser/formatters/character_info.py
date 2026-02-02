@@ -121,20 +121,25 @@ except AttributeError:
     pass
 
 cmd = ['python', 'parser/dnd_json_to_markdown.py', '{character_id}', full_path]
-result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
-
-if result.returncode == 0:
-    # Show all parser status output (skipping internal markers)
-    if result.stdout:
-        for line in result.stdout.split('\\n'):
-            stripped = line.strip()
-            if stripped and not stripped.startswith('PARSER_'):
-                print(stripped)
+try:
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
+    if result.returncode == 0:
+        # Show all parser status output (skipping internal markers)
+        if result.stdout:
+            for line in result.stdout.split('\\n'):
+                stripped = line.strip()
+                if stripped and not stripped.startswith('PARSER_'):
+                    print(stripped)
+        else:
+            print('Character refreshed!')
+            print('Reload file to see changes.')
     else:
-        print('Character refreshed!')
-        print('Reload file to see changes.')
-else:
-    print(f'ERROR: {{result.stderr}}')
+        err = result.stderr.strip() if result.stderr else 'Unknown error'
+        print(f'ERROR: {{err}}')
+except subprocess.TimeoutExpired:
+    print('ERROR: Parser timed out. Try again.')
+except Exception as e:
+    print(f'ERROR: {{e}}')
 ```
 
 

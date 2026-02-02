@@ -5217,13 +5217,13 @@ class LevelProgressionDetector(BaseEnhancedDetector):
             # Extract overall character level from both snapshots
             old_level = extract_character_level_data(old_data)
             new_level = extract_character_level_data(new_data)
-            
+
+            # Get character name for descriptions
+            character_name = new_data.get('character_info', {}).get('name', 'Character')
+
             if new_level > old_level:
                 # Character leveled up
                 levels_gained = new_level - old_level
-                
-                # Get character name for description
-                character_name = new_data.get('character_info', {}).get('name', 'Character')
                 
                 # Analyze which classes changed
                 old_class_levels = extract_class_levels_data(old_data)

@@ -394,6 +394,7 @@ async def main():
                     logger.error(f"Parser:   Scraper error: {result.stderr}")
                 if result.stdout:
                     logger.info(f"Parser:   Scraper output: {result.stdout}")
+                print(f"Scraper failed (exit code {result.returncode})", file=sys.stderr)
                 sys.exit(1)
             else:
                 logger.info("Parser:   Scraper completed successfully")
@@ -405,9 +406,11 @@ async def main():
                             
         except subprocess.TimeoutExpired:
             logger.error("Parser:   Scraper timed out after 2 minutes")
+            print("Scraper timed out", file=sys.stderr)
             sys.exit(1)
         except Exception as e:
             logger.error(f"Parser:   Failed to run scraper: {e}")
+            print(f"Failed to run scraper: {e}", file=sys.stderr)
             sys.exit(1)
         
         # Step 2: Read the scraped data from scraper directory
@@ -420,6 +423,7 @@ async def main():
         if not json_files:
             logger.error(f"Parser:   No JSON files found in scraper directory for character ID {character_id}")
             logger.info(f"Parser:   Looking in: {scraper_data_dir}")
+            print(f"No character data found for ID {character_id}", file=sys.stderr)
             sys.exit(1)
         
         # Use the most recent file (should be the one just created by scraper)
@@ -594,6 +598,7 @@ async def main():
         
     except Exception as e:
         logger.error(f"Parser:   Error processing character: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
