@@ -538,53 +538,12 @@ async def main():
         
         # Trigger Discord notifications for both character and party inventory changes
         try:
-            # Capture stdout from notification system to get change details
-            import io
-            from contextlib import redirect_stdout
+            results = await trigger_discord_notifications(character_data, args.character_id, verbose=args.verbose)
 
-            captured_output = io.StringIO()
-
-            # Capture the notification output which includes PARSER_CHANGES and PARSER_DETAIL
-            with redirect_stdout(captured_output):
-                results = await trigger_discord_notifications(character_data, args.character_id, verbose=args.verbose)
-
-            notification_output = captured_output.getvalue()
-
-            # Parse change information from the captured output
             character_changes = results.get('character', False)
             party_changes = results.get('party_inventory', False)
 
-            # Extract change count and details from notification output
-            change_count = 0
-            change_details = []
-
-            for line in notification_output.split('\n'):
-                if line.startswith('PARSER_CHANGES:'):
-                    try:
-                        change_count = int(line.split(':')[1])
-                    except:
-                        pass
-                elif line.startswith('PARSER_DETAIL:'):
-                    detail = line.replace('PARSER_DETAIL:', '').strip()
-                    if detail:
-                        change_details.append(detail)
-
-            # Print status summary to stdout (visible in Obsidian console)
-            if character_changes or party_changes or change_count > 0:
-                if change_count > 0:
-                    print(f"{change_count} change(s) detected:")
-                    for detail in change_details[:10]:
-                        print(f"  - {detail}")
-                    if len(change_details) > 10:
-                        print(f"  ... and {len(change_details) - 10} more")
-                else:
-                    print("Changes detected.")
-
-                if party_changes:
-                    print("Party inventory changes detected.")
-
-                print("Discord notification sent.")
-            else:
+            if not character_changes and not party_changes:
                 print("No changes detected.")
 
             print("Character refreshed!")

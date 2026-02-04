@@ -93,6 +93,18 @@ discord:
                                               # Keep low to avoid rate limiting
 
 # ===================================================================
+# SNAPSHOT RETENTION
+# ===================================================================
+# Controls how many character data snapshots are kept on disk.
+# The change detection system compares the 2 most recent snapshots
+# to detect changes. Older snapshots are moved to an archive/ subfolder.
+snapshots:
+  max_per_character: 10                   # Max snapshots to keep in character_data/discord/ per character
+                                          # Older snapshots are moved to character_data/discord/archive/
+  max_scraper_files_per_character: 10     # Max processed scraper output files per character
+  max_raw_files_per_character: 5          # Max raw API response files per character
+
+# ===================================================================
 # CHANGE LOGGING CONFIGURATION
 # ===================================================================
 # Persistent storage of all character changes for history tracking,

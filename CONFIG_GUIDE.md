@@ -53,6 +53,19 @@ discord:
   delay_between_messages: 2.0           # Seconds between multiple messages
 ```
 
+### Data Retention
+```yaml
+# Controls how many character data files are kept on disk
+snapshots:
+  max_per_character: 10              # Discord snapshots (character_data/discord/)
+                                     # Older files are moved to discord/archive/
+  max_scraper_files_per_character: 10  # Processed scraper output (character_data/scraper/)
+  max_raw_files_per_character: 5     # Raw API responses (character_data/scraper/raw/)
+                                     # Set to 0 to disable cleanup
+```
+
+The change detection system compares the 2 most recent snapshots in `character_data/discord/` to detect changes. Older snapshots beyond `max_per_character` are archived automatically. Scraper and raw files beyond their limits are deleted (oldest first).
+
 ### Field-Based Change Detection
 The system uses field patterns to determine change priorities. You can customize which fields trigger notifications and their priority levels:
 

@@ -42,6 +42,14 @@ output:
   include_raw_data: true                                                      # Automatically save raw API responses to character_data/scraper/raw/
 
 # ===================================================================
+# DATA RETENTION
+# ===================================================================
+# Controls how many output files are kept per character.
+# Set to 0 to disable cleanup (keep all files).
+# Retention is configured centrally in config/discord.yaml under the
+# snapshots: section (max_scraper_files_per_character, max_raw_files_per_character).
+
+# ===================================================================
 # CALCULATION CONSTANTS
 # ===================================================================
 # Fixed values used in character stat calculations

@@ -28,55 +28,46 @@ class SnapshotArchiver:
     def __init__(self, max_snapshots: Optional[int] = None):
         """
         Initialize the snapshot archiver.
-        
+
         Args:
             max_snapshots: Maximum snapshots to keep per character.
                           If None, will try to load from config files.
         """
-        self.max_snapshots = max_snapshots
-        if self.max_snapshots is None:
-            self.max_snapshots = self._load_max_snapshots_from_config()
-    
-    def _load_max_snapshots_from_config(self) -> int:
+        self._retention_config = self._load_retention_config()
+        self.max_snapshots = max_snapshots if max_snapshots is not None else self._retention_config.get('max_per_character', 10)
+        self.max_scraper_files = self._retention_config.get('max_scraper_files_per_character', 10)
+        self.max_raw_files = self._retention_config.get('max_raw_files_per_character', 5)
+
+    def _load_retention_config(self) -> dict:
         """
-        Load max_snapshots_per_character from available config files.
-        
+        Load snapshot retention settings from config/discord.yaml snapshots section.
+
         Returns:
-            Maximum snapshots to keep (defaults to 10 if not found)
+            Dictionary with retention settings, using defaults if not found.
         """
-        # Try Discord config first
-        discord_config_path = Path(__file__).parent.parent.parent / "discord" / "discord_config.yml"
-        if discord_config_path.exists():
+        defaults = {
+            'max_per_character': 10,
+            'max_scraper_files_per_character': 10,
+            'max_raw_files_per_character': 5,
+        }
+
+        project_root = Path(__file__).parent.parent.parent
+        discord_yaml = project_root / "config" / "discord.yaml"
+
+        if discord_yaml.exists():
             try:
-                with open(discord_config_path, 'r') as f:
-                    config = yaml.safe_load(f)
-                    max_snapshots = config.get('max_snapshots_per_character', 10)
-                    logger.debug(f"Loaded max_snapshots_per_character={max_snapshots} from Discord config")
-                    return max_snapshots
+                with open(discord_yaml, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+                snapshots_config = config.get('snapshots', {})
+                if snapshots_config:
+                    result = {**defaults, **snapshots_config}
+                    logger.debug(f"Loaded retention config from discord.yaml: {result}")
+                    return result
             except Exception as e:
-                logger.debug(f"Could not read Discord config: {e}")
-        
-        # Try other config locations
-        config_paths = [
-            Path(__file__).parent.parent.parent / "config" / "main.yaml",
-            Path(__file__).parent.parent.parent / "config" / "scraper.yaml"
-        ]
-        
-        for config_path in config_paths:
-            if config_path.exists():
-                try:
-                    with open(config_path, 'r') as f:
-                        config = yaml.safe_load(f)
-                        max_snapshots = config.get('max_snapshots_per_character', 10)
-                        if max_snapshots != 10:  # Only use if explicitly set
-                            logger.debug(f"Loaded max_snapshots_per_character={max_snapshots} from {config_path.name}")
-                            return max_snapshots
-                except Exception as e:
-                    logger.debug(f"Could not read config {config_path}: {e}")
-        
-        # Default fallback
-        logger.debug("Using default max_snapshots_per_character=10")
-        return 10
+                logger.debug(f"Could not read discord.yaml: {e}")
+
+        logger.debug(f"Using default retention config: {defaults}")
+        return defaults
     
     def archive_old_snapshots(self, character_id: int, storage_dir: Path) -> int:
         """
@@ -153,6 +144,58 @@ class SnapshotArchiver:
             logger.error(f"Error during snapshot archiving for character {character_id}: {e}")
             return 0
     
+    def cleanup_scraper_files(self, character_id: int, project_root: Path) -> int:
+        """
+        Delete old scraper output files for a character, keeping only the most recent.
+
+        Args:
+            character_id: Character ID to clean up files for
+            project_root: Project root directory
+
+        Returns:
+            Number of files deleted
+        """
+        deleted = 0
+        scraper_dir = project_root / "character_data" / "scraper"
+        raw_dir = scraper_dir / "raw"
+
+        # Clean processed scraper files
+        if self.max_scraper_files > 0 and scraper_dir.exists():
+            deleted += self._delete_oldest_files(
+                scraper_dir, f"character_{character_id}_*.json", self.max_scraper_files, "scraper"
+            )
+
+        # Clean raw API response files
+        if self.max_raw_files > 0 and raw_dir.exists():
+            deleted += self._delete_oldest_files(
+                raw_dir, f"character_{character_id}_*_raw.json", self.max_raw_files, "raw"
+            )
+
+        return deleted
+
+    def _delete_oldest_files(self, directory: Path, pattern: str, max_files: int, label: str) -> int:
+        """Delete oldest files matching pattern, keeping max_files most recent."""
+        files = list(directory.glob(pattern))
+        if len(files) <= max_files:
+            return 0
+
+        files.sort(key=lambda p: p.stat().st_mtime)
+        files_to_delete = files[:-max_files]
+        deleted = 0
+
+        for file_path in files_to_delete:
+            try:
+                file_path.unlink()
+                deleted += 1
+                logger.debug(f"Deleted old {label} file: {file_path.name}")
+            except Exception as e:
+                logger.warning(f"Failed to delete {file_path.name}: {e}")
+
+        if deleted > 0:
+            logger.info(f"Deleted {deleted} old {label} files (keeping {max_files} most recent)")
+
+        return deleted
+
     def get_archive_stats(self, storage_dir: Path) -> dict:
         """
         Get statistics about archived and active snapshots.

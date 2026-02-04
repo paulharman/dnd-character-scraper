@@ -129,11 +129,10 @@ try:
     # Brief pause to let Obsidian process the file rewrite before we print results
     time.sleep(1)
     if result.returncode == 0:
-        # Show all parser status output (skipping internal markers)
         if result.stdout:
             for line in result.stdout.split('\\n'):
                 stripped = line.strip()
-                if stripped and not stripped.startswith('PARSER_'):
+                if stripped:
                     print(stripped)
         else:
             print('Character refreshed!')

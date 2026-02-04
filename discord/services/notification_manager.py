@@ -383,24 +383,23 @@ class NotificationManager:
             min_priority_name = getattr(self.config.min_priority, 'name', 'medium')
             logger.info(f"Sending notification for {len(qualifying_changes)} qualifying changes (min priority: {min_priority_name})")
             
-            # Output change summaries for parser integration
-            print(f"PARSER_CHANGES:{len(qualifying_changes)}")
-            print("PARSER_NOTIFICATION:true")
-            for change in qualifying_changes:  # Show all changes
+            # Output change summaries to stdout (visible in Obsidian console)
+            print(f"{len(qualifying_changes)} change(s) detected:")
+            for change in qualifying_changes:
                 # Get change description and make it Windows-compatible
                 try:
                     desc = str(getattr(change, 'description', 'Change detected'))
                 except:
                     desc = 'Change detected'
-                
+
                 # Replace Unicode characters with Windows-compatible equivalents
-                desc = desc.replace('→', ' -> ').replace('•', '-').replace('–', '-').replace('—', '-')
+                desc = desc.replace('\u2192', ' -> ').replace('\u2022', '-').replace('\u2013', '-').replace('\u2014', '-')
                 # Remove any remaining Unicode replacement characters
-                desc = desc.replace('\ufffd', '-').replace('�', '-')
+                desc = desc.replace('\ufffd', '-').replace('\ufffd', '-')
                 # Truncate if too long
                 if len(desc) > 60:
                     desc = desc[:57] + "..."
-                print(f"PARSER_DETAIL:{desc}")
+                print(f"  - {desc}")
             
             # Send notification
             result = await self._send_character_notification(change_set, return_message_content)

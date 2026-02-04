@@ -572,8 +572,9 @@ class DiscordMonitor:
             output_path = scraper.save_character_data()
             logger.info(f"Character data saved via scraper to: {output_path}")
             
-            # Archive old snapshots if configured
+            # Archive old snapshots and clean up scraper files per retention config
             self.archiver.archive_old_snapshots(character_id, self.storage_dir)
+            self.archiver.cleanup_scraper_files(character_id, project_root)
             
             logger.info(f"Successfully scraped and stored character {character_id}")
             return True
