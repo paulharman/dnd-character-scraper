@@ -222,7 +222,6 @@ class DiscordService:
                 async with self.session.post(self.webhook_url, json=payload) as response:
                     if response.status == 204:
                         logger.info(f"Discord message sent successfully (attempt {attempt + 1})")
-                        print(f"DEBUG: Successfully sent Discord message (attempt {attempt + 1}, content hash: {hash(str(payload))})")
                         
                         # Record success for error handler and enhanced logging
                         self.error_handler.record_success()

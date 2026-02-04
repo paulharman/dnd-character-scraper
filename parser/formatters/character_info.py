@@ -120,14 +120,11 @@ except AttributeError:
     # Fallback for older Python versions
     pass
 
-import time
 cmd = ['python', 'parser/dnd_json_to_markdown.py', '{character_id}', full_path]
 print('Refreshing...')
 sys.stdout.flush()
 try:
     result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=180)
-    # Brief pause to let Obsidian process the file rewrite before we print results
-    time.sleep(1)
     if result.returncode == 0:
         if result.stdout:
             for line in result.stdout.split('\\n'):

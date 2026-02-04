@@ -285,10 +285,10 @@ async def trigger_discord_notifications(character_data: Dict[str, Any], characte
             logger.info(f"Parser:   Discord notifications sent: {success_count}/{total_count} successful")
 
             if results.get('character'):
-                print("[NOTIFICATION] Character Discord notification sent successfully", flush=True)
+                print("Discord notification sent.", flush=True)
 
             if results.get('party_inventory'):
-                print("[NOTIFICATION] Party inventory Discord notification sent successfully", flush=True)
+                print("Party inventory notification sent.", flush=True)
         else:
             logger.debug("Parser:   No Discord notifications sent (no changes detected)")
             if verbose:
@@ -531,12 +531,10 @@ async def main():
                         output_path = existing_file
                         break
 
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(markdown_content)
-        
-        logger.info(f"Parser:   [OK] Character markdown saved to: {output_path.absolute()}")
-        
-        # Trigger Discord notifications for both character and party inventory changes
+        # Trigger Discord notifications BEFORE writing the file.
+        # The file write causes Obsidian to reload the view, which clears the
+        # Execute Code output pane. By printing status first, the subprocess
+        # output is captured before the reload happens.
         try:
             results = await trigger_discord_notifications(character_data, args.character_id, verbose=args.verbose)
 
@@ -554,6 +552,12 @@ async def main():
             print("Discord notification failed.")
             print("Character refreshed!")
             print("Reload file to see changes.")
+
+        # Write file LAST - this triggers Obsidian to reload the view
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+
+        logger.info(f"Parser:   [OK] Character markdown saved to: {output_path.absolute()}")
         
     except Exception as e:
         logger.error(f"Parser:   Error processing character: {e}")
