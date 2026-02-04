@@ -97,9 +97,11 @@ character_data/**/*
 !character_data/parser/
 !character_data/parser/archive/
 !character_data/discord/
+!character_data/discord/archive/
 !character_data/change_logs/
 !character_data/README.md
 !character_data/*/README.md
+!character_data/**/.gitkeep
 
 # Log files and custom logs - create directories but exclude all log content
 custom_logs/**/*

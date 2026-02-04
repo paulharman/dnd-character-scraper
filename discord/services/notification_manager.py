@@ -489,7 +489,7 @@ class NotificationManager:
                     def extract_timestamp_version(filepath):
                         """Extract timestamp from filename for version numbering."""
                         filename = Path(filepath).stem
-                        # Extract timestamp from filename like "character_143359582_2025-07-04T00-07-38.244679"
+                        # Extract timestamp from filename like "character_12345678_2025-07-04T00-07-38.244679"
                         timestamp_match = re.search(r'(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})', filename)
                         if timestamp_match:
                             return timestamp_match.group(1)
@@ -1095,7 +1095,7 @@ class NotificationManager:
             
             # Create mock change set
             change_set = CharacterChangeSet(
-                character_id=143359582,
+                character_id=12345678,
                 character_name="Test Character",
                 from_version=4,
                 to_version=5,

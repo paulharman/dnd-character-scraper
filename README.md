@@ -226,7 +226,7 @@ The system uses YAML configuration files for all settings. See **[CONFIG_GUIDE.m
 ```yaml
 # config/discord.yaml
 webhook_url: "${DISCORD_WEBHOOK_URL}"  # Environment variable
-character_id: 143359582
+character_id: 12345678
 ```
 
 **Environment File (.env)**:

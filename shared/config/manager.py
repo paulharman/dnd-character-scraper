@@ -15,6 +15,7 @@ import yaml
 import json
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
 from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass, field
 
@@ -71,20 +72,24 @@ class ConfigManager:
     - Environment-specific configurations
     """
     
-    def __init__(self, environment: Optional[str] = None, config_dir: Optional[str] = None, 
+    def __init__(self, environment: Optional[str] = None, config_dir: Optional[str] = None,
                  validate_on_startup: bool = True):
+        # Load .env before anything else so env vars are available for validation
+        # Search from CWD upward to find .env at the project root
+        load_dotenv()
+
         self.environment = environment or os.getenv("DNDBS_ENVIRONMENT", "production")
         self.paths = ConfigPaths()
         self.logger = logging.getLogger(__name__)
-        
+
         if config_dir:
             self.paths.config_dir = Path(config_dir)
-            
+
         self._app_config: Optional[AppConfig] = None
         self._constants_config: Optional[GameConstantsConfig] = None
         self._rules_2014_config: Optional[RuleSpecificConfig] = None
         self._rules_2024_config: Optional[RuleSpecificConfig] = None
-        
+
         # Validate configuration on startup if requested
         if validate_on_startup:
             self._validate_configuration()

@@ -13,7 +13,7 @@ The Discord configuration has been enhanced to support comprehensive change trac
 webhook_url: "${DISCORD_WEBHOOK_URL}"
 
 # Required: Character ID to monitor
-character_id: 145081718
+character_id: 12345678
 
 # Run mode and timing
 run_continuous: false

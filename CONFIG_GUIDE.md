@@ -14,7 +14,7 @@ The project uses a modular configuration approach with separate files for differ
 ```yaml
 # Discord webhook for notifications
 webhook_url: ${DISCORD_WEBHOOK_URL}     # Use environment variable for security
-character_id: 145081718                 # D&D Beyond character ID to monitor
+character_id: 12345678                  # D&D Beyond character ID to monitor
 
 # Monitoring behavior
 run_continuous: false                   # Run once vs continuous monitoring
@@ -26,7 +26,7 @@ log_level: INFO                         # Logging level: DEBUG, INFO, WARNING, E
 ```yaml
 # Monitor multiple characters (party mode)
 party:
-- character_id: '145081718'             # Add character IDs to monitor multiple
+- character_id: '87654321'              # Add character IDs to monitor multiple
 ```
 
 ### Discord Message Settings

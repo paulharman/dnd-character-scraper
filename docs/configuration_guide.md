@@ -47,11 +47,11 @@ Controls Discord notifications and character monitoring:
 webhook_url: ${DISCORD_WEBHOOK_URL}
 
 # Required: Character ID from D&D Beyond URL
-character_id: 145081718
+character_id: 12345678
 
 # Monitoring settings
 check_interval_seconds: 600  # Check every 10 minutes
-storage_directory: ../character_data
+storage_directory: character_data
 
 # Notification settings
 discord:
@@ -106,9 +106,9 @@ If successful, you should see a Discord notification with your character's curre
 
 ```yaml
 # In config/discord.yaml
-character_id: 145081718  # Primary character
+character_id: 12345678  # Primary character
 party:
-  - character_id: '145081718'
+  - character_id: '87654321'
   - character_id: '987654321'  # Add party members
   - character_id: '456789123'
 ```

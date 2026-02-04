@@ -30,7 +30,7 @@ class ConfigurationValidator:
             ],
             'character_id': [
                 "Find your character ID in the D&D Beyond URL",
-                "Example: dndbeyond.com/characters/145081718 → character_id: 145081718",
+                "Example: dndbeyond.com/characters/12345678 → character_id: 12345678",
                 "Make sure it's a number, not a string"
             ],
             'logging.level': [

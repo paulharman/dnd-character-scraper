@@ -45,7 +45,7 @@ class MockDNDBeyondClient(CharacterClientInterface):
                         char_id = int(json_file.stem)
                         characters[char_id] = json_file
                     elif "_" in json_file.stem:
-                        # Handle files like "144986992_character.json"
+                        # Handle files like "12345678_character.json"
                         char_id_str = json_file.stem.split("_")[0]
                         if char_id_str.isdigit():
                             char_id = int(char_id_str)

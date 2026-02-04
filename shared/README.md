@@ -95,7 +95,7 @@ The configuration system automatically resolves environment variables:
 ```yaml
 # In config/discord.yaml
 webhook_url: "${DISCORD_WEBHOOK_URL}"  # Resolves from environment
-character_id: 145081718                # Static value
+character_id: 12345678                 # Static value
 ```
 
 ### Path Resolution

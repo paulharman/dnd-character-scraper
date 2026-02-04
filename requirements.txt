@@ -26,3 +26,6 @@ aiosqlite>=0.19.0
 
 # Async PostgreSQL support (optional)
 asyncpg>=0.29.0
+
+# System monitoring for performance tracking
+psutil>=5.9.0
