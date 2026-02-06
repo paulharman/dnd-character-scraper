@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import subprocess
+import time
 import unicodedata
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -328,7 +329,8 @@ async def main():
     parser.add_argument('--validate-only', action='store_true', help='Only validate the character data')
     parser.add_argument('--section', help='Generate only a specific section')
     parser.add_argument('--list-sections', action='store_true', help='List available sections')
-    
+    parser.add_argument('--skip-discord', action='store_true', help='Skip Discord notifications and change detection (faster batch refresh)')
+
     args = parser.parse_args()
     
     # Note: Default output path will be set after loading character data to use character name
@@ -341,7 +343,9 @@ async def main():
         # New architecture: Call scraper first, then read from scraper directory
         character_id = args.character_id
         project_root = Path(__file__).parent.parent
-        
+        _timings = {}
+        _t0 = time.time()
+
         # Step 1: Call the scraper to get fresh data
         logger.info(f"Parser:   Calling scraper for character {character_id})")
         scraper_script = project_root / "scraper" / "enhanced_dnd_scraper.py"
@@ -358,24 +362,28 @@ async def main():
             scraper_cmd.append('--verbose')
         
         # Check if Discord is enabled in parser config and add --discord flag
-        try:
-            import yaml
-            parser_config_path = project_root / "config" / "parser.yaml"
-            with open(parser_config_path, 'r') as f:
-                parser_config = yaml.safe_load(f)
-            
-            discord_enabled = parser_config.get('parser', {}).get('discord', {}).get('enabled', True)
-            logger.debug(f"Parser:   Discord config check: enabled={discord_enabled}")
-            if discord_enabled:
+        # --skip-discord CLI flag overrides config to skip all Discord processing
+        if args.skip_discord:
+            logger.info("Parser:   Discord skipped (--skip-discord flag)")
+        else:
+            try:
+                import yaml
+                parser_config_path = project_root / "config" / "parser.yaml"
+                with open(parser_config_path, 'r') as f:
+                    parser_config = yaml.safe_load(f)
+
+                discord_enabled = parser_config.get('parser', {}).get('discord', {}).get('enabled', True)
+                logger.debug(f"Parser:   Discord config check: enabled={discord_enabled}")
+                if discord_enabled:
+                    scraper_cmd.append('--discord')
+                    logger.info("Parser:   Discord enabled: scraper will save copy to discord directory")
+                else:
+                    logger.info("Parser:   Discord disabled in parser config")
+            except Exception as e:
+                # If config check fails, default to enabling Discord
                 scraper_cmd.append('--discord')
-                logger.info("Parser:   Discord enabled: scraper will save copy to discord directory")
-            else:
-                logger.info("Parser:   Discord disabled in parser config")
-        except Exception as e:
-            # If config check fails, default to enabling Discord
-            scraper_cmd.append('--discord')
-            logger.info("Parser:   Discord enabled by default (config check failed)")
-            logger.debug(f"Parser:   Config check error: {e}")
+                logger.info("Parser:   Discord enabled by default (config check failed)")
+                logger.debug(f"Parser:   Config check error: {e}")
         
         # Run the scraper
         logger.info(f"Parser:   Running: {' '.join(scraper_cmd)}")
@@ -403,6 +411,7 @@ async def main():
                     for line in result.stdout.strip().split('\n'):
                         if line.strip():
                             logger.info(f"Scraper: {line.strip()}")
+                            print(f"  {line.strip()}")
                             
         except subprocess.TimeoutExpired:
             logger.error("Parser:   Scraper timed out after 2 minutes")
@@ -413,6 +422,9 @@ async def main():
             print(f"Failed to run scraper: {e}", file=sys.stderr)
             sys.exit(1)
         
+        _timings['scraper'] = time.time() - _t0
+        _t1 = time.time()
+
         # Step 2: Read the scraped data from scraper directory
         scraper_data_dir = project_root / "character_data" / "scraper"
         
@@ -489,7 +501,9 @@ async def main():
         
         # Generate full markdown
         markdown_content = generator.generate_markdown()
-        
+        _timings['parse+generate'] = time.time() - _t1
+        _t2 = time.time()
+
         # Determine output path based on new directory structure
         if Path(args.output_path).is_absolute():
             # Absolute path provided - use it directly for backward compatibility
@@ -535,23 +549,26 @@ async def main():
         # The file write causes Obsidian to reload the view, which clears the
         # Execute Code output pane. By printing status first, the subprocess
         # output is captured before the reload happens.
-        try:
-            results = await trigger_discord_notifications(character_data, args.character_id, verbose=args.verbose)
-
-            character_changes = results.get('character', False)
-            party_changes = results.get('party_inventory', False)
-
-            if not character_changes and not party_changes:
-                print("No changes detected.")
-
+        if args.skip_discord:
             print("Character refreshed!")
-            print("Reload file to see changes.")
+        else:
+            try:
+                results = await trigger_discord_notifications(character_data, args.character_id, verbose=args.verbose)
 
-        except Exception as e:
-            logger.warning(f"Parser:   Failed to trigger Discord notifications: {e}")
-            print("Discord notification failed.")
-            print("Character refreshed!")
-            print("Reload file to see changes.")
+                character_changes = results.get('character', False)
+                party_changes = results.get('party_inventory', False)
+
+                if not character_changes and not party_changes:
+                    print("No changes detected.")
+
+                print("Character refreshed!")
+
+            except Exception as e:
+                logger.warning(f"Parser:   Failed to trigger Discord notifications: {e}")
+                print("Discord notification failed.")
+                print("Character refreshed!")
+
+        _timings['discord'] = time.time() - _t2
 
         # Write file LAST - this triggers Obsidian to reload the view
         with open(output_path, 'w', encoding='utf-8') as f:

@@ -568,7 +568,6 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         passive_perception = 10 + skill_proficiencies.get('perception', {}).get('total_bonus', 0)
         passive_investigation = 10 + skill_proficiencies.get('investigation', {}).get('total_bonus', 0)
         passive_insight = 10 + skill_proficiencies.get('insight', {}).get('total_bonus', 0)
-        print(f"[DEBUG] Passive skills: Perception={passive_perception}, Investigation={passive_investigation}, Insight={passive_insight}")
 
         proficiency_data = ProficiencyData(
             proficiency_bonus=proficiency_bonus,
@@ -882,8 +881,6 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
             if has_expertise:
                 # Expertise: double proficiency bonus
                 bonus = ability_mod + (proficiency_bonus * 2)
-                if skill == 'acrobatics':
-                    print(f"[DEBUG ACROBATICS] ability_mod={ability_mod}, prof_bonus={proficiency_bonus}, expertise_bonus={(proficiency_bonus*2)}, before_luck={bonus}")
             elif is_proficient:
                 # Regular proficiency
                 bonus = ability_mod + proficiency_bonus
@@ -906,8 +903,6 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
 
             # Add total item bonus
             bonus += total_item_bonus
-            if skill == 'acrobatics':
-                print(f"[DEBUG ACROBATICS] luck_bonus={luck_bonus}, final_bonus={bonus}")
 
             # Store both total bonus and proficiency flags for change detection compatibility
             skill_proficiencies[skill] = {

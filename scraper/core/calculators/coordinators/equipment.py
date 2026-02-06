@@ -500,7 +500,7 @@ class EquipmentCoordinator(ICoordinator):
                     'armor_class': definition.get('armorClass'),
                     'armor_type': self._determine_armor_type(definition.get('armorTypeId')),
                     'strength_requirement': definition.get('strengthRequirement'),
-                    'stealth_disadvantage': definition.get('stealthCheck') == 1,
+                    'stealth_disadvantage': definition.get('stealthCheck') == 2,
                     
                     # Modifiers and enhancements
                     'granted_modifiers': definition.get('grantedModifiers', []),

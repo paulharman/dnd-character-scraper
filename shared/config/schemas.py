@@ -120,7 +120,7 @@ class TestingConfig(BaseModel):
 class RateLimitConfig(BaseModel):
     """Rate limiting configuration."""
     requests_per_minute: int = Field(default=3, ge=1, le=60)
-    delay_between_requests: int = Field(default=20, ge=1, le=300)
+    delay_between_requests: int = Field(default=5, ge=1, le=300)
 
 
 class ErrorHandlingConfig(BaseModel):

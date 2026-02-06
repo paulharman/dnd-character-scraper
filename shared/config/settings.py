@@ -27,8 +27,8 @@ class Settings:
         # Authentication (optional - for private characters)
         self.cobalt_token = os.getenv('DNDBEYOND_COBALT_TOKEN', '')
         
-        # Rate Limiting (respecting 30-second minimum)
-        self.min_request_delay = float(os.getenv('DNDBEYOND_MIN_DELAY', '30.0'))  # 30 seconds minimum
+        # Rate Limiting between consecutive API requests within one scraper run
+        self.min_request_delay = float(os.getenv('DNDBEYOND_MIN_DELAY', '5.0'))  # seconds between requests
         self.jitter_min = float(os.getenv('DNDBEYOND_JITTER_MIN', '0.5'))
         self.jitter_max = float(os.getenv('DNDBEYOND_JITTER_MAX', '2.0'))
         

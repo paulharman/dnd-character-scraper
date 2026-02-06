@@ -179,8 +179,6 @@ class EnhancedSpellProcessor:
     def _create_enhanced_spell_info(self, spell_data: Dict[str, Any], source_name: str, source_type: str) -> Optional[EnhancedSpellInfo]:
         """Create EnhancedSpellInfo from raw spell data with enhanced availability detection."""
         spell_def = spell_data.get('definition', {})
-        print(f"ENHANCED_PROCESSOR: Processing {spell_def.get('name', 'Unknown')} from {source_type}")
-        spell_def = spell_data.get('definition', {})
         if not spell_def:
             return None
         
@@ -252,7 +250,6 @@ class EnhancedSpellProcessor:
             )
             if detected_always_prepared:
                 is_always_prepared = True
-                print(f"MAGIC_INITIATE_FIX: Fixed always_prepared for {name} (Level {level})")
                 logger.info(f"Fixed always_prepared flag for feat spell: {name} (Level {level}) from component_id {component_id}")
         
         component_type_id = spell_data.get('componentTypeId')
@@ -586,9 +583,6 @@ class EnhancedSpellProcessor:
             
         feat_name = FEAT_ALWAYS_PREPARED_IDS[component_id]
         
-        # Add debug output to see what we're checking
-        print(f"DEBUG: Checking {feat_name} spell - level:{spell_level}, limitedUse:{limited_use}")
-        
         # Magic Initiate: Level 1 spell with once-per-long-rest usage
         if feat_name == "Magic Initiate":
             if spell_level == 1:
@@ -596,9 +590,7 @@ class EnhancedSpellProcessor:
                 if limited_use and isinstance(limited_use, dict):
                     max_uses = limited_use.get('maxUses', 0)
                     reset_type = limited_use.get('resetType', 0)  # 2 = long rest
-                    result = max_uses == 1 and reset_type == 2
-                    print(f"DEBUG: Magic Initiate L1 spell - maxUses:{max_uses}, resetType:{reset_type}, result:{result}")
-                    return result
+                    return max_uses == 1 and reset_type == 2
                 
         # Fey Touched: Both level 1 spells (Misty Step + chosen spell)
         elif feat_name == "Fey Touched":

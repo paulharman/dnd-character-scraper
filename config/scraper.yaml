@@ -30,9 +30,9 @@ authentication:
 # ===================================================================
 # RATE LIMITING CONFIGURATION
 # ===================================================================
-# IMPORTANT: The 30-second delay respects D&D Beyond's API limits and should not be modified
+# Delay between consecutive API requests to D&D Beyond
 rate_limit:
-  delay_between_requests: 30                                                  # Required delay between API requests (seconds)
+  delay_between_requests: 1                                                   # Delay between API requests (seconds)
 
 # ===================================================================
 # OUTPUT CONFIGURATION

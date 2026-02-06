@@ -128,7 +128,7 @@ class EquipmentDetailsExtractor(RuleAwareCalculator):
             # Extract armor properties
             armor_class = definition.get('armorClass')
             strength_requirement = definition.get('strengthRequirement')
-            stealth_disadvantage = definition.get('stealthCheck') == 1  # 1 means disadvantage
+            stealth_disadvantage = definition.get('stealthCheck') == 2  # 2 means disadvantage in D&D Beyond API
             armor_type = self._determine_armor_type(definition)
             
             # Extract granted modifiers

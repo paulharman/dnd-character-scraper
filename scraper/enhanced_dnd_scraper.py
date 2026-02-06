@@ -35,6 +35,8 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+_SCRAPER_IMPORT_START = time.time()
+
 # JSON encoder for EnhancedSpellInfo objects
 class EnhancedSpellJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -64,6 +66,7 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+_SCRAPER_IMPORT_TIME = time.time() - _SCRAPER_IMPORT_START
 
 
 class EnhancedDnDScraper:
@@ -117,6 +120,10 @@ class EnhancedDnDScraper:
             client_type='real',
             config_manager=self.config_manager
         )
+        # Override client rate limit with config value so scraper.yaml is the single source of truth
+        configured_delay = self.config_manager.get_config_value('rate_limit', 'delay_between_requests', default=5)
+        if hasattr(self.client, 'min_delay'):
+            self.client.min_delay = float(configured_delay)
         self.calculator = CharacterCalculator(
             config_manager=self.config_manager,
             rule_manager=self.rule_manager
@@ -273,7 +280,7 @@ class EnhancedDnDScraper:
     def _check_rate_limit(self) -> bool:
         """Check if enough time has passed since last scrape and wait if needed."""
         config_manager = get_config_manager()
-        delay_seconds = config_manager.get_config_value('rate_limit', 'delay_between_requests', default=30)
+        delay_seconds = config_manager.get_config_value('rate_limit', 'delay_between_requests', default=5)
         
         rate_limit_file = self._get_rate_limit_file()
         
@@ -661,10 +668,8 @@ def process_batch_characters(batch_file: str, args):
             failed_characters.append(f"{character_id}: {str(e)}")
             logger.error(f"❌ Failed to process {character_id}: {e}")
         
-        # Rate limiting: wait 30 seconds between API calls (except for last character)
-        if i < len(character_ids):
-            logger.info("Waiting 30 seconds for API rate limiting...")
-            time.sleep(30)
+        # Rate limiting between batch characters is handled by _check_rate_limit()
+        # at the start of each iteration, using the configured delay_between_requests
     
     # Summary
     logger.info(f"\n=== Batch Processing Complete ===")
@@ -751,6 +756,8 @@ def main():
                 discord_config = None
         
         # Create scraper instance
+        _st = {}
+        _st0 = time.time()
         scraper = EnhancedDnDScraper(
             character_id=args.character_id,
             force_rule_version=force_rule_version,
@@ -758,18 +765,25 @@ def main():
             storage_dir="character_data",
             discord_output=args.discord
         )
+        _st['init'] = time.time() - _st0
 
         # Check rate limiting before API call
+        _st1 = time.time()
         scraper._check_rate_limit()
+        _st['rate_limit'] = time.time() - _st1
 
         # Fetch character data
+        _st2 = time.time()
         if not scraper.fetch_character_data():
             logger.error("Failed to fetch character data")
             sys.exit(1)
+        _st['api_fetch'] = time.time() - _st2
 
         # Save character data
+        _st3 = time.time()
         output_path = scraper.save_character_data(args.output)
-        
+        _st['calc+save'] = time.time() - _st3
+
         # Save raw data if requested
         if args.raw_output:
             # Save raw data to character_data directory with consistent naming
@@ -777,7 +791,7 @@ def main():
             character_data_dir.mkdir(exist_ok=True)
             raw_file = str(character_data_dir / f"raw_{args.character_id}_{int(time.time())}.json")
             scraper.save_raw_data(raw_file)
-            
+
         # Quick compare if requested
         if args.quick_compare:
             # Get the character data

@@ -445,11 +445,12 @@ class MetadataFormatter(BaseFormatter):
         # Get proficiency data for frontmatter
         proficiencies_data = character_data.get('proficiencies', {})
         
-        # Skill proficiencies and expertise
+        # Skill proficiencies, expertise, and bonuses
         skill_proficiencies = []
         skill_expertise = []
+        skill_bonuses = {}
         skills_data = proficiencies_data.get('skill_proficiencies', {})
-        
+
         # Handle dict format (enhanced calculator v6.0.0 format)
         if isinstance(skills_data, dict):
             for skill_name, skill_data in skills_data.items():
@@ -457,6 +458,8 @@ class MetadataFormatter(BaseFormatter):
                     skill_proficiencies.append(skill_name.title())
                 if skill_data.get('expertise', False):
                     skill_expertise.append(skill_name.title())
+                # Extract total bonus for every skill
+                skill_bonuses[skill_name] = skill_data.get('total_bonus', 0)
         # Handle list format (legacy format)
         elif isinstance(skills_data, list):
             for skill in skills_data:
@@ -469,16 +472,19 @@ class MetadataFormatter(BaseFormatter):
                             skill_proficiencies.append(skill_name)
                 elif isinstance(skill, str):
                     skill_proficiencies.append(skill)
-        
-        # Saving throw proficiencies 
+
+        # Saving throw proficiencies and bonuses
         saving_throw_proficiencies = []
+        saving_throw_bonuses = {}
         saves_data = proficiencies_data.get('saving_throw_proficiencies', {})
         
-        # Handle dict format (enhanced calculator v6.0.0 format)  
+        # Handle dict format (enhanced calculator v6.0.0 format)
         if isinstance(saves_data, dict):
             for save_name, save_data in saves_data.items():
                 if save_data.get('proficient', False):
                     saving_throw_proficiencies.append(save_name.title())
+                # Extract total bonus for every saving throw
+                saving_throw_bonuses[save_name] = save_data.get('total_bonus', 0)
         # Handle list format (legacy format)
         elif isinstance(saves_data, list):
             for save in saves_data:
@@ -488,7 +494,16 @@ class MetadataFormatter(BaseFormatter):
                         saving_throw_proficiencies.append(save_name)
                 elif isinstance(save, str):
                     saving_throw_proficiencies.append(save)
-        
+
+        # Stealth disadvantage - check equipped armor
+        stealth_disadvantage = False
+        equipment_data = character_data.get('equipment', {})
+        enhanced_equipment = equipment_data.get('enhanced_equipment', [])
+        for item in enhanced_equipment:
+            if item.get('equipped') and item.get('armor_type') and item.get('stealth_disadvantage'):
+                stealth_disadvantage = True
+                break
+
         # Tool proficiencies
         tool_proficiencies = []
         tools_data = proficiencies_data.get('tool_proficiencies', [])
@@ -525,9 +540,10 @@ class MetadataFormatter(BaseFormatter):
                 elif isinstance(armor, str):
                     armor_proficiencies.append(armor)
 
-        # Build frontmatter in exact original order
+        # Build frontmatter - character_id near top for quick scanning
         frontmatter = f"""avatar_url: {avatar_url}
 character_name: {character_name_yaml}
+character_id: {self._escape_yaml_string(character_id)}
 level: {character_level}
 proficiency_bonus: {proficiency_bonus}
 experience: {experience}
@@ -540,7 +556,34 @@ background: {self._escape_yaml_string(background_name)}
 languages: {self._to_yaml_value(languages)}
 skill_proficiencies: {self._to_yaml_value(skill_proficiencies)}
 skill_expertise: {self._to_yaml_value(skill_expertise)}
+skill_bonuses:
+  acrobatics: {skill_bonuses.get('acrobatics', 0)}
+  animal_handling: {skill_bonuses.get('animal_handling', 0)}
+  arcana: {skill_bonuses.get('arcana', 0)}
+  athletics: {skill_bonuses.get('athletics', 0)}
+  deception: {skill_bonuses.get('deception', 0)}
+  history: {skill_bonuses.get('history', 0)}
+  insight: {skill_bonuses.get('insight', 0)}
+  intimidation: {skill_bonuses.get('intimidation', 0)}
+  investigation: {skill_bonuses.get('investigation', 0)}
+  medicine: {skill_bonuses.get('medicine', 0)}
+  nature: {skill_bonuses.get('nature', 0)}
+  perception: {skill_bonuses.get('perception', 0)}
+  performance: {skill_bonuses.get('performance', 0)}
+  persuasion: {skill_bonuses.get('persuasion', 0)}
+  religion: {skill_bonuses.get('religion', 0)}
+  sleight_of_hand: {skill_bonuses.get('sleight_of_hand', 0)}
+  stealth: {skill_bonuses.get('stealth', 0)}
+  survival: {skill_bonuses.get('survival', 0)}
+stealth_disadvantage: {self._to_yaml_value(stealth_disadvantage)}
 saving_throw_proficiencies: {self._to_yaml_value(saving_throw_proficiencies)}
+saving_throw_bonuses:
+  strength: {saving_throw_bonuses.get('strength', 0)}
+  dexterity: {saving_throw_bonuses.get('dexterity', 0)}
+  constitution: {saving_throw_bonuses.get('constitution', 0)}
+  intelligence: {saving_throw_bonuses.get('intelligence', 0)}
+  wisdom: {saving_throw_bonuses.get('wisdom', 0)}
+  charisma: {saving_throw_bonuses.get('charisma', 0)}
 tool_proficiencies: {self._to_yaml_value(tool_proficiencies)}
 weapon_proficiencies: {self._to_yaml_value(weapon_proficiencies)}
 armor_proficiencies: {self._to_yaml_value(armor_proficiencies)}
@@ -565,7 +608,6 @@ temp_hp: {temp_hp}
 initiative: {self._escape_yaml_string(initiative_str)}
 spellcasting_ability: {self._escape_yaml_string(spellcasting_ability)}
 spell_save_dc: {spell_save_dc}
-character_id: {self._escape_yaml_string(character_id)}
 processed_date: {self._escape_yaml_string(processed_date)}
 scraper_version: {self._escape_yaml_string("6.0.0")}
 speed: {self._escape_yaml_string(f"{speed} ft")}

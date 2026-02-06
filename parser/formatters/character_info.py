@@ -133,7 +133,6 @@ try:
                     print(stripped)
         else:
             print('Character refreshed!')
-            print('Reload file to see changes.')
     else:
         err = result.stderr.strip() if result.stderr else 'Unknown error'
         print(f'ERROR: {{err}}')
