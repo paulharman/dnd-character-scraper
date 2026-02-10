@@ -607,6 +607,7 @@ function PartyStatsHub() {
               });
               const validBonuses = bonuses.filter(b => b != null);
               const maxBonus = validBonuses.length ? Math.max(...validBonuses) : null;
+              const minBonus = validBonuses.length ? Math.min(...validBonuses) : null;
               return (
                 <tr key={save}>
                   <td>{save}</td>
@@ -614,9 +615,11 @@ function PartyStatsHub() {
                     const hasSave = c.saves.includes(save);
                     const bonus = bonuses[i];
                     const isHighest = bonus != null && bonus === maxBonus && validBonuses.length > 1;
+                    const isLowest = bonus != null && bonus === minBonus && validBonuses.length > 1 && minBonus !== maxBonus;
                     return (
-                      <td key={c.name} className={isHighest ? 'psh-ability-high' : hasSave ? 'psh-prof' : 'psh-no-prof'}>
-                        {bonus != null ? formatBonus(bonus) : (hasSave ? '\u2713' : '\u2014')}
+                      <td key={c.name} className={isHighest ? 'psh-ability-high' : isLowest ? 'psh-ability-low' : ''}>
+                        {bonus != null ? formatBonus(bonus) : '\u2014'}
+                        {hasSave && ' \u2713'}
                       </td>
                     );
                   })}
@@ -656,13 +659,14 @@ function PartyStatsHub() {
           <tbody>
             {ALL_SKILLS.map(skill => {
               const anyoneHas = characters.some(c => c.skills.includes(skill.key));
-              // Find highest bonus for this skill across the party
+              // Find highest and lowest bonus for this skill across the party
               const bonuses = characters.map(c => {
                 const raw = c.skillBonuses[skill.bonusKey];
                 return (raw && raw.value !== undefined) ? raw.value : (typeof raw === 'number' ? raw : null);
               });
               const validBonuses = bonuses.filter(b => b != null);
               const maxBonus = validBonuses.length ? Math.max(...validBonuses) : null;
+              const minBonus = validBonuses.length ? Math.min(...validBonuses) : null;
               return (
                 <tr key={skill.key} style={!anyoneHas ? 'background: rgba(244, 67, 54, 0.05);' : ''}>
                   <td>{skill.name}</td>
@@ -672,18 +676,19 @@ function PartyStatsHub() {
                     const hasProf = c.skills.includes(skill.key);
                     const bonus = bonuses[i];
                     const isHighest = bonus != null && bonus === maxBonus && validBonuses.length > 1;
+                    const isLowest = bonus != null && bonus === minBonus && validBonuses.length > 1 && minBonus !== maxBonus;
                     const hasDis = skill.bonusKey === 'stealth' && c.stealthDisadvantage;
-                    // Show bonus value with proficiency indicator
+                    // Show bonus value with proficiency indicator suffix
                     let display;
                     if (bonus != null) {
-                      const prefix = hasExpertise ? '\u2605 ' : hasProf ? '\u2713 ' : '';
-                      display = `${prefix}${formatBonus(bonus)}`;
+                      const suffix = hasExpertise ? ' \u2605' : hasProf ? ' \u2713' : '';
+                      display = `${formatBonus(bonus)}${suffix}`;
                     } else {
-                      display = hasExpertise ? '\u2605' : hasProf ? '\u2713' : '\u2014';
+                      display = '\u2014';
                     }
                     return (
                       <td key={c.name}
-                        className={isHighest ? 'psh-ability-high' : hasExpertise ? 'psh-expert' : hasProf ? 'psh-prof' : 'psh-no-prof'}
+                        className={isHighest ? 'psh-ability-high' : isLowest ? 'psh-ability-low' : ''}
                         title={hasDis ? 'Disadvantage (armor)' : ''}>
                         {display}{hasDis ? ' \u25BC' : ''}
                       </td>
@@ -697,9 +702,10 @@ function PartyStatsHub() {
       </div>
 
       <div style="display: flex; gap: 16px; font-size: 0.8em; color: var(--text-muted); margin-bottom: 30px; flex-wrap: wrap;">
-        <span><span className="psh-expert">{'\u2605'}</span> Expertise</span>
-        <span><span className="psh-prof">{'\u2713'}</span> Proficient</span>
-        <span><span className="psh-no-prof">{'\u2014'}</span> Not proficient</span>
+        <span><span className="psh-ability-high">Highest</span></span>
+        <span><span className="psh-ability-low">Lowest</span></span>
+        <span>{'\u2605'} Expertise</span>
+        <span>{'\u2713'} Proficient</span>
         <span>{'\u25BC'} Disadvantage</span>
       </div>
 
