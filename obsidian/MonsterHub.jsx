@@ -54,6 +54,15 @@ function hasDefense(defenseStr, damageType) {
     return defenseStr.toLowerCase().includes(damageType.toLowerCase());
 }
 
+// Word-based search: matches if ALL search words are found in the target string
+// e.g., "giant spider" matches "Giant Wolf Spider" because both "giant" and "spider" are present
+function matchesSearch(target, searchQuery) {
+    if (!target || !searchQuery) return false;
+    const targetLower = target.toLowerCase();
+    const searchWords = searchQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+    return searchWords.every(word => targetLower.includes(word));
+}
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CR_OPTIONS = [
@@ -328,10 +337,9 @@ function MonsterHub() {
     const filteredMonsters = dc.useMemo(() => {
         let result = [...monsters];
 
-        // Text search
+        // Text search (word-based: "giant spider" matches "Giant Wolf Spider")
         if (searchText.trim()) {
-            const search = searchText.toLowerCase();
-            result = result.filter(m => m.name.toLowerCase().includes(search));
+            result = result.filter(m => matchesSearch(m.name, searchText));
         }
 
         // CR range

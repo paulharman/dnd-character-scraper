@@ -12,6 +12,15 @@ function arr(x) {
   return [x];
 }
 
+// Word-based search: matches if ALL search words are found in the target string
+// e.g., "fire ball" matches "Fireball" and "Wall of Fire"
+function matchesSearch(target, searchQuery) {
+  if (!target || !searchQuery) return false;
+  const targetLower = target.toLowerCase();
+  const searchWords = searchQuery.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+  return searchWords.every(word => targetLower.includes(word));
+}
+
 function getFMVal(obj, key) {
   return obj && obj[key] && obj[key].value !== undefined ? obj[key].value : undefined;
 }
@@ -265,8 +274,8 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
 
     if (page.$path === `${SPELL_LOCATION}/spells.md`) return false;
     if (showSpellbookOnly && !characterSpellbook.includes(page.$name)) return false;
-    const spellName = (getFMVal(fm, 'name') || page.$name || '').toLowerCase();
-    if (filterSearch && !spellName.includes(filterSearch.toLowerCase()))
+    const spellName = getFMVal(fm, 'name') || page.$name || '';
+    if (filterSearch && !matchesSearch(spellName, filterSearch))
       return false;
     const spellClasses = getFMVal(fm, 'classes') || [];
     if (
