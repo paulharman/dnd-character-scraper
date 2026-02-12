@@ -329,14 +329,17 @@ function PartyStatsHub() {
           font-weight: 500;
           color: var(--text-normal);
         }
-        .psh-ability-high {
-          color: #4caf50;
+        .psh-ability-high,
+        .psh-skill-table td.psh-ability-high {
+          color: #4caf50 !important;
           font-weight: bold;
-          background: rgba(76, 175, 80, 0.1);
+          background: rgba(76, 175, 80, 0.15) !important;
         }
-        .psh-ability-low {
-          color: #ef5350;
-          background: rgba(239, 83, 80, 0.08);
+        .psh-ability-low,
+        .psh-skill-table td.psh-ability-low {
+          color: #ef5350 !important;
+          font-weight: bold;
+          background: rgba(239, 83, 80, 0.15) !important;
         }
         .psh-skill-table {
           width: 100%;
