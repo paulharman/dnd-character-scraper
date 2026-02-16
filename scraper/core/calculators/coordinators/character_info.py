@@ -128,7 +128,8 @@ class CharacterInfoCoordinator(ICoordinator):
             experience_points = self._extract_experience_points(raw_data)
             proficiency_bonus = self._calculate_proficiency_bonus(level)
             avatar_url = self._extract_avatar_url(raw_data)
-            
+            senses = self._extract_senses(raw_data)
+
             # Create result data
             result_data = {
                 'character_id': character_id,
@@ -142,6 +143,7 @@ class CharacterInfoCoordinator(ICoordinator):
                 'experience_points': experience_points,
                 'proficiency_bonus': proficiency_bonus,
                 'avatarUrl': avatar_url,
+                'senses': senses,
                 'metadata': {
                     'total_class_levels': level,
                     'multiclass': len(classes) > 1,
@@ -263,7 +265,32 @@ class CharacterInfoCoordinator(ICoordinator):
         except Exception as e:
             self.logger.warning(f"Error extracting species data: {str(e)}")
             return None
-    
+
+    def _extract_senses(self, raw_data: Dict[str, Any]) -> Dict[str, int]:
+        """Extract senses (darkvision, blindsight, etc.) from modifier data.
+
+        Returns a dict like {'darkvision': 60, 'blindsight': 10}.
+        When multiple sources grant the same sense, the highest value wins.
+        """
+        senses = {}
+        modifiers = raw_data.get('modifiers', {})
+
+        for modifier_list in modifiers.values():
+            if not isinstance(modifier_list, list):
+                continue
+            for modifier in modifier_list:
+                friendly_type = (modifier.get('friendlyTypeName') or '').lower()
+                if friendly_type != 'sense':
+                    continue
+                sense_name = modifier.get('friendlySubtypeName', '')
+                value = modifier.get('value')
+                if sense_name and value and isinstance(value, (int, float)):
+                    key = sense_name.lower().replace(' ', '_')
+                    senses[key] = max(senses.get(key, 0), int(value))
+                    self.logger.debug(f"Sense: {sense_name} {value}ft")
+
+        return senses
+
     def _extract_background(self, raw_data: Dict[str, Any]) -> Optional[Background]:
         """Extract background information from raw data."""
         background_data = raw_data.get('background')

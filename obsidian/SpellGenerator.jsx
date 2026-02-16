@@ -39,6 +39,12 @@ function extractSpellName(entry) {
   return null;
 }
 
+// Convert a spell display name to its expected filename (mirrors Python's link generation)
+function spellNameToFileName(name) {
+  if (!name) return "";
+  return name.toLowerCase().replace(/ /g, '-').replace(/'/g, '').replace(/\./g, '') + '-xphb';
+}
+
 function extractSpellFileName(entry) {
   // For a link object: { path: "z_Mechanics/CLI/spells/wall-of-fire-xphb", ... }
   if (entry && typeof entry === "object") {
@@ -62,11 +68,13 @@ function useSelectedCharactersSpellbooks(selectedCharacters) {
   
   let combinedSpells = new Set();
   let spellToCharacters = new Map(); // Track which characters know each spell
-  
+  // Track spell sources per character: Map<spellFileName, Map<characterDisplayName, source>>
+  let spellToCharacterSources = new Map();
+
   selectedCharacters.forEach(characterName => {
     const character = chars.find(page => page.$name === characterName);
     console.debug("Found character:", character?.name || characterName);
-    
+
     if (character) {
       console.debug("Found character object:", character);
       let raw = null;
@@ -75,10 +83,33 @@ function useSelectedCharactersSpellbooks(selectedCharacters) {
       if (!raw && character.frontmatter) raw = character.frontmatter[SPELLBOOK_YAML_KEY];
       if (!raw && character.$frontmatter) raw = character.$frontmatter[SPELLBOOK_YAML_KEY];
 
+      // Read spell_data for source information
+      let spellData = null;
+      if (typeof character.value === "function") spellData = character.value("spell_data");
+      if (!spellData && character.frontmatter) spellData = character.frontmatter["spell_data"];
+      if (!spellData && character.$frontmatter) spellData = character.$frontmatter["spell_data"];
+
+      // Build a source map from spell_data: fileName -> source
+      const sourceMap = new Map();
+      if (spellData && Array.isArray(spellData)) {
+        spellData.forEach(sd => {
+          const name = sd.name || (sd.value && sd.value.name);
+          const source = sd.source || (sd.value && sd.value.source);
+          if (name) {
+            const fileName = spellNameToFileName(typeof name === "object" && name.value !== undefined ? name.value : name);
+            if (source) {
+              const sourceStr = typeof source === "object" && source.value !== undefined ? source.value : source;
+              sourceMap.set(fileName, sourceStr);
+            }
+          }
+        });
+      }
+
       // DEBUG: See what you actually get from YAML
       console.debug("Character spellbook raw value:", raw);
-      console.debug("Available frontmatter keys:", Object.keys(character.frontmatter || {}));
-      console.debug("Available $frontmatter keys:", Object.keys(character.$frontmatter || {}));
+      console.debug("Character spell_data source map:", Object.fromEntries(sourceMap));
+
+      const displayName = characterName.replace(/_/g, ' ');
 
       if (raw) {
         let spells = [];
@@ -93,16 +124,25 @@ function useSelectedCharactersSpellbooks(selectedCharacters) {
           if (!spellToCharacters.has(spell)) {
             spellToCharacters.set(spell, []);
           }
-          spellToCharacters.get(spell).push(characterName.replace(/_/g, ' '));
+          spellToCharacters.get(spell).push(displayName);
+
+          // Track source for this character+spell
+          const source = sourceMap.get(spell);
+          if (source) {
+            if (!spellToCharacterSources.has(spell)) {
+              spellToCharacterSources.set(spell, new Map());
+            }
+            spellToCharacterSources.get(spell).set(displayName, source);
+          }
         });
       }
     }
   });
-  
+
   const spellsArray = Array.from(combinedSpells);
   // DEBUG: Output the normalized spell list
   console.debug("Combined character spellbooks (normalized):", spellsArray);
-  return { spells: spellsArray, spellToCharacters };
+  return { spells: spellsArray, spellToCharacters, spellToCharacterSources };
 }
 
 function useAvailableCharacters() {
@@ -206,6 +246,7 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   const spellbookData = useSelectedCharactersSpellbooks(allCharactersForSpellbook);
   const characterSpellbook = spellbookData.spells;
   const spellToCharacters = spellbookData.spellToCharacters;
+  const spellToCharacterSources = spellbookData.spellToCharacterSources;
   const showSpellbookOnly = selectedCharacters.length > 0;
 
   const [filterSearch, setFilterSearch] = dc.useState('');
@@ -392,7 +433,25 @@ filteredPages.sort((a, b) => {
       value: p => {
         const fileName = p.$name;
         const characters = spellToCharacters.get(fileName) || [];
-        return characters.length > 0 ? characters.sort().join(", ") : "";
+        const sources = spellToCharacterSources.get(fileName);
+        if (characters.length === 0) return "";
+        return (
+          <span>
+            {characters.sort().map((charName, i) => {
+              const source = sources && sources.get(charName);
+              const isItem = source === "Item";
+              return (
+                <span key={charName}>
+                  {i > 0 ? ", " : ""}
+                  <span style={isItem ? "color: #ff9800; font-style: italic;" : undefined}>
+                    {charName}
+                    {isItem && <span style="font-size: 0.75em; opacity: 0.85;" title={`Granted by item`}> (Item)</span>}
+                  </span>
+                </span>
+              );
+            })}
+          </span>
+        );
       }
     },
     {

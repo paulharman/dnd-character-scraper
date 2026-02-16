@@ -342,6 +342,9 @@ class MetadataFormatter(BaseFormatter):
         # Speed - read from combat section
         speed = combat_data.get('speed', 30)
 
+        # Senses (darkvision, blindsight, etc.) from character_info coordinator
+        senses = character_info.get('senses', {})
+
         # Processed date and metadata
         processed_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
@@ -515,7 +518,31 @@ class MetadataFormatter(BaseFormatter):
                         tool_proficiencies.append(tool_name)
                 elif isinstance(tool, str):
                     tool_proficiencies.append(tool)
-        
+
+        # Gaming set proficiencies
+        gaming_set_proficiencies = []
+        gaming_data = proficiencies_data.get('gaming_set_proficiencies', [])
+        if isinstance(gaming_data, list):
+            for gs in gaming_data:
+                if isinstance(gs, dict):
+                    gs_name = gs.get('name', '')
+                    if gs_name:
+                        gaming_set_proficiencies.append(gs_name)
+                elif isinstance(gs, str):
+                    gaming_set_proficiencies.append(gs)
+
+        # Musical instrument proficiencies
+        musical_instrument_proficiencies = []
+        instruments_data = proficiencies_data.get('musical_instrument_proficiencies', [])
+        if isinstance(instruments_data, list):
+            for instrument in instruments_data:
+                if isinstance(instrument, dict):
+                    inst_name = instrument.get('name', '')
+                    if inst_name:
+                        musical_instrument_proficiencies.append(inst_name)
+                elif isinstance(instrument, str):
+                    musical_instrument_proficiencies.append(instrument)
+
         # Weapon proficiencies
         weapon_proficiencies = []
         weapons_data = proficiencies_data.get('weapon_proficiencies', [])
@@ -585,6 +612,8 @@ saving_throw_bonuses:
   wisdom: {saving_throw_bonuses.get('wisdom', 0)}
   charisma: {saving_throw_bonuses.get('charisma', 0)}
 tool_proficiencies: {self._to_yaml_value(tool_proficiencies)}
+gaming_set_proficiencies: {self._to_yaml_value(gaming_set_proficiencies)}
+musical_instrument_proficiencies: {self._to_yaml_value(musical_instrument_proficiencies)}
 weapon_proficiencies: {self._to_yaml_value(weapon_proficiencies)}
 armor_proficiencies: {self._to_yaml_value(armor_proficiencies)}
 ability_scores:
@@ -611,6 +640,8 @@ spell_save_dc: {spell_save_dc}
 processed_date: {self._escape_yaml_string(processed_date)}
 scraper_version: {self._escape_yaml_string("6.0.0")}
 speed: {self._escape_yaml_string(f"{speed} ft")}
+senses:
+{self._generate_senses_yaml(senses)}
 spell_count: {total_spells}
 highest_spell_level: {highest_spell_level}
 spells:
@@ -1643,6 +1674,23 @@ tags: {tags}"""
                     languages.append(lang_info)
         
         return sorted(languages)
+
+    def _generate_senses_yaml(self, senses: Dict[str, int]) -> str:
+        """
+        Generate YAML representation of senses data for frontmatter.
+
+        Args:
+            senses: Dict mapping sense name to range in feet, e.g. {'darkvision': 60}
+
+        Returns:
+            YAML formatted senses data (indented under parent key)
+        """
+        if not senses:
+            return '  {}'
+        lines = []
+        for sense_name, value in sorted(senses.items()):
+            lines.append(f'  {sense_name}: {value}')
+        return '\n'.join(lines)
 
     def _generate_party_inventory_yaml(self, character_data: Dict[str, Any]) -> str:
         """

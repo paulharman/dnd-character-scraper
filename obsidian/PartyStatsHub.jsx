@@ -166,6 +166,8 @@ function PartyStatsHub() {
       stealthDisadvantage: getVal(c, 'stealth_disadvantage') === true || getVal(c, 'stealth_disadvantage') === 'True',
       saves: arr(getVal(c, 'saving_throw_proficiencies')),
       saveBonuses: getVal(c, 'saving_throw_bonuses') || {},
+      toolProficiencies: arr(getVal(c, 'tool_proficiencies')),
+      senses: getVal(c, 'senses') || {},
       party: getPartyFromPath(c),
       filePath: c.$path || ''
     }))
@@ -417,6 +419,19 @@ function PartyStatsHub() {
           overflow-x: auto;
           margin-bottom: 30px;
         }
+        .psh-sense-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+        .psh-sense-tag {
+          font-size: 0.72em;
+          padding: 2px 6px;
+          border-radius: 3px;
+          background: rgba(66, 165, 245, 0.15);
+          color: #42a5f5;
+          white-space: nowrap;
+        }
       `}</style>
 
       <div className="psh-section-header">
@@ -547,6 +562,25 @@ function PartyStatsHub() {
                   </div>
                 ))}
               </div>
+
+              {/* Senses */}
+              {(() => {
+                const raw = c.senses;
+                const entries = Object.entries(raw).filter(([, v]) => {
+                  const n = (v && v.value !== undefined) ? v.value : v;
+                  return n != null && Number(n) > 0;
+                });
+                if (entries.length === 0) return null;
+                return (
+                  <div className="psh-sense-tags">
+                    {entries.map(([name, v]) => {
+                      const ft = (v && v.value !== undefined) ? v.value : v;
+                      const label = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                      return <span key={name} className="psh-sense-tag">{label} {ft} ft</span>;
+                    })}
+                  </div>
+                );
+              })()}
             </a>
           );
         })}
@@ -711,6 +745,45 @@ function PartyStatsHub() {
         <span>{'\u2713'} Proficient</span>
         <span>{'\u25BC'} Disadvantage</span>
       </div>
+
+      {/* Tool Proficiencies */}
+      {(() => {
+        const allTools = [...new Set(characters.flatMap(c => c.toolProficiencies))].sort();
+        if (allTools.length === 0) return null;
+        return (
+          <>
+            <div className="psh-section-header">
+              <dc.Icon icon="wrench" size={18} />
+              <h3 style="margin: 0;">Tool Proficiencies</h3>
+            </div>
+            <div className="psh-table-scroll">
+              <table className="psh-skill-table">
+                <thead>
+                  <tr>
+                    <th>Tool</th>
+                    {characters.map(c => <th key={c.name}>{c.name.split(' ')[0]}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {allTools.map(tool => (
+                    <tr key={tool}>
+                      <td>{tool}</td>
+                      {characters.map(c => {
+                        const has = c.toolProficiencies.includes(tool);
+                        return (
+                          <td key={c.name} className={has ? 'psh-prof' : 'psh-no-prof'}>
+                            {has ? '\u2713' : '\u2014'}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Passives */}
       <div className="psh-section-header">

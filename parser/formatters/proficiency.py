@@ -278,7 +278,39 @@ class ProficiencyFormatter(BaseFormatter):
                     display = str(tool)
                 sections.append(f"> - {display}")
             sections.append(">")
-        
+
+        # Gaming set proficiencies
+        gaming_sets = proficiencies_data.get('gaming_set_proficiencies', [])
+        if not gaming_sets:
+            gaming_sets = character_data.get('gaming_set_proficiencies', [])
+
+        if gaming_sets:
+            sections.append(">### Gaming Sets")
+            sections.append(">")
+            for gs in gaming_sets:
+                if isinstance(gs, dict):
+                    display = gs.get('name', 'Unknown Gaming Set')
+                else:
+                    display = str(gs)
+                sections.append(f"> - {display}")
+            sections.append(">")
+
+        # Musical instrument proficiencies
+        musical_instruments = proficiencies_data.get('musical_instrument_proficiencies', [])
+        if not musical_instruments:
+            musical_instruments = character_data.get('musical_instrument_proficiencies', [])
+
+        if musical_instruments:
+            sections.append(">### Musical Instruments")
+            sections.append(">")
+            for instrument in musical_instruments:
+                if isinstance(instrument, dict):
+                    display = instrument.get('name', 'Unknown Instrument')
+                else:
+                    display = str(instrument)
+                sections.append(f"> - {display}")
+            sections.append(">")
+
         # Language proficiencies - try v6.0.0 structure first, then legacy
         language_proficiencies = proficiencies_data.get('language_proficiencies', [])
         if not language_proficiencies:

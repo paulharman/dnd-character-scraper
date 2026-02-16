@@ -24,6 +24,16 @@ from ..rules.version_manager import RuleVersionManager
 logger = logging.getLogger(__name__)
 
 
+MUSICAL_INSTRUMENTS = {
+    'bagpipes', 'drum', 'dulcimer', 'flute', 'lute', 'lyre', 'horn',
+    'pan flute', 'shawm', 'viol', 'fiddle',
+}
+
+GAMING_SETS = {
+    'dice set', 'dragonchess set', 'playing card set', 'three-dragon ante set',
+}
+
+
 @dataclass
 class ProficiencyData:
     """Data class for proficiency information."""
@@ -31,6 +41,8 @@ class ProficiencyData:
     skill_proficiencies: Dict[str, int]
     saving_throw_proficiencies: Dict[str, int]
     tool_proficiencies: List[str]
+    gaming_set_proficiencies: List[str]
+    musical_instrument_proficiencies: List[str]
     language_proficiencies: List[str]
     weapon_proficiencies: List[str]
     armor_proficiencies: List[str]
@@ -220,6 +232,8 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                     'skill_proficiencies': scraper_profs.get('skill_proficiencies', []),
                     'saving_throw_proficiencies': scraper_profs.get('saving_throw_proficiencies', []),
                     'tool_proficiencies': scraper_profs.get('tool_proficiencies', []),
+                    'gaming_set_proficiencies': scraper_profs.get('gaming_set_proficiencies', []),
+                    'musical_instrument_proficiencies': scraper_profs.get('musical_instrument_proficiencies', []),
                     'language_proficiencies': scraper_profs.get('language_proficiencies', []),
                     'weapon_proficiencies': scraper_profs.get('weapon_proficiencies', []),
                     'weapon_masteries': scraper_profs.get('weapon_masteries', []),
@@ -253,6 +267,8 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                     'skill_proficiencies': proficiency_data.skill_proficiencies,
                     'saving_throw_proficiencies': proficiency_data.saving_throw_proficiencies,
                     'tool_proficiencies': proficiency_data.tool_proficiencies,
+                    'gaming_set_proficiencies': proficiency_data.gaming_set_proficiencies,
+                    'musical_instrument_proficiencies': proficiency_data.musical_instrument_proficiencies,
                     'language_proficiencies': proficiency_data.language_proficiencies,
                     'weapon_proficiencies': proficiency_data.weapon_proficiencies,
                     'weapon_masteries': getattr(proficiency_data, '_weapon_masteries', []),
@@ -367,6 +383,14 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                     }
                 },
                 "tool_proficiencies": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "gaming_set_proficiencies": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "musical_instrument_proficiencies": {
                     "type": "array",
                     "items": {"type": "string"}
                 },
@@ -551,7 +575,7 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         saving_throw_proficiencies = self._calculate_saving_throw_proficiencies(character_data, ability_modifiers, proficiency_bonus)
         
         # Get other proficiencies
-        tool_proficiencies = self._get_tool_proficiencies(character_data)
+        tool_proficiencies, gaming_set_proficiencies, musical_instrument_proficiencies = self._get_tool_and_instrument_proficiencies(character_data)
         language_proficiencies = self._get_language_proficiencies(character_data)
         weapon_proficiencies = self._get_weapon_proficiencies(character_data)
         armor_proficiencies = self._get_armor_proficiencies(character_data)
@@ -574,6 +598,8 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
             skill_proficiencies=skill_proficiencies,
             saving_throw_proficiencies=saving_throw_proficiencies,
             tool_proficiencies=tool_proficiencies,
+            gaming_set_proficiencies=gaming_set_proficiencies,
+            musical_instrument_proficiencies=musical_instrument_proficiencies,
             language_proficiencies=language_proficiencies,
             weapon_proficiencies=weapon_proficiencies,
             armor_proficiencies=armor_proficiencies,
@@ -1153,28 +1179,44 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
                 
         return None
     
-    def _get_tool_proficiencies(self, character_data: Dict[str, Any]) -> List[str]:
-        """Get list of tool proficiencies from D&D Beyond data."""
+    def _get_tool_and_instrument_proficiencies(self, character_data: Dict[str, Any]) -> tuple:
+        """Get lists of tool, gaming set, and musical instrument proficiencies from D&D Beyond data.
+
+        Returns:
+            Tuple of (tool_proficiencies, gaming_set_proficiencies, musical_instrument_proficiencies)
+        """
         tools = []
-        seen_tools = set()
-        
-        # Check for tools in modifiers
+        gaming_sets = []
+        instruments = []
+        seen = set()
+
         modifiers = character_data.get('modifiers', {})
-        
-        # Process modifiers from different sources
+
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
-            
+
             for modifier in modifier_list:
-                if self._is_tool_modifier(modifier):
-                    tool_name = self._extract_tool_from_modifier(modifier, source_type, character_data)
-                    if tool_name and tool_name not in seen_tools:
-                        tools.append(tool_name)
-                        seen_tools.add(tool_name)
-                        logger.debug(f"Tool proficiency: {tool_name} (source: {source_type})")
-        
-        return sorted(tools)
+                if self._is_tool_or_instrument_modifier(modifier):
+                    name = self._extract_tool_from_modifier(modifier, source_type, character_data)
+                    if name and name not in seen:
+                        seen.add(name)
+                        if name.lower() in MUSICAL_INSTRUMENTS:
+                            instruments.append(name)
+                            logger.debug(f"Musical instrument proficiency: {name} (source: {source_type})")
+                        elif name.lower() in GAMING_SETS:
+                            gaming_sets.append(name)
+                            logger.debug(f"Gaming set proficiency: {name} (source: {source_type})")
+                        else:
+                            tools.append(name)
+                            logger.debug(f"Tool proficiency: {name} (source: {source_type})")
+
+        return sorted(tools), sorted(gaming_sets), sorted(instruments)
+
+    def _get_tool_proficiencies(self, character_data: Dict[str, Any]) -> List[str]:
+        """Get list of tool proficiencies (excluding instruments and gaming sets) from D&D Beyond data."""
+        tools, _, _ = self._get_tool_and_instrument_proficiencies(character_data)
+        return tools
     
     def _get_language_proficiencies(self, character_data: Dict[str, Any]) -> List[str]:
         """Get list of language proficiencies from D&D Beyond data."""
@@ -1257,14 +1299,21 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         """Extract language name from modifier."""
         language_name = modifier.get('friendlySubtypeName', 'Unknown Language')
         
-        # Filter out tool proficiencies that were incorrectly detected as languages
-        tool_keywords = ['tools', 'kit', 'supplies', 'instrument', 'vehicle']
-        if any(keyword in language_name.lower() for keyword in tool_keywords):
+        # Filter out tool/instrument proficiencies that were incorrectly detected as languages
+        tool_keywords = ['tools', 'kit', 'supplies', 'instrument', 'vehicle', 'utensil']
+        name_lower = language_name.lower()
+        if any(keyword in name_lower for keyword in tool_keywords):
             logger.debug(f"Filtering out tool proficiency detected as language: {language_name}")
             return None
-            
+        if name_lower in MUSICAL_INSTRUMENTS:
+            logger.debug(f"Filtering out musical instrument detected as language: {language_name}")
+            return None
+        if name_lower in GAMING_SETS:
+            logger.debug(f"Filtering out gaming set detected as language: {language_name}")
+            return None
+
         # Specifically filter out "Thieves' Tools" if it somehow gets through
-        if language_name.lower() in ["thieves' tools", "thieves tools"]:
+        if name_lower in ["thieves' tools", "thieves tools"]:
             logger.debug(f"Specifically filtering out thieves' tools: {language_name}")
             return None
             
@@ -1644,20 +1693,25 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         # For now, returning expertise skills
         return self._get_expertise_skills(character_data)
     
-    def _is_tool_modifier(self, modifier: Dict[str, Any]) -> bool:
-        """Check if a modifier grants tool proficiency."""
+    def _is_tool_or_instrument_modifier(self, modifier: Dict[str, Any]) -> bool:
+        """Check if a modifier grants a tool or musical instrument proficiency."""
         if not isinstance(modifier, dict):
             return False
-        
-        subtype = modifier.get('subType', '').lower()
+
         friendly_subtype = modifier.get('friendlySubtypeName', '').lower()
         friendly_type = modifier.get('friendlyTypeName', '').lower()
-        
+
+        # Check for known musical instruments or gaming sets by name
+        if friendly_subtype in MUSICAL_INSTRUMENTS:
+            return True
+        if friendly_subtype in GAMING_SETS:
+            return True
+
         # Tool keywords to look for
-        tool_keywords = ['supplies', 'kit', 'tools', 'set', 'instrument']
-        
+        tool_keywords = ['supplies', 'kit', 'tools', 'set', 'instrument', 'utensil']
+
         # Check if it's a tool type or contains tool keywords
-        return ('tool' in friendly_type or 
+        return ('tool' in friendly_type or
                 any(keyword in friendly_subtype for keyword in tool_keywords))
     
     def _extract_tool_from_modifier(self, modifier: Dict[str, Any], source_type: str, character_data: Dict[str, Any]) -> Optional[str]:
@@ -1711,8 +1765,17 @@ class EnhancedProficiencyCalculator(RuleAwareCalculator, ICachedCalculator):
         
         # Tools as boolean flags
         for tool in proficiency_data.tool_proficiencies:
-            # Normalize tool name for field path  
             tool_key = tool.lower().replace("'", "'").replace(" ", "_")
             change_detection_data['tools'][tool_key] = True
-        
+
+        # Gaming sets as boolean flags
+        for gaming_set in proficiency_data.gaming_set_proficiencies:
+            gs_key = gaming_set.lower().replace("'", "'").replace(" ", "_")
+            change_detection_data['tools'][gs_key] = True
+
+        # Musical instruments as boolean flags
+        for instrument in proficiency_data.musical_instrument_proficiencies:
+            inst_key = instrument.lower().replace("'", "'").replace(" ", "_")
+            change_detection_data['tools'][inst_key] = True
+
         return change_detection_data

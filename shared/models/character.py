@@ -104,6 +104,8 @@ class Background(ExtensibleModel):
     # Skills and proficiencies
     skill_proficiencies: List[str] = Field(default_factory=list)
     tool_proficiencies: List[str] = Field(default_factory=list)
+    gaming_set_proficiencies: List[str] = Field(default_factory=list)
+    musical_instrument_proficiencies: List[str] = Field(default_factory=list)
     language_proficiencies: List[str] = Field(default_factory=list)
     
     # Background features
