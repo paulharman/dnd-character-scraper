@@ -159,6 +159,8 @@ parser:
 | `PartyInventoryManager.jsx` | Party-wide inventory view across all characters |
 | `PartyLanguages.jsx` | Shows languages known across the party, organized by character |
 | `sessiontracker.jsx` | Session event tracker with categorized events (combat, discovery, plot, social, travel) |
+| `PartyStatsHub.jsx` | Party dashboard comparing abilities, skills, saves, senses, and combat stats |
+| `MonsterHub.jsx` | Filterable monster bestiary browser with CR, type, and environment filters |
 | `SessionNotesSearch.jsx` | Searchable session notes interface |
 
 ### Spell Data
@@ -378,9 +380,10 @@ python scraper/enhanced_dnd_scraper.py <character_id> --raw-output debug.json
 
 ## Documentation
 
+- **[docs/DATA_PIPELINE_REFERENCE.md](docs/DATA_PIPELINE_REFERENCE.md)**: End-to-end field mapping through every pipeline stage (raw API → scraper → parser → frontmatter → JSX)
+- **[docs/CLEAN_ARCHITECTURE_GUIDE.md](docs/CLEAN_ARCHITECTURE_GUIDE.md)**: Architecture overview and file structure
 - **[CONFIG_GUIDE.md](CONFIG_GUIDE.md)**: Complete configuration documentation
 - **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)**: Comprehensive troubleshooting guide
-- **[docs/ENHANCED_ARCHITECTURE_GUIDE.md](docs/ENHANCED_ARCHITECTURE_GUIDE.md)**: Architecture documentation
 - **`config/` files**: Inline comments explaining all settings
 
 ## Contributing
@@ -394,7 +397,9 @@ python scraper/enhanced_dnd_scraper.py <character_id> --raw-output debug.json
 
 ## Version History
 
-- **v6.1.0** (Current): Combat enhancements (initiative breakdown, weapon mastery, action economy), complete spell details, Obsidian setup documentation
+- **v6.5.0** (Current): Movement speeds in frontmatter, data pipeline documentation, dead code cleanup, stale import fix
+- **v6.4.0**: Senses display, gaming set split, item spell detection, tool proficiencies in Party Stats Hub
+- **v6.1.0**: Combat enhancements (initiative breakdown, weapon mastery, action economy), complete spell details, Obsidian setup documentation
 - **v6.0.0**: Major overhaul with enhanced spell processing, complete inventory support, and improved portability
 - **v5.2.0**: Enhanced Discord integration and rule version detection
 - **v5.0.0**: Modular architecture with calculation pipeline

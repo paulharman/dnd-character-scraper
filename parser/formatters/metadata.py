@@ -341,6 +341,7 @@ class MetadataFormatter(BaseFormatter):
         
         # Speed - read from combat section
         speed = combat_data.get('speed', 30)
+        movement = combat_data.get('movement', {})
 
         # Senses (darkvision, blindsight, etc.) from character_info coordinator
         senses = character_info.get('senses', {})
@@ -640,6 +641,8 @@ spell_save_dc: {spell_save_dc}
 processed_date: {self._escape_yaml_string(processed_date)}
 scraper_version: {self._escape_yaml_string("6.0.0")}
 speed: {self._escape_yaml_string(f"{speed} ft")}
+movement:
+{self._generate_movement_yaml(movement, speed)}
 senses:
 {self._generate_senses_yaml(senses)}
 spell_count: {total_spells}
@@ -689,325 +692,6 @@ infusions:
 {infusions_yaml}"""
         
         return frontmatter
-    
-    def _build_core_metadata(self, character_info: Dict[str, Any], meta: Dict[str, Any]) -> str:
-        """Build core character metadata section."""
-        character_id = meta.get('character_id', '0')
-        character_name = character_info.get('name', 'Unknown Character')
-        character_level = character_info.get('level', 1)
-        
-        # Avatar URL handling - get from character_info first, then character_info
-        avatar_url = character_info.get('avatarUrl', character_info.get('avatar_url', ''))
-        if avatar_url:
-            avatar_url = f'"{avatar_url}"'
-        else:
-            avatar_url = '""'
-        
-        # Experience (v6.0.0 uses experience_points)
-        experience = character_info.get('experience_points', character_info.get('experience', 0))
-        
-        # Proficiency bonus from scraper
-        proficiency_bonus = character_info.get('proficiency_bonus', 2)
-        
-        # Processed date
-        processed_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        return f"""avatar_url: {avatar_url}
-character_name: "{character_name}"
-level: {character_level}
-proficiency_bonus: {proficiency_bonus}
-experience: {experience}"""
-    
-    def _build_character_stats(self, character_data: Dict[str, Any]) -> str:
-        """Build character stats section including class, species, background."""
-        character_info = self.get_character_info(character_data)
-        meta = self.get_meta_info(character_data)
-        
-        # Class information
-        classes = character_info.get('classes', [])
-        primary_class = classes[0] if classes else {}
-        class_name = primary_class.get('name', 'Unknown')
-        subclass_name = primary_class.get('subclass', '')
-        
-        # Extract hit die dynamically from class features or default calculation
-        hit_die = self._extract_hit_die(character_data, primary_class)
-        
-        # Rule version detection - match original logic exactly
-        rule_version = meta.get('rule_version', 'unknown')
-        is_2024_rules = rule_version == '2024' or '2024' in str(rule_version)
-        
-        # Species/Race terminology - use 'species' for 2024 rules
-        species_or_race = 'species' if is_2024_rules else 'race'
-        species_name = self.get_species_name(character_data)
-        
-        # Background
-        background_name = self.get_background_name(character_data)
-        
-        # Ability scores
-        ability_scores = self.get_ability_scores(character_data)
-        abilities = {}
-        modifiers = {}
-        
-        for ability in ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']:
-            ability_data = ability_scores.get(ability, {})
-            abilities[ability] = ability_data.get('score', 10)
-            mod = ability_data.get('modifier', 0)
-            modifiers[ability] = f"+{mod}" if mod >= 0 else str(mod)
-        
-        # Multiclass detection
-        multiclass = len(classes) > 1 if classes else False
-        
-        # Build section - match original field ordering exactly
-        section = f"""class: "{class_name}"
-hit_die: "{hit_die}"
-is_2024_rules: {self._to_yaml_value(is_2024_rules)}
-{species_or_race}: "{species_name}"
-background: "{background_name}"
-ability_scores:
-  strength: {abilities['strength']}
-  dexterity: {abilities['dexterity']}
-  constitution: {abilities['constitution']}
-  intelligence: {abilities['intelligence']}
-  wisdom: {abilities['wisdom']}
-  charisma: {abilities['charisma']}
-ability_modifiers:
-  strength: {modifiers['strength']}
-  dexterity: {modifiers['dexterity']}
-  constitution: {modifiers['constitution']}
-  intelligence: {modifiers['intelligence']}
-  wisdom: {modifiers['wisdom']}
-  charisma: {modifiers['charisma']}"""
-        
-        return section
-    
-    def _build_combat_stats(self, character_data: Dict[str, Any]) -> str:
-        """Build combat stats section."""
-        character_info = self.get_character_info(character_data)
-        ability_scores = self.get_ability_scores(character_data)
-        
-        # Get AC from scraper data only
-        dex_mod = ability_scores.get('dexterity', {}).get('modifier', 0)
-        armor_class = self._get_armor_class(character_data)
-        
-        # Universal HP extraction from scraper data
-        character_level = character_info.get('level', 1)
-        con_mod = ability_scores.get('constitution', {}).get('modifier', 0)
-        max_hp, current_hp, temp_hp = self._get_hit_points(character_data)
-
-        # Speed - read from combat section
-        combat_data = character_data.get('combat', {})
-
-        # Universal initiative - get from combat data if available
-        initiative = combat_data.get('initiative_bonus', dex_mod)
-        initiative_str = f"+{initiative}" if initiative >= 0 else str(initiative)
-        speed = combat_data.get('speed', 30)
-        
-        # Get passive scores from scraper data (calculated by proficiency coordinator)
-        passive_perception = character_data.get('passive_perception', 8)
-        passive_investigation = character_data.get('passive_investigation', 8)
-        passive_insight = character_data.get('passive_insight', 8)
-        
-        # Character metadata that goes at the end (matching original format)
-        meta = self.get_meta_info(character_data)
-        character_id = meta.get('character_id', '0')
-        processed_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        # Get spell save DC from scraper data
-        spellcasting_ability = character_info.get('spellcasting_ability', 'intelligence')
-        spell_save_dc = character_info.get('spell_save_dc', 8)
-        
-        return f"""armor_class: {armor_class}
-current_hp: {current_hp}
-max_hp: {max_hp}
-temp_hp: {temp_hp}
-initiative: "{initiative_str}"
-spellcasting_ability: "{spellcasting_ability}"
-spell_save_dc: {spell_save_dc}
-character_id: {character_id}
-processed_date: "{processed_date}"
-scraper_version: "6.0.0"
-speed: "{speed} ft"
-spell_count: 15
-highest_spell_level: 1"""
-    
-    def _build_spell_data(self, character_data: Dict[str, Any]) -> str:
-        """Build spell data section."""
-        character_info = self.get_character_info(character_data)
-        ability_scores = self.get_ability_scores(character_data)
-        spells = self.get_spells(character_data)
-        
-        # Initialize spell extractor
-        self._initialize_spell_extractor(character_data)
-        
-        # Get combat data for enhanced spell extraction
-        combat_data = character_data.get('combat', {})
-        
-        # Get spellcasting data from scraper - check v6.0.0 structure first, then adapted
-        spellcasting_data = character_data.get('spellcasting', {})
-        spellcasting_ability = spellcasting_data.get('spellcasting_ability', character_info.get('spellcasting_ability', 'intelligence'))
-        spell_save_dc = spellcasting_data.get('spell_save_dc', character_info.get('spell_save_dc', 8))
-        
-        # Build detailed spell data
-        detailed_spell_data = []
-        spell_links = []
-        spell_names = []
-        
-        for source, spell_list in spells.items():
-            for spell in spell_list:
-                name = spell.get('name', '')
-                if not name:
-                    continue
-                
-                level = spell.get('level', 0)
-                is_prepared = level == 0 or spell.get('is_prepared', False)
-                
-                spell_info = {
-                    'name': name,
-                    'level': level,
-                    'school': spell.get('school', 'Unknown'),
-                    'components': self._extract_components(spell),
-                    'casting_time': self._extract_casting_time(spell, combat_data),
-                    'range': self._extract_range(spell, combat_data),
-                    'duration': self._extract_duration(spell, combat_data),
-                    'concentration': spell.get('concentration', False),
-                    'ritual': spell.get('ritual', False),
-                    'prepared': is_prepared,
-                    'source': self._format_spell_source(spell, source),
-                    'description': self._truncate_description(spell.get('description', ''))
-                }
-                
-                detailed_spell_data.append(spell_info)
-                
-                # Create obsidian link format
-                link_name = name.lower().replace(' ', '-').replace("'", "").replace('.', '') + '-xphb'
-                spell_links.append(f'"[[{link_name}]]"')
-                spell_names.append(name)
-        
-        # Sort by level then name
-        detailed_spell_data.sort(key=lambda x: (x['level'], x['name']))
-        
-        total_spells = len(detailed_spell_data)
-        highest_spell_level = max([spell['level'] for spell in detailed_spell_data], default=0)
-        
-        # Build spell data YAML
-        spell_data_yaml = []
-        for spell in detailed_spell_data:
-            spell_yaml = f"""  - name: "{spell['name']}"
-    level: {spell['level']}
-    school: "{spell['school']}"
-    components: "{spell['components']}"
-    casting_time: "{spell['casting_time']}"
-    range: "{spell['range']}"
-    duration: "{spell['duration']}"
-    concentration: {str(spell['concentration']).lower()}
-    ritual: {str(spell['ritual']).lower()}
-    prepared: {str(spell['prepared']).lower()}
-    source: "{spell['source']}\""""
-            spell_data_yaml.append(spell_yaml)
-        
-        return f"""spellcasting_ability: "{spellcasting_ability}"
-spell_save_dc: {spell_save_dc}
-spell_count: {total_spells}
-highest_spell_level: {highest_spell_level}
-spells:
-{chr(10).join(f'  - {link}' for link in spell_links) if spell_links else '  []'}
-spell_list: {self._to_yaml_value(spell_names)}
-spell_data:
-{chr(10).join(spell_data_yaml) if spell_data_yaml else '  []'}"""
-    
-    def _build_inventory_data(self, character_data: Dict[str, Any]) -> str:
-        """Build inventory data section."""
-        inventory = self.get_inventory(character_data)
-        containers_data = character_data.get('containers', {})
-        ability_scores = self.get_ability_scores(character_data)
-        equipment_data = character_data.get('equipment', {})
-        wealth_data = equipment_data.get('wealth', {})
-        
-        # Inventory counts - calculate using backup original logic
-        inventory_count = len(inventory)
-        magic_items = [item for item in inventory if item.get('magic', False) or item.get('rarity')]
-        magic_items_count = len(magic_items)
-        
-        # Encumbrance
-        str_score = ability_scores.get('strength', {}).get('score', 10)
-        carrying_capacity = str_score * 15
-        current_weight = sum(item.get('weight', 0) * item.get('quantity', 1) for item in inventory)
-        
-        # Wealth
-        copper = wealth_data.get('copper', 0)
-        silver = wealth_data.get('silver', 0)
-        electrum = wealth_data.get('electrum', 0)
-        gold = wealth_data.get('gold', 0)
-        platinum = wealth_data.get('platinum', 0)
-        total_wealth_gp = wealth_data.get('total_gp', 0)
-        
-        # Build inventory section
-        inventory_section = f"""inventory_items: {inventory_count}
-magic_items_count: {magic_items_count}
-attuned_items: 0
-max_attunement: 3
-carrying_capacity: {carrying_capacity}
-current_weight: {int(current_weight) if isinstance(current_weight, (int, float)) else 0}
-copper: {copper}
-silver: {silver}
-electrum: {electrum}
-gold: {gold}
-platinum: {platinum}
-total_wealth_gp: {int(total_wealth_gp) if isinstance(total_wealth_gp, (int, float)) else 0}
-inventory:"""
-        
-        # Add detailed inventory items from containers
-        raw_inventory_items = self.get_inventory_with_containers(character_data)
-        inventory_items = []
-        for item in raw_inventory_items:
-            processed_item = self._process_inventory_item_for_metadata(item)
-            inventory_items.append(processed_item)
-        for item in inventory_items:
-            inventory_section += f"""
-  - item: "{item['name']}"
-    type: "{item['type']}"
-    category: "{item['category']}"
-    container: "{item['container']}"
-    quantity: {item['quantity']}
-    equipped: {self._to_yaml_value(item['equipped'])}
-    weight: {item['weight']}
-    rarity: "{item['rarity']}"
-    cost: {item['cost']}"""
-            
-            if item.get('description'):
-                inventory_section += f"""
-    description: "{item['description']}\""""
-            
-            if item.get('notes'):
-                inventory_section += f"""
-    notes: "{item['notes']}\""""
-        
-        return inventory_section
-    
-    def _build_miscellaneous_data(self, character_data: Dict[str, Any]) -> str:
-        """Build miscellaneous data section."""
-        character_info = self.get_character_info(character_data)
-        character_level = character_info.get('level', 1)
-        experience = character_info.get('experience_points', character_info.get('experience', 0))
-        
-        # Experience to next level
-        level_thresholds = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000]
-        next_level_xp = level_thresholds[min(character_level, 19)] if character_level < 20 else 355000
-        xp_to_next_level = max(0, next_level_xp - experience)
-        
-        # Generate tags
-        tags = self._generate_tags(character_data)
-        
-        return f"""next_level_xp: {next_level_xp}
-xp_to_next_level: {xp_to_next_level}
-total_caster_level: {character_level}
-character_status: "alive"
-has_backstory: true
-is_active: true
-source_books: ['PHB']
-homebrew_content: false
-official_content_only: true
-tags: {tags}"""
     
     def _generate_tags(self, character_data: Dict[str, Any]) -> List[str]:
         """Generate tags for the character."""
@@ -1674,6 +1358,29 @@ tags: {tags}"""
                     languages.append(lang_info)
         
         return sorted(languages)
+
+    def _generate_movement_yaml(self, movement: Dict[str, Any], walking_speed_fallback: int) -> str:
+        """
+        Generate YAML representation of movement speeds for frontmatter.
+
+        Args:
+            movement: Dict from combat coordinator with walking_speed, climbing_speed, etc.
+            walking_speed_fallback: Fallback walking speed if movement dict is empty.
+
+        Returns:
+            YAML formatted movement data (indented under parent key)
+        """
+        walking = movement.get('walking_speed', walking_speed_fallback)
+        climbing = movement.get('climbing_speed', 0)
+        swimming = movement.get('swimming_speed', 0)
+        flying = movement.get('flying_speed', 0)
+        lines = [
+            f'  walking: {walking}',
+            f'  climbing: {climbing}',
+            f'  swimming: {swimming}',
+            f'  flying: {flying}',
+        ]
+        return '\n'.join(lines)
 
     def _generate_senses_yaml(self, senses: Dict[str, int]) -> str:
         """

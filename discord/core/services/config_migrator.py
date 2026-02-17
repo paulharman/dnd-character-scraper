@@ -57,7 +57,7 @@ class ConfigurationMigrator:
             
             if current_version == target_version:
                 self.logger.info("Configuration is already at target version")
-                from shared.services.enhanced_config_service import EnhancedConfigService
+                from discord.core.services.config_service import EnhancedConfigService
                 service = EnhancedConfigService(self.config_dir)
                 config = service.enhanced_config_manager._parse_config_data(config_data)
                 return True, config
@@ -74,7 +74,7 @@ class ConfigurationMigrator:
             migrated_data = self._perform_migration(config_data, current_version, target_version)
             
             # Validate migrated configuration
-            from shared.services.enhanced_config_service import EnhancedConfigService
+            from discord.core.services.config_service import EnhancedConfigService
             service = EnhancedConfigService(self.config_dir)
             migrated_config = service.enhanced_config_manager._parse_config_data(migrated_data)
             
@@ -160,7 +160,7 @@ class ConfigurationMigrator:
             
             if success:
                 # Load the created configuration
-                from shared.services.enhanced_config_service import EnhancedConfigService
+                from discord.core.services.config_service import EnhancedConfigService
                 service = EnhancedConfigService(self.config_dir)
                 config = service.load_configurations()
                 return True, config

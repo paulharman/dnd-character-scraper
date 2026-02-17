@@ -152,6 +152,7 @@ function PartyStatsHub() {
       ac: getNum(c, 'armor_class') || 0,
       initiative: getStr(c, 'initiative') || '+0',
       speed: getStr(c, 'speed') || '30 ft',
+      movement: getVal(c, 'movement') || {},
       profBonus: getNum(c, 'proficiency_bonus') || 2,
       spellSaveDc: getNum(c, 'spell_save_dc'),
       spellCount: getNum(c, 'spell_count') || 0,
@@ -544,6 +545,16 @@ function PartyStatsHub() {
                 <div className="psh-combat-stat">
                   <div className="psh-combat-val">{c.speed}</div>
                   <div className="psh-combat-lbl">Speed</div>
+                  {(() => {
+                    const mv = c.movement;
+                    const extra = [];
+                    const getSpd = (k) => { const v = mv[k]; return (v && v.value !== undefined) ? v.value : v; };
+                    if (Number(getSpd('flying')) > 0) extra.push(`Fly ${getSpd('flying')}`);
+                    if (Number(getSpd('swimming')) > 0) extra.push(`Swim ${getSpd('swimming')}`);
+                    if (Number(getSpd('climbing')) > 0) extra.push(`Climb ${getSpd('climbing')}`);
+                    if (extra.length === 0) return null;
+                    return <div style="font-size: 0.65em; color: var(--text-muted); margin-top: 1px;">{extra.join(', ')}</div>;
+                  })()}
                 </div>
                 <div className="psh-combat-stat">
                   <div className="psh-combat-val">+{c.profBonus}</div>
