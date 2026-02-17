@@ -52,6 +52,9 @@ Thumbs.db
 desktop.ini
 nul
 
+# Project-level AI instructions (local use only, not for public repo)
+CLAUDE.md
+
 # Claude temp files and debug scripts
 tmpclaude-*
 check_*.py
