@@ -10,7 +10,13 @@ Personal D&D Beyond character scraper project with three modules:
 
 The usual entry point is through the **parser** - it calls the scraper, parses the output into `.md`, then calls the discord module for change monitoring.
 
-This project will be shared openly on GitHub.
+## Git Remotes
+
+This project has two GitHub repositories:
+- **`origin`** (public): https://github.com/paulharman/dnd-character-scraper - Shared openly. Never push personal data here.
+- **`private`**: https://github.com/paulharman/dnd-character-scraper-private - Private repo.
+
+Default `git push` goes to `origin` (public). Always confirm before pushing and ensure no personal information is included.
 
 ## Important Rules
 
