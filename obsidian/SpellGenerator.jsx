@@ -249,6 +249,7 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   const spellToCharacterSources = spellbookData.spellToCharacterSources;
   const showSpellbookOnly = selectedCharacters.length > 0;
 
+  const [itemExcludeCharacters, setItemExcludeCharacters] = dc.useState([]); // Characters whose item spells are excluded
   const [filterSearch, setFilterSearch] = dc.useState('');
   const [filterClass, setFilterClass] = dc.useState([]);
   const [filterLevel, setFilterLevel] = dc.useState('');
@@ -257,7 +258,6 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   const [filterSchool, setFilterSchool] = dc.useState([]);
   const [filterComponents, setFilterComponents] = dc.useState([]);
   const [filtersShown, setFiltersShown] = dc.useState(false);
-  const [filterClassSearch, setFilterClassSearch] = dc.useState('');
   const [filterConcentration, setFilterConcentration] = dc.useState('');
   const [filterRitual, setFilterRitual] = dc.useState('');
   const [filterRange, setFilterRange] = dc.useState('');
@@ -282,13 +282,17 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   
   const [sortBy, setSortBy] = dc.useState('name'); // 'name', 'level', or 'school'
 
-  const allClasses = Array.from(
+  const allClassesRaw = Array.from(
     new Set(
       allPages
         .flatMap(p => arr(p.value("classes")))
         .filter(Boolean)
     )
   ).sort();
+  // Extract main classes (without subclass in parentheses)
+  const mainClasses = Array.from(new Set(allClassesRaw.map(c => c.replace(/\s*\(.*\)$/, '')))).sort();
+  // Get subclasses for a given main class
+  const getSubclasses = (main) => allClassesRaw.filter(c => c !== main && c.startsWith(main + ' ('));
   const allSchools = Array.from(
     new Set(
       allPages
@@ -299,7 +303,7 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
 
   // Clear and toggle functions for enhanced filter controls
   const clearFilterClass = () => setFilterClass([]);
-  const toggleFilterClass = () => setFilterClass(allClasses.filter(c => !filterClass.includes(c)));
+  const toggleFilterClass = () => setFilterClass(mainClasses.filter(c => !filterClass.includes(c)));
   
   const clearFilterSchool = () => setFilterSchool([]);
   const toggleFilterSchool = () => setFilterSchool(allSchools.filter(s => !filterSchool.includes(s)));
@@ -315,15 +319,29 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
 
     if (page.$path === `${SPELL_LOCATION}/spells.md`) return false;
     if (showSpellbookOnly && !characterSpellbook.includes(page.$name)) return false;
+    // Per-character item spell filter: hide spells where all remaining characters are item-excluded
+    if (itemExcludeCharacters.length > 0 && showSpellbookOnly) {
+      const sources = spellToCharacterSources.get(page.$name);
+      const characters = spellToCharacters.get(page.$name) || [];
+      // Remove item-sourced entries for excluded characters
+      const remaining = characters.filter(ch => {
+        if (!itemExcludeCharacters.includes(ch)) return true;
+        return !(sources && sources.get(ch) === 'Item');
+      });
+      if (remaining.length === 0) return false;
+    }
     const spellName = getFMVal(fm, 'name') || page.$name || '';
     if (filterSearch && !matchesSearch(spellName, filterSearch))
       return false;
     const spellClasses = getFMVal(fm, 'classes') || [];
-    if (
-      filterClass.length > 0 &&
-      !filterClass.some(cls => Array.isArray(spellClasses) ? spellClasses.includes(cls) : spellClasses === cls)
-    )
-      return false;
+    if (filterClass.length > 0) {
+      const classArr = Array.isArray(spellClasses) ? spellClasses : [spellClasses];
+      // Check if any selected filter matches a spell class (main class matches subclass variants too)
+      const matchesClass = filterClass.some(cls =>
+        classArr.some(sc => sc === cls || sc.startsWith(cls + ' ('))
+      );
+      if (!matchesClass) return false;
+    }
     // Handle level filtering - either exact level or range
     const spellLevel = Number(getFMVal(fm, 'levelint'));
     // If exact level is specified, use that
@@ -432,8 +450,13 @@ filteredPages.sort((a, b) => {
       id: "Characters",
       value: p => {
         const fileName = p.$name;
-        const characters = spellToCharacters.get(fileName) || [];
+        const allCharacters = spellToCharacters.get(fileName) || [];
         const sources = spellToCharacterSources.get(fileName);
+        // Filter out item-sourced entries for characters with item exclusion enabled
+        const characters = allCharacters.filter(ch => {
+          if (!itemExcludeCharacters.includes(ch)) return true;
+          return !(sources && sources.get(ch) === 'Item');
+        });
         if (characters.length === 0) return "";
         return (
           <span>
@@ -533,7 +556,7 @@ filteredPages.sort((a, b) => {
 
   return (
     <>
-      <div style="display: flex; gap: 0.75em;">
+      <div style="display: flex; gap: 0.75em; align-items: center;">
         <input
           type="search"
           placeholder="Search..."
@@ -542,12 +565,34 @@ filteredPages.sort((a, b) => {
           style="flex-grow: 1;"
         />
         {showFilters && (
+          <div style="display: flex; gap: 0.2em; align-items: center;">
+            {[['name', 'A-Z'], ['level', 'Lvl'], ['school', 'Sch']].map(([key, label]) => (
+              <button
+                key={key}
+                onclick={() => setSortBy(key)}
+                style={`
+                  padding: 0.4em 0.8em;
+                  border: 1px solid ${sortBy === key ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                  border-radius: 0.25em;
+                  background-color: ${sortBy === key ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                  color: ${sortBy === key ? '#4fc3f7' : 'var(--text-muted)'};
+                  cursor: pointer;
+                  font-size: 0.9em;
+                  transition: all 0.2s ease;
+                `}
+                title={`Sort by ${key}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {showFilters && (
           <button
             style="font-weight: 600; padding: 0 0.8em;"
             title="Quick: Only show Wizard spells"
             onclick={() => {
               setFilterClass(['Wizard']);
-              setFilterClassSearch('Wizard');
             }}
           >
             🧙‍♂️ Wizard
@@ -568,13 +613,13 @@ filteredPages.sort((a, b) => {
               setFilterSearch('');
               clearFilterSchool();
               clearFilterComponents();
-              setFilterClassSearch('');
               setFilterConcentration('');
               setFilterRitual('');
               setFilterRange('');
               setMaterialCostThreshold('');
               setMaterialCostMode('');
               clearSelectedCharacters();
+              setItemExcludeCharacters([]);
             }}
           >
             Clear All
@@ -591,70 +636,137 @@ filteredPages.sort((a, b) => {
             onClear={clearSelectedCharacters}
           >
             <div style="display: flex; flex-direction: column; gap: 0.2em; min-height: 400px; max-height: 400px; overflow-y: auto;">
-              {availableCharacters.map(c => (
-                <button
-                  key={c}
-                  onclick={() => setSelectedCharacters(
-                    selectedCharacters.includes(c)
-                      ? selectedCharacters.filter(x => x !== c)
-                      : [...selectedCharacters, c]
-                  )}
-                  style={`
-                    padding: 0.3em 0.5em;
-                    border: 1px solid ${selectedCharacters.includes(c) ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.25em;
-                    background-color: ${selectedCharacters.includes(c) ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${selectedCharacters.includes(c) ? '#4fc3f7' : 'var(--text-normal)'};
-                    cursor: pointer;
-                    font-size: 0.8em;
-                    transition: all 0.2s ease;
-                    text-align: left;
-                  `}
-                >
-                  {c.replace(/_/g, ' ')}
-                </button>
-              ))}
+              {availableCharacters.map(c => {
+                const isSelected = selectedCharacters.includes(c);
+                const isItemExcluded = itemExcludeCharacters.includes(c);
+                return (
+                  <div key={c} style="display: flex; gap: 0.3em; align-items: stretch;">
+                    <button
+                      onclick={() => setSelectedCharacters(
+                        isSelected
+                          ? selectedCharacters.filter(x => x !== c)
+                          : [...selectedCharacters, c]
+                      )}
+                      style={`
+                        flex: 1;
+                        padding: 0.3em 0.5em;
+                        border: 1px solid ${isSelected ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                        border-radius: 0.25em;
+                        background-color: ${isSelected ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                        color: ${isSelected ? '#4fc3f7' : 'var(--text-normal)'};
+                        cursor: pointer;
+                        font-size: 0.8em;
+                        transition: all 0.2s ease;
+                        text-align: left;
+                      `}
+                    >
+                      {c.replace(/_/g, ' ')}
+                    </button>
+                    {isSelected && (
+                      <button
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          setItemExcludeCharacters(
+                            isItemExcluded
+                              ? itemExcludeCharacters.filter(x => x !== c)
+                              : [...itemExcludeCharacters, c]
+                          );
+                        }}
+                        title={isItemExcluded ? "Item spells hidden - click to show" : "Item spells shown - click to hide"}
+                        style={`
+                          padding: 0.2em 0.4em;
+                          border: 1px solid ${isItemExcluded ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                          border-radius: 0.25em;
+                          background-color: ${isItemExcluded ? 'rgba(255, 152, 0, 0.15)' : 'var(--background-primary, #1e1e1e)'};
+                          color: ${isItemExcluded ? '#ff9800' : 'var(--text-muted)'};
+                          cursor: pointer;
+                          font-size: 0.7em;
+                          transition: all 0.2s ease;
+                          display: flex;
+                          align-items: center;
+                          min-width: 28px;
+                          justify-content: center;
+                        `}
+                      >
+                        <dc.Icon icon={isItemExcluded ? "package-x" : "package"} size={14} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </SpellQuerySetting>
-          <SpellQuerySetting 
-            title="Class" 
+          <SpellQuerySetting
+            title="Class"
             icon="lucide-users"
             onToggle={toggleFilterClass}
             onClear={clearFilterClass}
           >
-            <input
-              type="search"
-              placeholder="Type to filter classes..."
-              value={filterClassSearch}
-              oninput={e => setFilterClassSearch(e.target.value)}
-              style="margin-bottom: 0.5em; font-size: 0.8em; padding: 0.3em;"
-            />
-            <div style="display: flex; flex-direction: column; gap: 0.2em; min-height: 400px; max-height: 400px; overflow-y: auto;">
-              {allClasses
-                .filter(c => c.toLowerCase().includes(filterClassSearch.toLowerCase()))
-                .map(c => (
-                  <button
-                    key={c}
-                    onclick={() => setFilterClass(
-                      filterClass.includes(c)
-                        ? filterClass.filter(x => x !== c)
-                        : [...filterClass, c]
+            <div style="display: flex; flex-direction: column; gap: 0.2em;">
+              {mainClasses.map(main => {
+                const isSelected = filterClass.includes(main);
+                const subs = getSubclasses(main);
+                const selectedSubs = filterClass.filter(c => subs.includes(c));
+                return (
+                  <div key={main}>
+                    <button
+                      onclick={() => {
+                        if (isSelected) {
+                          // Deselect main class and all its subclasses
+                          setFilterClass(filterClass.filter(x => x !== main && !subs.includes(x)));
+                        } else {
+                          setFilterClass([...filterClass, main]);
+                        }
+                      }}
+                      style={`
+                        width: 100%;
+                        padding: 0.3em 0.5em;
+                        border: 1px solid ${isSelected ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
+                        border-radius: 0.25em;
+                        background-color: ${isSelected ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                        color: ${isSelected ? '#4fc3f7' : 'var(--text-normal)'};
+                        cursor: pointer;
+                        font-size: 0.8em;
+                        transition: all 0.2s ease;
+                        text-align: left;
+                      `}
+                    >
+                      {main}{subs.length > 0 ? ` (${subs.length})` : ''}
+                    </button>
+                    {isSelected && subs.length > 0 && (
+                      <div style="margin-left: 1em; margin-top: 0.2em; margin-bottom: 0.3em; display: flex; flex-direction: column; gap: 0.15em;">
+                        {subs.map(sub => {
+                          const subName = sub.replace(main + ' ', '');
+                          const isSubSelected = selectedSubs.includes(sub);
+                          return (
+                            <button
+                              key={sub}
+                              onclick={() => setFilterClass(
+                                isSubSelected
+                                  ? filterClass.filter(x => x !== sub)
+                                  : [...filterClass, sub]
+                              )}
+                              style={`
+                                padding: 0.2em 0.4em;
+                                border: 1px solid ${isSubSelected ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                                border-radius: 0.2em;
+                                background-color: ${isSubSelected ? 'rgba(255, 152, 0, 0.1)' : 'var(--background-primary, #1e1e1e)'};
+                                color: ${isSubSelected ? '#ff9800' : 'var(--text-muted)'};
+                                cursor: pointer;
+                                font-size: 0.75em;
+                                transition: all 0.2s ease;
+                                text-align: left;
+                              `}
+                            >
+                              {subName}
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
-                    style={`
-                      padding: 0.3em 0.5em;
-                      border: 1px solid ${filterClass.includes(c) ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                      border-radius: 0.25em;
-                      background-color: ${filterClass.includes(c) ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                      color: ${filterClass.includes(c) ? '#4fc3f7' : 'var(--text-normal)'};
-                      cursor: pointer;
-                      font-size: 0.8em;
-                      transition: all 0.2s ease;
-                      text-align: left;
-                    `}
-                  >
-                    {c}
-                  </button>
-                ))}
+                  </div>
+                );
+              })}
             </div>
           </SpellQuerySetting>
           <SpellQuerySetting 
@@ -690,7 +802,7 @@ filteredPages.sort((a, b) => {
             </div>
           </SpellQuerySetting>
           <SpellQuerySetting 
-            title="Level, Components & Sorting" 
+            title="Level & Components"
             icon="lucide-hash"
             onToggle={toggleFilterComponents}
             onClear={clearFilterComponents}
@@ -815,56 +927,6 @@ filteredPages.sort((a, b) => {
               </button>
             </div>
             
-            <div style="padding-top: 0.4em; border-top: 1px solid var(--background-modifier-border, #444);">
-              <div style="font-weight: 500; margin-bottom: 0.4em;">Sort Order</div>
-              <div style="display: flex; flex-direction: column; gap: 0.2em;">
-                <button
-                  onclick={() => setSortBy('name')}
-                  style={`
-                    padding: 0.3em 0.5em;
-                    border: 1px solid ${sortBy === 'name' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.25em;
-                    background-color: ${sortBy === 'name' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${sortBy === 'name' ? '#4fc3f7' : 'var(--text-normal)'};
-                    cursor: pointer;
-                    font-size: 0.8em;
-                    transition: all 0.2s ease;
-                  `}
-                >
-                  🔤 Sort by Name
-                </button>
-                <button
-                  onclick={() => setSortBy('level')}
-                  style={`
-                    padding: 0.3em 0.5em;
-                    border: 1px solid ${sortBy === 'level' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.25em;
-                    background-color: ${sortBy === 'level' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${sortBy === 'level' ? '#4fc3f7' : 'var(--text-normal)'};
-                    cursor: pointer;
-                    font-size: 0.8em;
-                    transition: all 0.2s ease;
-                  `}
-                >
-                  📈 Sort by Level
-                </button>
-                <button
-                  onclick={() => setSortBy('school')}
-                  style={`
-                    padding: 0.3em 0.5em;
-                    border: 1px solid ${sortBy === 'school' ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.25em;
-                    background-color: ${sortBy === 'school' ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${sortBy === 'school' ? '#4fc3f7' : 'var(--text-normal)'};
-                    cursor: pointer;
-                    font-size: 0.8em;
-                    transition: all 0.2s ease;
-                  `}
-                >
-                  📚 Sort by School
-                </button>
-              </div>
-            </div>
           </SpellQuerySetting>
           
           <SpellQuerySetting title="Properties & Range" icon="lucide-focus">
