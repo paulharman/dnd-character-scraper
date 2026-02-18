@@ -639,7 +639,7 @@ initiative: {self._escape_yaml_string(initiative_str)}
 spellcasting_ability: {self._escape_yaml_string(spellcasting_ability)}
 spell_save_dc: {spell_save_dc}
 processed_date: {self._escape_yaml_string(processed_date)}
-scraper_version: {self._escape_yaml_string("6.0.0")}
+scraper_version: {self._escape_yaml_string("6.5.0")}
 speed: {self._escape_yaml_string(f"{speed} ft")}
 movement:
 {self._generate_movement_yaml(movement, speed)}

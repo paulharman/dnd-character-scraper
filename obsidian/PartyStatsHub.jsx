@@ -574,17 +574,25 @@ function PartyStatsHub() {
                 ))}
               </div>
 
-              {/* Senses */}
+              {/* Senses & Speed Tags */}
               {(() => {
                 const raw = c.senses;
-                const entries = Object.entries(raw).filter(([, v]) => {
+                const senseEntries = Object.entries(raw).filter(([, v]) => {
                   const n = (v && v.value !== undefined) ? v.value : v;
                   return n != null && Number(n) > 0;
                 });
-                if (entries.length === 0) return null;
+                const mv = c.movement;
+                const getSpd = (k) => { const v = mv[k]; return (v && v.value !== undefined) ? v.value : v; };
+                const walkSpeed = Number(getSpd('walking')) || parseInt(c.speed) || 30;
+                const extraSpeeds = [];
+                if (Number(getSpd('flying')) > 0) extraSpeeds.push({ name: 'Fly', ft: getSpd('flying') });
+                if (Number(getSpd('swimming')) > 0) extraSpeeds.push({ name: 'Swim', ft: getSpd('swimming') });
+                if (Number(getSpd('climbing')) > 0) extraSpeeds.push({ name: 'Climb', ft: getSpd('climbing') });
                 return (
                   <div className="psh-sense-tags">
-                    {entries.map(([name, v]) => {
+                    <span className="psh-sense-tag">Speed {walkSpeed} ft</span>
+                    {extraSpeeds.map(s => <span key={s.name} className="psh-sense-tag">{s.name} {s.ft} ft</span>)}
+                    {senseEntries.map(([name, v]) => {
                       const ft = (v && v.value !== undefined) ? v.value : v;
                       const label = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                       return <span key={name} className="psh-sense-tag">{label} {ft} ft</span>;
