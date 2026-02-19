@@ -169,6 +169,13 @@ function PartyStatsHub() {
       saveBonuses: getVal(c, 'saving_throw_bonuses') || {},
       toolProficiencies: arr(getVal(c, 'tool_proficiencies')),
       senses: getVal(c, 'senses') || {},
+      copper: getNum(c, 'copper') || 0,
+      silver: getNum(c, 'silver') || 0,
+      electrum: getNum(c, 'electrum') || 0,
+      gold: getNum(c, 'gold') || 0,
+      platinum: getNum(c, 'platinum') || 0,
+      totalWealthGp: getNum(c, 'total_wealth_gp') || 0,
+      partyInventory: getVal(c, 'party_inventory') || {},
       party: getPartyFromPath(c),
       filePath: c.$path || ''
     }))
@@ -801,6 +808,78 @@ function PartyStatsHub() {
               </table>
             </div>
           </>
+        );
+      })()}
+
+      {/* Currency */}
+      <div className="psh-section-header">
+        <dc.Icon icon="coins" size={18} />
+        <h3 style="margin: 0;">Currency</h3>
+      </div>
+
+      <div className="psh-table-scroll">
+        <table className="psh-table">
+          <thead>
+            <tr>
+              <th>Character</th>
+              <th style="text-align: right;">CP</th>
+              <th style="text-align: right;">SP</th>
+              <th style="text-align: right;">EP</th>
+              <th style="text-align: right;">GP</th>
+              <th style="text-align: right;">PP</th>
+              <th style="text-align: right; font-weight: 700;">Total (GP)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {characters.map(c => (
+              <tr key={c.name}>
+                <td>{c.name}</td>
+                <td style="text-align: right;">{c.copper || '\u2014'}</td>
+                <td style="text-align: right;">{c.silver || '\u2014'}</td>
+                <td style="text-align: right;">{c.electrum || '\u2014'}</td>
+                <td style="text-align: right;">{c.gold || '\u2014'}</td>
+                <td style="text-align: right;">{c.platinum || '\u2014'}</td>
+                <td style="text-align: right; font-weight: 600;">{c.totalWealthGp ? c.totalWealthGp.toLocaleString() : '\u2014'}</td>
+              </tr>
+            ))}
+            <tr style="border-top: 2px solid var(--background-modifier-border, #555); font-weight: 700;">
+              <td>Party Total</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.copper, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.silver, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.electrum, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.gold, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.platinum, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.totalWealthGp, 0).toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Party Currency (shared pool from D&D Beyond) */}
+      {(() => {
+        // Party currency is the same on all characters in the same campaign - use first character's data
+        const pi = characters.find(c => c.partyInventory && c.partyInventory.party_currency);
+        const pc = pi ? pi.partyInventory.party_currency : null;
+        if (!pc || !Object.values(pc).some(v => v > 0)) return null;
+        const getCoin = (k) => { const v = pc[k]; return (v && v.value !== undefined) ? v.value : (Number(v) || 0); };
+        const pcp = getCoin('cp');
+        const psp = getCoin('sp');
+        const pep = getCoin('ep');
+        const pgp = getCoin('gp');
+        const ppp = getCoin('pp');
+        const partyTotalGp = (pcp * 0.01) + (psp * 0.1) + (pep * 0.5) + pgp + (ppp * 10);
+        return (
+          <div style="margin-top: 0.5em; padding: 0.6em 0.8em; background: var(--background-secondary); border-radius: 6px; font-size: 0.9em;">
+            <strong>Shared Party Currency:</strong>{' '}
+            {[
+              pcp > 0 && `${pcp} CP`,
+              psp > 0 && `${psp} SP`,
+              pep > 0 && `${pep} EP`,
+              pgp > 0 && `${pgp} GP`,
+              ppp > 0 && `${ppp} PP`,
+            ].filter(Boolean).join(' \u2022 ')}
+            <span style="margin-left: 0.8em; color: var(--text-muted);">({partyTotalGp.toLocaleString()} GP total)</span>
+          </div>
         );
       })()}
 
