@@ -1084,6 +1084,10 @@ filteredPages.sort((a, b) => {
         </SpellQuerySettings>
       )}
 
+      <div style="display: flex; gap: 1rem; margin-bottom: 0.5em; margin-top: 1em; font-size: 0.85rem; color: var(--text-muted);">
+        <span>Showing {filteredPages.length} of {allPages.length} spells</span>
+      </div>
+
       <dc.VanillaTable columns={columns} rows={filteredPages} paging={paging} />
     </>
   );

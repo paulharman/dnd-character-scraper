@@ -179,7 +179,6 @@ function NPCHub() {
     const [filterConditions, setFilterConditions] = dc.useState([]);
     const [filtersShown, setFiltersShown] = dc.useState(false);
     const [sortBy, setSortBy] = dc.useState('name');
-    const [sortDir, setSortDir] = dc.useState('asc');
 
     // ── Query all NPC files ─────────────────────────────────────────────────
     const filesArray = dc.useArray(dc.useQuery(`#NPC and path("${NPC_DIR}")`), arr => arr);
@@ -286,11 +285,11 @@ function NPCHub() {
                 default:
                     cmp = a.name.localeCompare(b.name);
             }
-            return sortDir === 'desc' ? -cmp : cmp;
+            return cmp;
         });
 
         return result;
-    }, [npcs, searchText, filterLocations, filterOrganizations, filterOccupations, filterRaces, filterConditions, sortBy, sortDir]);
+    }, [npcs, searchText, filterLocations, filterOrganizations, filterOccupations, filterRaces, filterConditions, sortBy]);
 
     // ── Toggle/Clear handlers ────────────────────────────────────────────────
     const toggleFilter = (arr, setArr, allItems) => () =>
@@ -341,7 +340,7 @@ function NPCHub() {
     return (
         <>
             {/* Search bar row */}
-            <div style="display: flex; gap: 0.75em; margin-bottom: 1em; align-items: center;">
+            <div style="display: flex; gap: 0.75em; align-items: center;">
                 <input
                     type="search"
                     placeholder="Search NPCs..."
@@ -353,14 +352,7 @@ function NPCHub() {
                     {[['name', 'A-Z'], ['race', 'Race'], ['location', 'Loc'], ['condition', 'Status']].map(([key, label]) => (
                         <button
                             key={key}
-                            onclick={() => {
-                                if (sortBy === key) {
-                                    setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-                                } else {
-                                    setSortBy(key);
-                                    setSortDir('asc');
-                                }
-                            }}
+                            onclick={() => setSortBy(key)}
                             style={`
                                 padding: 0.4em 0.8em;
                                 border: 1px solid ${sortBy === key ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
@@ -373,18 +365,10 @@ function NPCHub() {
                             `}
                             title={`Sort by ${key}`}
                         >
-                            {label}{sortBy === key ? (sortDir === 'asc' ? ' \u2191' : ' \u2193') : ''}
+                            {label}
                         </button>
                     ))}
                 </div>
-                <button class="primary" onclick={() => setFiltersShown(!filtersShown)}>
-                    <dc.Icon icon="lucide-filter" /> Filters
-                </button>
-                {hasActiveFilters && (
-                    <button onclick={clearFilters}>
-                        Clear All
-                    </button>
-                )}
                 <button
                     class="primary"
                     onclick={() => dc.app.commands.executeCommandById('quickadd:choice:3ad71beb-875e-49a5-890a-c7d60338a327')}
@@ -392,6 +376,14 @@ function NPCHub() {
                 >
                     <dc.Icon icon="lucide-user-plus" /> New NPC
                 </button>
+                <button class="primary" onclick={() => setFiltersShown(!filtersShown)}>
+                    ⚙
+                </button>
+                {hasActiveFilters && (
+                    <button onclick={clearFilters}>
+                        Clear All
+                    </button>
+                )}
             </div>
 
             {/* Filters panel */}
