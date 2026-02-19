@@ -385,6 +385,13 @@ function NPCHub() {
                         Clear All
                     </button>
                 )}
+                <button
+                    class="primary"
+                    onclick={() => dc.app.commands.executeCommandById('quickadd:choice:3ad71beb-875e-49a5-890a-c7d60338a327')}
+                    title="Create a new NPC from template"
+                >
+                    <dc.Icon icon="lucide-user-plus" /> New NPC
+                </button>
             </div>
 
             {/* Filters panel */}
