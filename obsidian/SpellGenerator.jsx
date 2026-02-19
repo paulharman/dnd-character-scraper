@@ -256,7 +256,7 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   const [filterLevelMin, setFilterLevelMin] = dc.useState('');
   const [filterLevelMax, setFilterLevelMax] = dc.useState('');
   const [filterSchool, setFilterSchool] = dc.useState([]);
-  const [filterComponents, setFilterComponents] = dc.useState([]);
+  const [filterComponents, setFilterComponents] = dc.useState({}); // { V: 'include'|'exclude', S: ..., M: ... }
   const [filtersShown, setFiltersShown] = dc.useState(false);
   const [filterConcentration, setFilterConcentration] = dc.useState('');
   const [filterRitual, setFilterRitual] = dc.useState('');
@@ -308,8 +308,12 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
   const clearFilterSchool = () => setFilterSchool([]);
   const toggleFilterSchool = () => setFilterSchool(allSchools.filter(s => !filterSchool.includes(s)));
   
-  const clearFilterComponents = () => setFilterComponents([]);
-  const toggleFilterComponents = () => setFilterComponents(allComponents.filter(c => !filterComponents.includes(c)));
+  const clearFilterComponents = () => setFilterComponents({});
+  const toggleFilterComponents = () => {
+    const hasAny = Object.keys(filterComponents).length > 0;
+    if (hasAny) { setFilterComponents({}); }
+    else { setFilterComponents(Object.fromEntries(allComponents.map(c => [c, 'include']))); }
+  };
   
   const clearSelectedCharacters = () => setSelectedCharacters([]);
   const toggleSelectedCharacters = () => setSelectedCharacters(availableCharacters.filter(c => !selectedCharacters.includes(c)));
@@ -378,13 +382,14 @@ function SpellQuery({ showFilters = true, paging = 100 }) {
       !filterSchool.includes(getFMVal(fm, 'school'))
     )
       return false;
-    if (
-      filterComponents.length > 0 &&
-      !filterComponents.every(short =>
-        getFMVal(fm, componentPropMap[short]) === true
-      )
-    )
-      return false;
+    const compEntries = Object.entries(filterComponents);
+    if (compEntries.length > 0) {
+      for (const [short, mode] of compEntries) {
+        const has = getFMVal(fm, componentPropMap[short]) === true;
+        if (mode === 'include' && !has) return false;
+        if (mode === 'exclude' && has) return false;
+      }
+    }
     return true;
   });
 
@@ -838,32 +843,40 @@ filteredPages.sort((a, b) => {
               />
             </div>
             
-            <div style="font-weight: 500; margin-bottom: 0.4em;">Components Filter</div>
+            <div style="font-weight: 500; margin-bottom: 0.4em;">Components Filter <span style="color: var(--text-muted); font-size: 0.75em; font-weight: 400;">click to cycle: off / require / exclude</span></div>
             <div style="display: flex; flex-wrap: wrap; gap: 0.2em; margin-bottom: 1em;">
-              {allComponents.map(comp => (
-                <button
-                  key={comp}
-                  onclick={() => setFilterComponents(
-                    filterComponents.includes(comp)
-                      ? filterComponents.filter(x => x !== comp)
-                      : [...filterComponents, comp]
-                  )}
-                  style={`
-                    padding: 0.25em 0.4em;
-                    border: 1px solid ${filterComponents.includes(comp) ? '#4fc3f7' : 'var(--background-modifier-border, #444)'};
-                    border-radius: 0.2em;
-                    background-color: ${filterComponents.includes(comp) ? 'rgba(79, 195, 247, 0.1)' : 'var(--background-primary, #1e1e1e)'};
-                    color: ${filterComponents.includes(comp) ? '#4fc3f7' : 'var(--text-normal)'};
-                    cursor: pointer;
-                    font-size: 0.75em;
-                    transition: all 0.2s ease;
-                    min-width: 60px;
-                    text-align: center;
-                  `}
-                >
-                  {componentNames[comp]}
-                </button>
-              ))}
+              {allComponents.map(comp => {
+                const mode = filterComponents[comp]; // undefined, 'include', or 'exclude'
+                const isInclude = mode === 'include';
+                const isExclude = mode === 'exclude';
+                return (
+                  <button
+                    key={comp}
+                    onclick={() => {
+                      const next = { ...filterComponents };
+                      if (!mode) next[comp] = 'include';
+                      else if (mode === 'include') next[comp] = 'exclude';
+                      else delete next[comp];
+                      setFilterComponents(next);
+                    }}
+                    style={`
+                      padding: 0.25em 0.4em;
+                      border: 1px solid ${isInclude ? '#4fc3f7' : isExclude ? '#ff9800' : 'var(--background-modifier-border, #444)'};
+                      border-radius: 0.2em;
+                      background-color: ${isInclude ? 'rgba(79, 195, 247, 0.1)' : isExclude ? 'rgba(255, 152, 0, 0.15)' : 'var(--background-primary, #1e1e1e)'};
+                      color: ${isInclude ? '#4fc3f7' : isExclude ? '#ff9800' : 'var(--text-normal)'};
+                      cursor: pointer;
+                      font-size: 0.75em;
+                      transition: all 0.2s ease;
+                      min-width: 60px;
+                      text-align: center;
+                    `}
+                    title={isInclude ? 'Required - click to exclude' : isExclude ? 'Excluded - click to clear' : 'Click to require'}
+                  >
+                    {isExclude ? '✗ ' : isInclude ? '✓ ' : ''}{componentNames[comp]}
+                  </button>
+                );
+              })}
             </div>
 
             <div style="font-weight: 500; margin-bottom: 0.4em;">Material Cost Highlighting</div>
