@@ -842,7 +842,7 @@ function PartyStatsHub() {
                 <td style="text-align: right; font-weight: 600;">{c.totalWealthGp ? c.totalWealthGp.toLocaleString() : '\u2014'}</td>
               </tr>
             ))}
-            <tr style="border-top: 2px solid var(--background-modifier-border, #555); font-weight: 700;">
+            <tr style="border-top: 2px solid var(--background-modifier-border, #555); font-weight: 700; background: rgba(79, 195, 247, 0.06);">
               <td>Party Total</td>
               <td style="text-align: right;">{characters.reduce((s, c) => s + c.copper, 0) || '\u2014'}</td>
               <td style="text-align: right;">{characters.reduce((s, c) => s + c.silver, 0) || '\u2014'}</td>
@@ -869,16 +869,31 @@ function PartyStatsHub() {
         const ppp = getCoin('pp');
         const partyTotalGp = (pcp * 0.01) + (psp * 0.1) + (pep * 0.5) + pgp + (ppp * 10);
         return (
-          <div style="margin-top: 0.5em; padding: 0.6em 0.8em; background: var(--background-secondary); border-radius: 6px; font-size: 0.9em;">
-            <strong>Shared Party Currency:</strong>{' '}
-            {[
-              pcp > 0 && `${pcp} CP`,
-              psp > 0 && `${psp} SP`,
-              pep > 0 && `${pep} EP`,
-              pgp > 0 && `${pgp} GP`,
-              ppp > 0 && `${ppp} PP`,
-            ].filter(Boolean).join(' \u2022 ')}
-            <span style="margin-left: 0.8em; color: var(--text-muted);">({partyTotalGp.toLocaleString()} GP total)</span>
+          <div className="psh-table-scroll" style="margin-top: 0.5em; margin-bottom: 1em;">
+            <table className="psh-table">
+              <thead>
+                <tr>
+                  <th>Shared Party Pool</th>
+                  <th style="text-align: right;">CP</th>
+                  <th style="text-align: right;">SP</th>
+                  <th style="text-align: right;">EP</th>
+                  <th style="text-align: right;">GP</th>
+                  <th style="text-align: right;">PP</th>
+                  <th style="text-align: right; font-weight: 700;">Total (GP)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="font-weight: 600; background: rgba(255, 152, 0, 0.06);">
+                  <td>D&D Beyond Party</td>
+                  <td style="text-align: right;">{pcp || '\u2014'}</td>
+                  <td style="text-align: right;">{psp || '\u2014'}</td>
+                  <td style="text-align: right;">{pep || '\u2014'}</td>
+                  <td style="text-align: right;">{pgp || '\u2014'}</td>
+                  <td style="text-align: right;">{ppp || '\u2014'}</td>
+                  <td style="text-align: right;">{partyTotalGp.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         );
       })()}
