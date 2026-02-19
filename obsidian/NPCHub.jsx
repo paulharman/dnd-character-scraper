@@ -36,11 +36,6 @@ function matchesSearch(target, searchQuery) {
     return searchWords.every(word => targetLower.includes(word));
 }
 
-function capitalize(str) {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
 // ── Layout Components ────────────────────────────────────────────────────────
 
 function NPCQuerySettings({ children }) {
@@ -143,7 +138,7 @@ function ConditionBadge({ condition }) {
     };
     const c = colors[condition.toLowerCase()] || { bg: 'rgba(79, 195, 247, 0.1)', color: '#4fc3f7' };
     return (
-        <span style={`display: inline-block; padding: 2px 8px; border-radius: 4px; background: ${c.bg}; color: ${c.color}; font-size: 0.8em; font-weight: 500;`}>
+        <span style={`display: inline-block; padding: 2px 8px; border-radius: 4px; background: ${c.bg}; color: ${c.color}; font-weight: 500;`}>
             {condition}
         </span>
     );
@@ -152,7 +147,7 @@ function ConditionBadge({ condition }) {
 function TagList({ items, emptyText }) {
     if (!items || items.length === 0) return <span style="color: var(--text-muted);">{emptyText || '\u2014'}</span>;
     return (
-        <span style="font-size: 0.85em;">
+        <span>
             {items.map((item, i) => (
                 <span key={i}>
                     {i > 0 && ', '}
