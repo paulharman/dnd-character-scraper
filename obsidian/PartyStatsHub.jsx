@@ -822,11 +822,11 @@ function PartyStatsHub() {
           <thead>
             <tr>
               <th>Character</th>
-              <th style="text-align: right;">CP</th>
-              <th style="text-align: right;">SP</th>
-              <th style="text-align: right;">EP</th>
-              <th style="text-align: right;">GP</th>
               <th style="text-align: right;">PP</th>
+              <th style="text-align: right;">GP</th>
+              <th style="text-align: right;">EP</th>
+              <th style="text-align: right;">SP</th>
+              <th style="text-align: right;">CP</th>
               <th style="text-align: right; font-weight: 700;">Total (GP)</th>
             </tr>
           </thead>
@@ -834,21 +834,21 @@ function PartyStatsHub() {
             {characters.map(c => (
               <tr key={c.name}>
                 <td>{c.name}</td>
-                <td style="text-align: right;">{c.copper || '\u2014'}</td>
-                <td style="text-align: right;">{c.silver || '\u2014'}</td>
-                <td style="text-align: right;">{c.electrum || '\u2014'}</td>
-                <td style="text-align: right;">{c.gold || '\u2014'}</td>
                 <td style="text-align: right;">{c.platinum || '\u2014'}</td>
+                <td style="text-align: right;">{c.gold || '\u2014'}</td>
+                <td style="text-align: right;">{c.electrum || '\u2014'}</td>
+                <td style="text-align: right;">{c.silver || '\u2014'}</td>
+                <td style="text-align: right;">{c.copper || '\u2014'}</td>
                 <td style="text-align: right; font-weight: 600;">{c.totalWealthGp ? c.totalWealthGp.toLocaleString() : '\u2014'}</td>
               </tr>
             ))}
             <tr style="border-top: 2px solid var(--background-modifier-border, #555); font-weight: 700; background: rgba(79, 195, 247, 0.06);">
               <td>Party Total</td>
-              <td style="text-align: right;">{characters.reduce((s, c) => s + c.copper, 0) || '\u2014'}</td>
-              <td style="text-align: right;">{characters.reduce((s, c) => s + c.silver, 0) || '\u2014'}</td>
-              <td style="text-align: right;">{characters.reduce((s, c) => s + c.electrum, 0) || '\u2014'}</td>
-              <td style="text-align: right;">{characters.reduce((s, c) => s + c.gold, 0) || '\u2014'}</td>
               <td style="text-align: right;">{characters.reduce((s, c) => s + c.platinum, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.gold, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.electrum, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.silver, 0) || '\u2014'}</td>
+              <td style="text-align: right;">{characters.reduce((s, c) => s + c.copper, 0) || '\u2014'}</td>
               <td style="text-align: right;">{characters.reduce((s, c) => s + c.totalWealthGp, 0).toLocaleString()}</td>
             </tr>
           </tbody>
@@ -874,22 +874,22 @@ function PartyStatsHub() {
               <thead>
                 <tr>
                   <th>Shared Party Pool</th>
-                  <th style="text-align: right;">CP</th>
-                  <th style="text-align: right;">SP</th>
-                  <th style="text-align: right;">EP</th>
-                  <th style="text-align: right;">GP</th>
                   <th style="text-align: right;">PP</th>
+                  <th style="text-align: right;">GP</th>
+                  <th style="text-align: right;">EP</th>
+                  <th style="text-align: right;">SP</th>
+                  <th style="text-align: right;">CP</th>
                   <th style="text-align: right; font-weight: 700;">Total (GP)</th>
                 </tr>
               </thead>
               <tbody>
                 <tr style="font-weight: 600; background: rgba(255, 152, 0, 0.06);">
                   <td>D&D Beyond Party</td>
-                  <td style="text-align: right;">{pcp || '\u2014'}</td>
-                  <td style="text-align: right;">{psp || '\u2014'}</td>
-                  <td style="text-align: right;">{pep || '\u2014'}</td>
-                  <td style="text-align: right;">{pgp || '\u2014'}</td>
                   <td style="text-align: right;">{ppp || '\u2014'}</td>
+                  <td style="text-align: right;">{pgp || '\u2014'}</td>
+                  <td style="text-align: right;">{pep || '\u2014'}</td>
+                  <td style="text-align: right;">{psp || '\u2014'}</td>
+                  <td style="text-align: right;">{pcp || '\u2014'}</td>
                   <td style="text-align: right;">{partyTotalGp.toLocaleString()}</td>
                 </tr>
               </tbody>
