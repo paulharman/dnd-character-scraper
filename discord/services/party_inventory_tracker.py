@@ -322,34 +322,54 @@ class PartyInventoryTracker:
 
     def _detect_item_changes(self, old_items: List[Dict[str, Any]],
                            new_items: List[Dict[str, Any]]) -> List[FieldChange]:
-        """Detect changes in party items, including container moves."""
+        """Detect changes in party items, including quantity changes and container moves."""
         changes = []
 
-        # Create lookup dictionaries by item name for comparison
-        old_items_dict = {item.get('name', ''): item for item in old_items}
-        new_items_dict = {item.get('name', ''): item for item in new_items}
+        # D&D Beyond stores multiple copies of the same item as separate entries each
+        # with qty=1 rather than incrementing a single entry's quantity.  A plain dict
+        # comprehension keyed by name silently keeps only the last entry, causing missed
+        # detections whenever there are duplicates (e.g. two Spell Scrolls of the same
+        # level, multiple Potions of Water Breathing, etc.).
+        # Fix: aggregate all entries with the same name by summing their quantities.
+        def aggregate(items):
+            totals = {}  # name -> total quantity
+            meta = {}    # name -> representative item dict for type/rarity/container metadata
+            for item in items:
+                name = item.get('name', '')
+                totals[name] = totals.get(name, 0) + item.get('quantity', 1)
+                meta[name] = item  # last entry used for metadata; container/type are consistent
+            return totals, meta
 
-        # Find added items
-        for item_name, item_data in new_items_dict.items():
-            if item_name not in old_items_dict:
+        old_totals, old_meta = aggregate(old_items)
+        new_totals, new_meta = aggregate(new_items)
+
+        all_names = set(old_totals) | set(new_totals)
+
+        for item_name in all_names:
+            old_qty = old_totals.get(item_name, 0)
+            new_qty = new_totals.get(item_name, 0)
+
+            if old_qty == new_qty:
+                continue
+
+            delta = new_qty - old_qty
+
+            if old_qty == 0:
+                # Brand new item
+                item_data = new_meta[item_name]
                 container = item_data.get('container')
                 container_name = self._get_container_name(container)
                 container_emoji = self._get_container_emoji(container)
-                quantity = item_data.get('quantity', 1)
+                container_info = f" to {container_emoji} {container_name}" if container else ""
 
-                if container:
-                    container_info = f" to {container_emoji} {container_name}"
-                else:
-                    container_info = ""
-
-                change = FieldChange(
+                changes.append(FieldChange(
                     field_path=f"party_inventory.party_items.{item_name}",
                     old_value=None,
                     new_value=item_data,
                     change_type=ChangeType.ADDED,
                     priority=ChangePriority.HIGH,
                     category=ChangeCategory.INVENTORY,
-                    description=f"Added {quantity}x {item_name}{container_info}",
+                    description=f"Added {new_qty}x {item_name}{container_info}",
                     metadata={
                         "item_type": item_data.get('type'),
                         "container": container,
@@ -358,30 +378,24 @@ class PartyInventoryTracker:
                         "rarity": item_data.get('rarity'),
                         "cost": item_data.get('cost')
                     }
-                )
-                changes.append(change)
+                ))
 
-        # Find removed items
-        for item_name, item_data in old_items_dict.items():
-            if item_name not in new_items_dict:
+            elif new_qty == 0:
+                # Item fully removed
+                item_data = old_meta[item_name]
                 container = item_data.get('container')
                 container_name = self._get_container_name(container)
                 container_emoji = self._get_container_emoji(container)
-                quantity = item_data.get('quantity', 1)
+                container_info = f" from {container_emoji} {container_name}" if container else ""
 
-                if container:
-                    container_info = f" from {container_emoji} {container_name}"
-                else:
-                    container_info = ""
-
-                change = FieldChange(
+                changes.append(FieldChange(
                     field_path=f"party_inventory.party_items.{item_name}",
                     old_value=item_data,
                     new_value=None,
                     change_type=ChangeType.REMOVED,
                     priority=ChangePriority.HIGH,
                     category=ChangeCategory.INVENTORY,
-                    description=f"Removed {quantity}x {item_name}{container_info}",
+                    description=f"Removed {old_qty}x {item_name}{container_info}",
                     metadata={
                         "item_type": item_data.get('type'),
                         "container": container,
@@ -390,72 +404,28 @@ class PartyInventoryTracker:
                         "rarity": item_data.get('rarity'),
                         "cost": item_data.get('cost')
                     }
-                )
-                changes.append(change)
+                ))
 
-        # Find modified items (quantity changes and container moves)
-        for item_name in old_items_dict:
-            if item_name in new_items_dict:
-                old_item = old_items_dict[item_name]
-                new_item = new_items_dict[item_name]
+            else:
+                # Quantity changed
+                change_type = ChangeType.INCREMENTED if delta > 0 else ChangeType.DECREMENTED
+                item_data = new_meta[item_name]
+                container_info = self._get_container_description(item_data.get('container'))
 
-                # Check for quantity changes
-                old_qty = old_item.get('quantity', 1)
-                new_qty = new_item.get('quantity', 1)
-
-                if old_qty != new_qty:
-                    delta = new_qty - old_qty
-                    change_type = ChangeType.INCREMENTED if delta > 0 else ChangeType.DECREMENTED
-                    container_info = self._get_container_description(new_item.get('container'))
-
-                    change = FieldChange(
-                        field_path=f"party_inventory.party_items.{item_name}.quantity",
-                        old_value=old_qty,
-                        new_value=new_qty,
-                        change_type=change_type,
-                        priority=ChangePriority.MEDIUM,
-                        category=ChangeCategory.INVENTORY,
-                        description=f"{item_name} quantity {'+' if delta > 0 else ''}{delta} ({old_qty} → {new_qty}){container_info}",
-                        metadata={
-                            "delta": delta,
-                            "item_type": new_item.get('type'),
-                            "container": new_item.get('container')
-                        }
-                    )
-                    changes.append(change)
-
-                # Check for container moves
-                old_container = old_item.get('container', '')
-                new_container = new_item.get('container', '')
-
-                if old_container != new_container:
-                    old_container_desc = self._get_container_name(old_container)
-                    new_container_desc = self._get_container_name(new_container)
-                    old_emoji = self._get_container_emoji(old_container)
-                    new_emoji = self._get_container_emoji(new_container)
-
-                    # Create more descriptive move message
-                    quantity = new_item.get('quantity', 1)
-                    quantity_text = f"{quantity}x " if quantity > 1 else ""
-
-                    change = FieldChange(
-                        field_path=f"party_inventory.party_items.{item_name}.container",
-                        old_value=old_container,
-                        new_value=new_container,
-                        change_type=ChangeType.MOVED,
-                        priority=ChangePriority.MEDIUM,
-                        category=ChangeCategory.INVENTORY,
-                        description=f"📦➡️ Moved {quantity_text}{item_name} from {old_emoji} {old_container_desc} to {new_emoji} {new_container_desc}",
-                        metadata={
-                            "item_type": new_item.get('type'),
-                            "old_container": old_container,
-                            "new_container": new_container,
-                            "quantity": quantity,
-                            "old_container_emoji": old_emoji,
-                            "new_container_emoji": new_emoji
-                        }
-                    )
-                    changes.append(change)
+                changes.append(FieldChange(
+                    field_path=f"party_inventory.party_items.{item_name}.quantity",
+                    old_value=old_qty,
+                    new_value=new_qty,
+                    change_type=change_type,
+                    priority=ChangePriority.MEDIUM,
+                    category=ChangeCategory.INVENTORY,
+                    description=f"{item_name} quantity {'+' if delta > 0 else ''}{delta} ({old_qty} → {new_qty}){container_info}",
+                    metadata={
+                        "delta": delta,
+                        "item_type": item_data.get('type'),
+                        "container": item_data.get('container')
+                    }
+                ))
 
         return changes
 

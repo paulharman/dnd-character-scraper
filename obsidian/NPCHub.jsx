@@ -505,7 +505,7 @@ function NPCHub() {
             <dc.VanillaTable
                 columns={columns}
                 rows={filteredNPCs}
-                paging={25}
+                paging={50}
             />
         </>
     );

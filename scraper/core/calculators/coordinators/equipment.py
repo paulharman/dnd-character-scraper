@@ -202,12 +202,23 @@ class EquipmentCoordinator(ICoordinator):
             # Extract campaign ID from raw data
             campaign_id = raw_data.get('campaign', {}).get('id')
 
+            # Build custom name lookup from partyValues (typeId=8 = custom item name)
+            # valueId matches the item's id (as string)
+            custom_names = {
+                pv['valueId']: pv['value']
+                for pv in party_data.get('partyValues', [])
+                if pv.get('typeId') == 8 and pv.get('value')
+            }
+
             # Process party items
             party_items = []
             for item in party_data.get('partyItems', []):
+                item_id = item.get('id')
+                definition_name = item.get('definition', {}).get('name', 'Unknown')
+                name = custom_names.get(str(item_id), definition_name)
                 processed_item = {
-                    'id': item.get('id'),
-                    'name': item.get('definition', {}).get('name', 'Unknown'),
+                    'id': item_id,
+                    'name': name,
                     'type': item.get('definition', {}).get('type', 'Unknown'),
                     'quantity': item.get('quantity', 1),
                     'weight': item.get('definition', {}).get('weight', 0),
@@ -459,14 +470,24 @@ class EquipmentCoordinator(ICoordinator):
         if inventory is None:
             inventory = []
         
+        # Build custom name lookup from characterValues (typeId=8 = custom item name)
+        char_custom_names = {
+            cv['valueId']: cv['value']
+            for cv in raw_data.get('characterValues', [])
+            if cv.get('typeId') == 8 and cv.get('value')
+        }
+
         for item_data in inventory:
             try:
                 definition = item_data.get('definition', {})
-                
+                item_id = item_data.get('id')
+                definition_name = definition.get('name', 'Unknown Item')
+                resolved_name = char_custom_names.get(str(item_id), definition_name)
+
                 # Basic information
                 item = {
-                    'id': item_data.get('id'),
-                    'name': definition.get('name', 'Unknown Item'),
+                    'id': item_id,
+                    'name': resolved_name,
                     'item_type': definition.get('type', 'Unknown'),
                     'subtype': definition.get('subType'),
                     'quantity': item_data.get('quantity', 1),
