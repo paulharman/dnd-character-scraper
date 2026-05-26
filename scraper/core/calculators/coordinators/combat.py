@@ -305,7 +305,24 @@ class CombatCoordinator(ICoordinator):
         try:
             # Transform data for enhanced calculator
             transformed_data = self.data_transformer.transform_for_enhanced_calculators(raw_data)
-            
+
+            # Override stats with final calculated ability scores from abilities coordinator so that
+            # feat/item bonuses to ability scores (e.g. +DEX from a feat) are reflected in AC.
+            if context and hasattr(context, 'metadata') and context.metadata:
+                abilities_data = context.metadata.get('abilities', {})
+                ability_scores = abilities_data.get('ability_scores', {})
+                if ability_scores:
+                    id_to_name = {1: 'strength', 2: 'dexterity', 3: 'constitution',
+                                  4: 'intelligence', 5: 'wisdom', 6: 'charisma'}
+                    for stat in transformed_data.get('stats', []):
+                        ability_name = id_to_name.get(stat.get('id'))
+                        if ability_name and ability_name in ability_scores:
+                            score_data = ability_scores[ability_name]
+                            if isinstance(score_data, dict):
+                                stat['value'] = score_data.get('score', stat.get('value'))
+                            elif hasattr(score_data, 'score'):
+                                stat['value'] = score_data.score
+
             # Create calculation context for enhanced calculator
             calc_context = CalculationContext(
                 character_id=str(raw_data.get('id', '')),

@@ -506,7 +506,10 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
                         hp_breakdown['feat_bonus'] + hp_breakdown['item_bonus'] +
                         hp_breakdown['misc_bonus'])
         max_hp += total_bonuses
-        
+
+        # Recalculate current HP using final max_hp (after all bonuses)
+        current_hp = max(0, max_hp - removed_hp)
+
         return HitPointsData(
             current_hp=max(0, current_hp),
             max_hp=max(1, max_hp),
