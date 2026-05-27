@@ -528,6 +528,12 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
                     continue
 
                 armor_class = armor_def.get('armorClass', 0)
+                # Add magic AC bonus from the item's own grantedModifiers
+                for gm in armor_def.get('grantedModifiers', []):
+                    if (gm.get('type') == 'bonus' and
+                            gm.get('subType') == 'armor-class' and
+                            gm.get('isGranted', False)):
+                        armor_class += gm.get('fixedValue') or gm.get('value') or 0
                 armor_type = armor_def.get('armorTypeId', 0)
 
                 # Map armor type ID to type name and properties
@@ -633,58 +639,61 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
     
     def _get_natural_armor_bonus(self, character_data: Dict[str, Any]) -> int:
         """Get natural armor bonus from race or other sources."""
-        # Check modifiers for natural armor bonuses
         modifiers = character_data.get('modifiers', {})
         bonus = 0
-        
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
-                
             for modifier in modifier_list:
                 if self._is_natural_armor_modifier(modifier):
-                    bonus += modifier.get('value', 0)
-        
+                    val = modifier.get('fixedValue') or modifier.get('value') or 0
+                    bonus += val
         return bonus
-    
+
     def _get_deflection_bonus(self, character_data: Dict[str, Any]) -> int:
         """Get deflection bonus from magic items or spells."""
-        # This would typically come from magic items or temporary effects
-        # For now, return 0 as this is rare
         return 0
-    
+
     def _get_misc_ac_bonus(self, character_data: Dict[str, Any]) -> int:
-        """Get miscellaneous AC bonuses."""
-        # Check modifiers for other AC bonuses
+        """Get miscellaneous AC bonuses (non-armor-item sources only)."""
         modifiers = character_data.get('modifiers', {})
         bonus = 0
-        
+
+        # Collect component IDs of equipped armor items so we don't double-count
+        # their grantedModifiers (already included in base_ac via _get_equipped_armor_info).
+        equipped_armor_ids: set = set()
+        for item in character_data.get('inventory', []):
+            if not isinstance(item, dict) or not item.get('equipped'):
+                continue
+            defn = item.get('definition', {})
+            if defn.get('filterType') == 'Armor' and 'shield' not in defn.get('name', '').lower():
+                equipped_armor_ids.add(defn.get('id'))
+
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
-                
             for modifier in modifier_list:
-                if self._is_ac_modifier(modifier) and not self._is_natural_armor_modifier(modifier):
-                    bonus += modifier.get('value', 0)
-        
+                # Only count explicit bonus-type armor-class modifiers (exact match).
+                # Avoids matching unrelated subtypes like 'draconic' (language) or
+                # 'unarmored-armor-class' (set formula, not an additive bonus).
+                if (modifier.get('type') == 'bonus' and
+                        modifier.get('subType') == 'armor-class'):
+                    # Skip if this modifier comes from the equipped armor item;
+                    # that bonus is already folded into base_ac.
+                    if modifier.get('componentId') in equipped_armor_ids:
+                        continue
+                    val = modifier.get('fixedValue') or modifier.get('value') or 0
+                    bonus += val
+
         return bonus
-    
+
     def _is_natural_armor_modifier(self, modifier: Dict[str, Any]) -> bool:
         """Check if modifier provides natural armor."""
         sub_type = modifier.get('subType', '').lower()
         return 'natural-armor' in sub_type or 'natural_armor' in sub_type
-    
+
     def _is_ac_modifier(self, modifier: Dict[str, Any]) -> bool:
         """Check if modifier affects AC."""
-        modifies_type_id = modifier.get('modifiesTypeId')
-        sub_type = modifier.get('subType', '').lower()
-        
-        # AC modifier type ID (1 = AC in D&D Beyond)
-        if modifies_type_id == 1:
-            return True
-            
-        # Check subtype for AC modifiers
-        if 'armor-class' in sub_type or 'ac' in sub_type:
-            return True
-            
-        return False
+        sub_type = modifier.get('subType', '')
+        # Use exact match to avoid false positives (e.g. 'draconic' contains 'ac').
+        return sub_type in ('armor-class', 'ac')
