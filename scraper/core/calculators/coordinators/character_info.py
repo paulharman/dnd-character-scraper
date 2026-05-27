@@ -286,7 +286,7 @@ class CharacterInfoCoordinator(ICoordinator):
                 value = modifier.get('value')
                 if sense_name and value and isinstance(value, (int, float)):
                     key = sense_name.lower().replace(' ', '_')
-                    senses[key] = max(senses.get(key, 0), int(value))
+                    senses[key] = senses.get(key, 0) + int(value)
                     self.logger.debug(f"Sense: {sense_name} {value}ft")
 
         return senses
