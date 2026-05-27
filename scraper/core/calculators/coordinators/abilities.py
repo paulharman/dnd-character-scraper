@@ -393,14 +393,26 @@ class AbilitiesCoordinator(ICoordinator):
                 base_scores[ability_name] = base_value
                 self.logger.debug(f"Base {ability_name}: {base_value}")
         
+        # Apply bonusStats adjustments (small DDB-level modifiers, e.g. -1 or +1)
+        for bonus_stat in raw_data.get('bonusStats', []):
+            if not isinstance(bonus_stat, dict):
+                continue
+            ability_id = bonus_stat.get('id')
+            bonus_value = bonus_stat.get('value')
+            if ability_id in self.ability_id_map and bonus_value:
+                ability_name = self.ability_id_map[ability_id]
+                if ability_name in base_scores:
+                    base_scores[ability_name] += bonus_value
+                    self.logger.debug(f"bonusStats adjustment for {ability_name}: {bonus_value:+d}")
+
         # Ensure all abilities are present with reasonable defaults
         for ability in self.ability_names:
             if ability not in base_scores:
                 base_scores[ability] = 10
                 self.logger.debug(f"Missing base score for {ability}, defaulting to 10")
-        
+
         return base_scores
-    
+
     def _calculate_racial_bonuses(self, raw_data: Dict[str, Any]) -> Dict[str, int]:
         """Calculate ability score bonuses from species/race."""
         self.logger.debug("Calculating racial ability score bonuses")

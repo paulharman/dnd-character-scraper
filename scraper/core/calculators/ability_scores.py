@@ -629,20 +629,30 @@ class EnhancedAbilityScoreCalculator(RuleAwareCalculator, ICachedCalculator):
         """Calculate base ability scores from character creation."""
         base_scores = {}
         stats = character_data.get('stats', [])
-        
+
         for stat in stats:
             ability_id = stat.get('id')
             base_value = stat.get('value', 10)
-            
             if ability_id in self.ability_id_map:
                 ability_name = self.ability_id_map[ability_id]
                 base_scores[ability_name] = base_value
-        
+
+        # Apply bonusStats adjustments (small DDB-level modifiers, e.g. -1 or +1).
+        # The enhanced calculator receives transformed data; bonusStats lives in _raw_data.
+        raw_ref = character_data.get('_raw_data', character_data)
+        for bonus_stat in raw_ref.get('bonusStats', []):
+            ability_id = bonus_stat.get('id')
+            bonus_value = bonus_stat.get('value')
+            if ability_id in self.ability_id_map and bonus_value:
+                ability_name = self.ability_id_map[ability_id]
+                if ability_name in base_scores:
+                    base_scores[ability_name] += bonus_value
+
         # Ensure all abilities are present
         for ability in self.ability_names:
             if ability not in base_scores:
                 base_scores[ability] = 10
-        
+
         return base_scores
     
     def _calculate_racial_bonuses(self, character_data: Dict[str, Any], rule_version) -> Dict[str, int]:

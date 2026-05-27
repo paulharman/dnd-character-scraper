@@ -482,7 +482,7 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
         # Get other bonuses
         natural_armor = self._get_natural_armor_bonus(character_data)
         deflection_bonus = self._get_deflection_bonus(character_data)
-        misc_bonus = self._get_misc_ac_bonus(character_data)
+        misc_bonus = self._get_misc_ac_bonus(character_data, is_armored=armor_info['equipped'])
         
         # Calculate total
         total_ac = base_ac + dex_bonus + armor_bonus + shield_bonus + natural_armor + deflection_bonus + misc_bonus
@@ -654,7 +654,7 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
         """Get deflection bonus from magic items or spells."""
         return 0
 
-    def _get_misc_ac_bonus(self, character_data: Dict[str, Any]) -> int:
+    def _get_misc_ac_bonus(self, character_data: Dict[str, Any], is_armored: bool = False) -> int:
         """Get miscellaneous AC bonuses (non-armor-item sources only)."""
         modifiers = character_data.get('modifiers', {})
         bonus = 0
@@ -669,17 +669,19 @@ class EnhancedArmorClassCalculator(RuleAwareCalculator, ICachedCalculator):
             if defn.get('filterType') == 'Armor' and 'shield' not in defn.get('name', '').lower():
                 equipped_armor_ids.add(defn.get('id'))
 
+        # 'armored-armor-class' only applies when actually wearing armor (e.g. Defense fighting style)
+        valid_subtypes = {'armor-class'}
+        if is_armored:
+            valid_subtypes.add('armored-armor-class')
+
         for source_type, modifier_list in modifiers.items():
             if not isinstance(modifier_list, list):
                 continue
             for modifier in modifier_list:
-                # Only count explicit bonus-type armor-class modifiers (exact match).
-                # Avoids matching unrelated subtypes like 'draconic' (language) or
-                # 'unarmored-armor-class' (set formula, not an additive bonus).
+                # Only exact-match bonus-type AC modifiers — avoids matching unrelated
+                # subtypes like 'draconic' (language) or 'unarmored-armor-class' (formula).
                 if (modifier.get('type') == 'bonus' and
-                        modifier.get('subType') == 'armor-class'):
-                    # Skip if this modifier comes from the equipped armor item;
-                    # that bonus is already folded into base_ac.
+                        modifier.get('subType') in valid_subtypes):
                     if modifier.get('componentId') in equipped_armor_ids:
                         continue
                     val = modifier.get('fixedValue') or modifier.get('value') or 0
