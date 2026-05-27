@@ -465,15 +465,15 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
 
         # Priority order: overrideHitPoints (true override) > calculate from baseHitPoints > hitPointInfo.maximum > calculated
         if override_hp > 0:
-            # True override from DDB
+            # True override from DDB — use as-is, no further bonuses applied
             max_hp = override_hp
             calculation_method = "rolled_override"
-            base_hp = max_hp - (con_modifier * total_level)
+            base_hp = max_hp
         elif base_hp_raw > 0:
-            # We have rolled HP (baseHitPoints) - need to add Con and other bonuses
+            # D&D Beyond's baseHitPoints = dice rolls + racial HP per level (no CON).
+            # Add CON modifier (isGranted=True only, to match what DDB committed to baseHitPoints).
             calculation_method = "rolled"
             base_hp = base_hp_raw
-            # Start with base rolled HP, add con modifier
             max_hp = base_hp + (con_modifier * total_level)
         elif max_hp_from_info > 0:
             # Manual override or pre-calculated
@@ -484,13 +484,10 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
             # Calculate HP from class and CON
             max_hp, base_hp, calculation_method = self._calculate_max_hp(character_data, total_level, con_modifier)
 
-        # Calculate current HP from max HP and removed HP (always recalculate from raw data)
-        current_hp = max(0, max_hp - removed_hp)
-        
         # Get hit dice information
         hit_dice_info = self._calculate_hit_dice_info(character_data)
-        
-        # Build HP breakdown
+
+        # Build HP breakdown (race_bonus tracked for info but NOT added — already in baseHitPoints)
         hp_breakdown = {
             'base_hp': base_hp or 0,
             'con_bonus': (con_modifier * total_level) or 0,
@@ -501,13 +498,15 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
             'misc_bonus': self._get_misc_hp_bonus(character_data) or 0
         }
 
-        # Adjust max HP with bonuses
-        total_bonuses = (hp_breakdown['race_bonus'] + hp_breakdown['class_bonus'] +
-                        hp_breakdown['feat_bonus'] + hp_breakdown['item_bonus'] +
-                        hp_breakdown['misc_bonus'])
-        max_hp += total_bonuses
+        # Add bonuses not included in baseHitPoints. Override HP is final.
+        if override_hp <= 0:
+            total_bonuses = (hp_breakdown['race_bonus'] +
+                            hp_breakdown['class_bonus'] +
+                            hp_breakdown['feat_bonus'] + hp_breakdown['item_bonus'] +
+                            hp_breakdown['misc_bonus'])
+            max_hp += total_bonuses
 
-        # Recalculate current HP using final max_hp (after all bonuses)
+        # Calculate current HP using final max_hp
         current_hp = max(0, max_hp - removed_hp)
 
         return HitPointsData(
@@ -524,16 +523,39 @@ class EnhancedHitPointsCalculator(RuleAwareCalculator, ICachedCalculator):
     
     def _get_level_and_con_modifier(self, character_data: Dict[str, Any]) -> Tuple[int, int]:
         """Get total character level and constitution modifier."""
-        # Get total level from classes
         classes = character_data.get('classes', [])
         total_level = sum(cls.get('level', 0) for cls in classes)
         if total_level == 0:
-            total_level = 1  # Default to level 1
-        
-        # Get CON modifier
-        con_modifier = self._get_ability_modifier(character_data, 3)  # Constitution ID = 3
-        
+            total_level = 1
+
+        # Use isGranted=True only — DDB commits only granted bonuses to baseHitPoints
+        con_modifier = self._get_con_modifier_for_hp(character_data)
+
         return total_level, con_modifier
+
+    def _get_con_modifier_for_hp(self, character_data: Dict[str, Any]) -> int:
+        """Get CON modifier using only isGranted=True bonuses (matches what DDB committed to baseHitPoints)."""
+        stats = character_data.get('stats', [])
+        base_con = 10
+        for stat in stats:
+            if isinstance(stat, dict) and stat.get('id') == 3:
+                base_con = stat.get('value', 10) or 10
+                break
+
+        bonus = 0
+        modifiers = character_data.get('modifiers', {})
+        if isinstance(modifiers, dict):
+            for mod_list in modifiers.values():
+                if not isinstance(mod_list, list):
+                    continue
+                for m in mod_list:
+                    if (m.get('subType') == 'constitution-score'
+                            and m.get('type') == 'bonus'
+                            and m.get('isGranted', False)):
+                        v = m.get('fixedValue') or m.get('value') or 0
+                        bonus += v
+
+        return DnDMath.ability_modifier(base_con + bonus)
     
     def _get_ability_modifier(self, character_data: Dict[str, Any], ability_id: int) -> int:
         """Get ability modifier for a specific ability, including feat/item bonuses."""
