@@ -479,57 +479,55 @@ def extract_feature_name_data(feature_data: Any) -> str:
 def extract_tool_proficiencies_data(character_data: Dict) -> List[str]:
     """
     Universal tool proficiencies extraction with comprehensive path checking.
-    
-    Returns list of tool names the character is proficient with.
+
+    Returns a merged list of all tool/gaming-set/instrument proficiency names
+    so that re-classification between buckets doesn't produce false change events.
     """
     try:
-        tools = []
-        
-        # Try different possible paths for tool data
-        tool_paths = [
-            'character.proficiencies.tools',
-            'character.proficiencies.tool_proficiencies',
-            'character.tools',
-            'proficiencies.tools',
-            'proficiencies.tool_proficiencies',
-            'tools',
-            'tool_proficiencies'
-        ]
-        
-        for path in tool_paths:
-            tool_data = character_data
+        tools = set()
+
+        def _collect_from_path(path: str) -> None:
+            node = character_data
             for key in path.split('.'):
-                if isinstance(tool_data, dict) and key in tool_data:
-                    tool_data = tool_data[key]
+                if isinstance(node, dict) and key in node:
+                    node = node[key]
                 else:
-                    tool_data = None
-                    break
-            
-            if tool_data:
-                if isinstance(tool_data, list):
-                    # Handle list of tool objects or tool names
-                    for tool_item in tool_data:
-                        if isinstance(tool_item, dict):
-                            tool_name = tool_item.get('name', 'Unknown Tool')
-                            # If object is in tool_proficiencies array, assume it's proficient
-                            # or check if proficient field explicitly set
-                            if 'name' in tool_item or tool_item.get('proficient', True):
-                                tools.append(tool_name)
-                        elif isinstance(tool_item, str):
-                            tools.append(tool_item)
-                elif isinstance(tool_data, dict):
-                    # Handle dict of tools
-                    for tool_name, tool_info in tool_data.items():
-                        if isinstance(tool_info, bool) and tool_info:
-                            tools.append(tool_name)
-                        elif isinstance(tool_info, dict) and tool_info.get('proficient', False):
-                            tools.append(tool_name)
-                
-                if tools:  # If we found tools, return them
-                    break
-        
-        return list(set(tools))  # Remove duplicates
-        
+                    return
+            if isinstance(node, list):
+                for item in node:
+                    if isinstance(item, str):
+                        tools.add(item)
+                    elif isinstance(item, dict):
+                        name = item.get('name', '')
+                        if name and ('name' in item or item.get('proficient', True)):
+                            tools.add(name)
+            elif isinstance(node, dict):
+                for name, info in node.items():
+                    if isinstance(info, bool) and info:
+                        tools.add(name)
+                    elif isinstance(info, dict) and info.get('proficient', False):
+                        tools.add(name)
+
+        # Merge all three sub-lists so that reclassification between buckets
+        # (e.g. playing-card-set moving from tool_proficiencies to
+        # gaming_set_proficiencies) doesn't produce spurious Lost/Gained events.
+        for path in [
+            'proficiencies.tool_proficiencies',
+            'proficiencies.gaming_set_proficiencies',
+            'proficiencies.musical_instrument_proficiencies',
+            'character.proficiencies.tool_proficiencies',
+            'character.proficiencies.gaming_set_proficiencies',
+            'character.proficiencies.musical_instrument_proficiencies',
+            'character.proficiencies.tools',
+            'proficiencies.tools',
+            'character.tools',
+            'tools',
+            'tool_proficiencies',
+        ]:
+            _collect_from_path(path)
+
+        return sorted(tools)
+
     except Exception as e:
         logger.warning(f"Error extracting tool proficiencies: {e}")
         return []

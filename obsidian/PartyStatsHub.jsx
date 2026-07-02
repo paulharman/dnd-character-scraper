@@ -145,7 +145,7 @@ function PartyStatsHub() {
       class: getStr(c, 'class') || '?',
       subclass: getStr(c, 'subclass') || '',
       level: getNum(c, 'level') || 0,
-      species: getStr(c, 'species') || '?',
+      species: getStr(c, 'species') || getStr(c, 'race') || '?',
       maxHp: getNum(c, 'max_hp') || 0,
       currentHp: getNum(c, 'current_hp') || 0,
       tempHp: getNum(c, 'temp_hp') || 0,
